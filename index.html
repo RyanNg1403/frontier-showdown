@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>JEVil — Rift Hunt</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/game.js?v=jev-agency-input-20260930" type="module"></script>
+    <script src="/game.js?v=rift-hunt-skill-hazards-20261002" type="module"></script>
   </head>
   <body>
     <div class="site-shell">
@@ -42,6 +42,7 @@
               </div>
               <button class="level-arrow" id="level-next" type="button" aria-label="Next arena">→</button>
             </div>
+            <div class="level-thumbnails" id="level-thumbnails" role="group" aria-label="Arena previews"></div>
 
             <button class="button button-primary" id="start-button" type="button">
               <span>Enter the rift</span><span class="button-arrow" aria-hidden="true">↗</span>
@@ -51,7 +52,7 @@
               <span><kbd>L-CLICK / Z</kbd> fire</span>
               <span><kbd>SPACE</kbd> dash</span>
               <span><kbd>R-CLICK / SHIFT</kbd> parry</span>
-              <span><kbd>Q</kbd> clone · <kbd>E</kbd> hook · <kbd>R</kbd> veil · <kbd>F</kbd> burst</span>
+              <span><kbd>Q</kbd> mirror · <kbd>E</kbd> hook · <kbd>F</kbd> burst</span>
             </div>
           </div>
 
@@ -61,7 +62,7 @@
         </section>
 
         <section class="arena-screen" id="arena-screen" hidden aria-label="Shatter the rift anchors and fight Jev">
-          <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat Jev. Move with WASD or arrow keys, aim and fire with left-click or Z, dash with Space, parry with right-click or Shift, use F for soul burst, Q for mirror clones, R to vanish, and E for rift hook." ></canvas>
+          <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat Jev. Move with WASD or arrow keys, aim and fire with left-click or Z, Phase Dash with Space, parry with right-click or Shift, use F for Soul Burst, Q for Mirror Echo, and E for Rift Hook." ></canvas>
 
           <div class="arena-topline">
             <h2 id="arena-name">THE LAST CROSSING</h2>
@@ -115,7 +116,6 @@
             <div class="stick-zone" id="stick-zone" role="application" aria-label="Touch movement control"><span class="stick-ring"></span><span class="stick-knob" id="stick-knob"></span></div>
             <div class="touch-actions">
               <button class="touch-action skill-echo" id="echo-touch" type="button" aria-label="Three mirror clones: Q">◌</button>
-              <button class="touch-action skill-veil" id="veil-touch" type="button" aria-label="Veil: R">◍</button>
               <button class="touch-action skill-hook" id="hook-touch" type="button" aria-label="Rift hook: E">↗</button>
               <button class="touch-action dash-action" id="dash-touch" type="button" aria-label="Dash: Space">⤴</button>
               <button class="touch-action pulse-action" id="pulse-touch" type="button" aria-label="Soul burst: X">✦</button>
@@ -135,17 +135,24 @@
                 <label class="setting-row" for="settings-difficulty"><span>Difficulty</span><select id="settings-difficulty"><option value="calm">Calm</option><option value="standard" selected>Standard</option><option value="nightmare">Nightmare</option></select></label>
               </div>
               <section class="hotkey-manual" aria-labelledby="hotkey-title">
-                <h3 id="hotkey-title">Hotkeys</h3>
+                <h3 id="hotkey-title">Controls</h3>
                 <dl>
                   <div><dt>WASD / arrows</dt><dd>Move</dd></div>
                   <div><dt>Left-click / Z</dt><dd>Fire soul bolts</dd></div>
-                  <div><dt>Right-click / Shift / C</dt><dd>Lantern guard & parry</dd></div>
-                  <div><dt>Space</dt><dd>Spectral dash</dd></div>
-                  <div><dt>Q</dt><dd>Mirror clones</dd></div>
-                  <div><dt>E</dt><dd>Rift hook</dd></div>
-                  <div><dt>R</dt><dd>Ghost veil (invisibility)</dd></div>
-                  <div><dt>F / X</dt><dd>Soul burst shockwave</dd></div>
-                  <div><dt>Esc</dt><dd>Resume / pause</dd></div>
+                  <div><dt>Esc</dt><dd>Pause / resume</dd></div>
+                </dl>
+              </section>
+              <section aria-labelledby="skills-title">
+                <h3 class="skill-catalog-title" id="skills-title">Skills</h3>
+                <div class="skill-catalog" id="skill-catalog"></div>
+              </section>
+              <section class="sr-only" aria-label="Skill hotkeys">
+                <dl>
+                  <div><dt>Right-click / Shift / C</dt><dd>Lantern guard</dd></div>
+                  <div><dt>Space</dt><dd>Phase Dash</dd></div>
+                  <div><dt>Q</dt><dd>Mirror Echo</dd></div>
+                  <div><dt>E</dt><dd>Rift Hook</dd></div>
+                  <div><dt>F / X</dt><dd>Soul Burst</dd></div>
                 </dl>
               </section>
               <button class="button button-primary settings-resume" id="settings-resume" type="button">Resume <span aria-hidden="true">↗</span></button>

@@ -10,17 +10,18 @@ const apiUrl = "https://api.typesafe.ai/v1/systemone";
 const maxRequestBytes = 32_000;
 
 const tactics = {
-  pounce: "High-speed lunge at the ghost. Best when within close/medium range and direct lane is clear.",
+  rift_rend: "Close-range crescent slash. A visible 0.42s wind-up fixes a broad 96-degree arc. Use it to punish a committed route; a ready Lantern Guard can parry it, so first draw out or bypass the guard.",
   power_blast: "Charged high-damage shot. Best when line of sight is clear at medium range.",
-  soul_salvo: "Spread of three soul bolts. Best when ghost is dodging or at medium range.",
+  soul_salvo: "Three closely grouped lead bolts. Best against a moving ghost in a clear lane.",
   meteor_storm: "Call down aerial meteor bombardment. Best when ghost is hiding behind cover or kiting.",
   rift_mine: "Place an explosive void trap. Best when cutting off the ghost's escape path or near an anchor.",
   summon_wraiths: "Summon tracking wraithlings. Best to swarm and flush out an evasive ghost.",
-  phase_step: "Void blink through obstacles or space. Best to close distance instantly, ambush, or unstick from walls.",
+  rift_rush: "After a visible wind-up, charge through a clear mid-range lane and stop short; wait out post-parry recovery.",
+  rift_aegis: "After all anchors fall, shield only against an incoming hit; keep pressure on the ghost between threats.",
   shadow_dodge: "Quick evasive sidestep. Best when incoming fire or burst threatens Jev.",
   pursue: "Relentless forward chase. Best to close in and corner the ghost.",
   intercept: "Predict ghost escape path and cut them off at a corner or gate.",
-  flank: "Circle around cover to flush the ghost out into the open.",
+  flank: "Change angle and reset range after a parry; route around cover instead of running straight at the ghost.",
 };
 const playerReads = {
   dash_dodger: "Frequent dashes and reversals; lead broadly, then punish cooldown.",
@@ -45,9 +46,9 @@ const playerTactics = {
   advance_anchor: "Approach a rift anchor cautiously from the flank, keeping cover between yourself and Jev.",
   fire_anchors: "Shoot the rift anchor from a safe angle, keeping 350+ distance from Jev.",
   attack_jev: "Back away while firing from safe long range (keep 350+ distance). Never run toward Jev.",
-  evade_warning: "Dash away or through danger when Jev lunges, closes inside 240, or attacks.",
-  lantern_guard: "Raise lantern to parry Jev's pounce or incoming projectiles.",
-  ghost_veil: "Vanish into invisibility to break Jev's pursuit and escape when cornered.",
+  evade_warning: "Move along a safe route when Jev approaches or an area hazard is about to activate.",
+  lantern_guard: "Timed parry for close contact, incoming projectiles, Rift Rush, or the marked Rift Rend arc. Prefer Phase Dash when ready; use Guard as a deliberate counter when escape is unavailable, never repeatedly.",
+  phase_dash: "Burst through an imminent attack and leave an afterimage that misleads Jev's aim.",
   mirror_echo: "Spawn mirror decoys to divert Jev's attention and intercept attacks.",
   rift_hook: "Grapple across the arena to instantly escape Jev or reach a far anchor.",
   soul_burst: "Pulse only when within 145 units of an anchor, Jev, or wraithlings.",
@@ -85,14 +86,14 @@ const arenas = {
   },
 };
 const gameEvents = new Set([
-  "dash", "soul_burst", "burst_hit", "burst_missed", "shot_fired", "shot_hit", "shot_blocked",
-  "player_hit", "mine_hit", "mine_placed", "mine_triggered", "mine_evaded", "pounce_hit", "pounce_blocked", "pounce_missed",
+  "dash", "phase_dash", "lava_hit", "lava_evaded", "soul_burst", "burst_hit", "burst_missed", "shot_fired", "shot_hit", "shot_blocked",
+  "player_hit", "mine_hit", "mine_placed", "mine_triggered", "mine_evaded", "rift_rend_windup", "rift_rend_fired", "rift_rend_hit", "rift_rend_missed", "rift_rend_evaded", "rift_rend_interrupted",
   "power_blast_fired", "blast_hit", "blast_missed", "blast_dodged", "blast_blocked", "blast_canceled",
   "salvo_hit", "salvo_missed", "salvo_dodged", "salvo_blocked",
-  "phase_step_windup", "phase_step_used", "phase_step_canceled", "shadow_dodge_windup", "shadow_dodge_used", "shadow_dodge_canceled",
+  "rift_rush_windup", "rift_rush_used", "rift_rush_canceled", "shadow_dodge_windup", "shadow_dodge_used", "shadow_dodge_canceled",
   "meteor_storm_started", "meteor_hit", "meteor_evaded", "wraiths_summoned", "wraith_hit", "wraith_shot", "wraith_burst", "wraith_dash",
   "soul_salvo_windup", "soul_salvo_fired", "soul_salvo_canceled", "anchor_hit", "anchor_broken",
-  "mirror_echo", "mirror_echo_broken", "ghost_veil", "veil_broken", "rift_hook", "lantern_guard", "lantern_parry", "ward_blocked",
+  "mirror_echo", "mirror_echo_broken", "rift_hook", "lantern_guard", "lantern_parry", "ward_blocked",
 ]);
 
 function parseApiKeyFile(filePath) {
@@ -179,14 +180,14 @@ function buildState(body) {
 
   const readyAbilities = [];
   const abilitiesOnCooldown = [];
-  if (jev.pounce_ready) readyAbilities.push("pounce");
-  else abilitiesOnCooldown.push("pounce");
+  if (jev.rend_ready) readyAbilities.push("rift_rend");
+  else abilitiesOnCooldown.push("rift_rend");
   if (jev.blast_ready) readyAbilities.push("power_blast");
   else abilitiesOnCooldown.push("power_blast");
   if (jev.soul_salvo_ready) readyAbilities.push("soul_salvo");
   else abilitiesOnCooldown.push("soul_salvo");
-  if (jev.phase_step_ready) readyAbilities.push("phase_step");
-  else abilitiesOnCooldown.push("phase_step");
+  if (jev.rift_rush_ready) readyAbilities.push("rift_rush");
+  else abilitiesOnCooldown.push("rift_rush");
   if (jev.shadow_dodge_ready) readyAbilities.push("shadow_dodge");
   else abilitiesOnCooldown.push("shadow_dodge");
   if (jev.mine_ready && !jev.active_mine) readyAbilities.push("rift_mine");
@@ -199,6 +200,10 @@ function buildState(body) {
   const activeAnchorsCount = Array.isArray(arenaInput.anchors)
     ? arenaInput.anchors.filter((a) => (a?.health ?? 0) > 0).length
     : 0;
+  if (activeAnchorsCount === 0) {
+    if (jev.rift_aegis_ready === true) readyAbilities.push("rift_aegis");
+    else abilitiesOnCooldown.push("rift_aegis");
+  }
 
   const isStuck = boundedNumber(jev.stuck_seconds, 0, 10, 0) > 0.35;
   const shotThreatened = jev.shot_threatened === true;
@@ -215,13 +220,15 @@ function buildState(body) {
     engagement: {
       distance_to_ghost: Math.round(distanceToPlayer),
       range_bracket: rangeBracket,
-      direct_pounce_lane_clear: jev.pounce_lane_clear === true,
+      direct_rend_lane_clear: jev.rend_lane_clear === true,
+      rift_rend_warning: jev.rend_arc_threatening === true,
       direct_blast_lane_clear: jev.blast_lane_clear === true,
-      ghost_status: player.hidden ? "invisible_veil" : (player.guard_active ? "shield_guard_active" : (player.slowed ? "slowed" : "exposed")),
-      ghost_health: boundedNumber(player.health, 0, 4, 4),
+      ghost_status: player.afterimage_active ? "afterimage_decoy" : (player.echo?.seconds_left > 0 ? "mirror_echo_decoy" : (player.guard_active ? "shield_guard_active" : (player.slowed ? "slowed" : "exposed"))),
+      ghost_health: boundedNumber(player.health, 0, 5, 5),
       demon_health: boundedNumber(jev.health, 0, 6, 6),
       demon_stuck_or_obstructed: isStuck,
       demon_shot_threatened: shotThreatened,
+      ghost_just_parried: jev.recently_parried === true,
     },
     demon_tactical_status: {
       current_plan: Object.hasOwn(plans, jev.current_plan) ? jev.current_plan : "steady_pressure",
@@ -229,6 +236,11 @@ function buildState(body) {
       player_read: Object.hasOwn(playerReads, jev.player_read) ? jev.player_read : "unpredictable",
       ready_abilities: readyAbilities,
       abilities_on_cooldown: abilitiesOnCooldown,
+      ...(activeAnchorsCount === 0 ? {
+        rift_aegis_ready: jev.rift_aegis_ready === true,
+        rift_aegis_active_seconds: boundedNumber(jev.rift_aegis_active_seconds, 0, 3),
+        rift_aegis_charges: boundedNumber(jev.rift_aegis_charges, 0, 2),
+      } : {}),
     },
     ...(isAuto ? {
       ghost_perspective: {
@@ -236,22 +248,45 @@ function buildState(body) {
         safe_distance_maintained: distanceToPlayer >= 350,
         demon_closing_in: distanceToPlayer < 350,
         ghost_defensive_ready: [
-          ...(player.dash_ready ? ["evasive_dash"] : []),
+          ...(player.phase_dash_ready ? ["phase_dash"] : []),
           ...(player.guard_ready ? ["lantern_guard"] : []),
-          ...(player.veil_ready ? ["ghost_veil"] : []),
           ...(player.echo_ready ? ["mirror_echo"] : []),
           ...(player.hook_ready ? ["rift_hook"] : []),
         ],
       }
-    } : {})
+    } : {}),
+    npc_context: {
+      rend_lane_clear: jev.rend_lane_clear === true,
+      salvo_lane_clear: jev.salvo_lane_clear === true,
+      ghost_near_burst_threat: player.soul_burst_threat === true,
+      active_decoy: player.afterimage_active ? "afterimage" : (player.echo?.seconds_left > 0 ? "mirror_echo" : "none"),
+      ghost_defense_history: Array.isArray(player.action_timeline)
+        ? player.action_timeline
+          .filter((action) => ["phase_dash", "lantern_guard", "lantern_parry", "mirror_echo", "rift_hook", "soul_burst"].includes(action?.event))
+          .slice(-4)
+          .map((action) => [action.event, Math.round(boundedNumber(action.seconds_ago, 0, 14) * 10) / 10])
+        : [],
+      ghost_motion: {
+        vx: Math.round(boundedNumber(player.vx, -900, 900)),
+        vy: Math.round(boundedNumber(player.vy, -900, 900)),
+        route: ["looping", "erratic", "hidden"].includes(player.route_pattern) ? player.route_pattern : "open",
+      },
+      recent_attack_results: Array.isArray(jev.action_history)
+        ? jev.action_history
+          .filter((action) => action?.outcome && !["awaiting_result", "engine_safety_adjustment"].includes(action.outcome))
+          .slice(-4)
+          .map((action) => ({ skill: action.executed_tactic, result: action.outcome }))
+        : [],
+    },
   };
 }
 
 function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
   const refreshPlayerRead = playerReadAge >= 2.5;
   const refreshPlan = (state.demon_tactical_status?.plan_seconds_left ?? 0) <= 0.1;
+  const { npc_context: npcContext = {}, ...sharedState } = state;
   return {
-    state,
+    state: sharedState,
     model: "jev-latest",
     questions: {
       ...(refreshPlayerRead ? {
@@ -270,13 +305,24 @@ function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
       } : {}),
       npc_tactic: {
         type: "choice",
-        instructions: "You are Jev, the demonic boss. Choose your immediate tactical combat action. Relentlessly hunt, pressure, and destroy the ghost. If an ability is ready and its conditions are met (pounce if close with clear lane, blast if sightline clear, meteor if ghost is kiting/behind cover, phase_step to blink close or unstick, shadow_dodge if threatened), unleash it. Otherwise, use pursue to corner them aggressively, intercept to cut off their escape, or flank to flush them from behind obstacles.",
+        instructions: {
+          goal: "Choose one hunt action that fits range, lane, recent defenses, and attack results. Use Rift Rend at close range to punish a committed route; its 0.42s arc is dodgeable and a ready Lantern Guard can parry it. Avoid repeating into recent guards; change angle or skill after a miss or parry. Avoid decoys with single-target attacks. With anchors down, use Rift Aegis only for an imminent hit.",
+          attack_context: {
+            recent_results: npcContext.recent_attack_results ?? [],
+            ghost_motion: npcContext.ghost_motion ?? { vx: 0, vy: 0, route: "open" },
+            active_decoy: npcContext.active_decoy ?? "none",
+            ghost_defense_history: npcContext.ghost_defense_history ?? [],
+            rend_lane_clear: npcContext.rend_lane_clear === true,
+            salvo_lane_clear: npcContext.salvo_lane_clear === true,
+            ghost_near_burst_threat: npcContext.ghost_near_burst_threat === true,
+          },
+        },
         criteria: tactics,
       },
       ...(gameMode === "auto" ? {
         player_tactic: {
           type: "choice",
-          instructions: "You are the fragile ghost. Prioritize survival and distance. Stay 350+ units away from Jev. If Jev attacks or gets close, use defensive skills (lantern_guard, evade_warning, ghost_veil, mirror_echo, rift_hook). If anchors are alive, advance and destroy them from safe cover. When demon is exposed, kite and shoot from long range while retreating if Jev advances. NEVER run into or chase Jev.",
+          instructions: "Break anchors, then defeat Jev. During Rift Aegis, move or use decoys until it fades. When Rift Rend marks you, move out of the arc; prefer Phase Dash if ready, or time Lantern Guard to parry if escape is unavailable. Guard projectile wind-ups and near-contact, then punish Jev's stun. Adapt after a parry instead of repeating it. Avoid Rift Rush's marked lane, keep firing through clear lanes, and avoid active hazards.",
           criteria: playerTactics,
         },
       } : {}),
@@ -396,6 +442,8 @@ const publicFiles = new Set([
   "assets/ghost-combat-sheet.png", "assets/jev-combat-sheet.png",
   "assets/floor-crossing-v2.png", "assets/floor-cinder-v2.png", "assets/floor-archive-v2.png",
   "assets/floor-garden-v2.png", "assets/floor-vault-v2.png", "assets/floor-rift-v2.png",
+  "assets/skill-icons.png",
+  "assets/rift-aegis-icon.png",
 ]);
 
 function serveFile(request, response) {

@@ -5,9 +5,14 @@ const POWER_BLAST_SPEED = 640;
 const POWER_BLAST_WINDUP = 0.32;
 const SOUL_SALVO_SPEED = 540;
 const SOUL_SALVO_WINDUP = 0.36;
-const POUNCE_SPEED = 860;
-const POUNCE_WINDUP = 0.26;
-const POUNCE_MAX_FLIGHT = 0.76;
+const RIFT_REND_RANGE = 184;
+const RIFT_REND_HALF_ANGLE = 0.84;
+const RIFT_REND_WINDUP = 0.42;
+const RIFT_REND_COOLDOWN = 5.2;
+const RIFT_RUSH_SPEED = 690;
+const RIFT_RUSH_WINDUP = 0.42;
+const RIFT_RUSH_COOLDOWN = 8.6;
+const RIFT_RUSH_MAX_TRAVEL = 430;
 const PLAYER_SHOT_SPEED = 780;
 const PLAYER_SHOT_INTERVAL = 0.38;
 const SURVIVAL_SECONDS = 75;
@@ -15,7 +20,8 @@ const TACTIC_DECISION_INTERVAL = 820;
 const TACTIC_DECISION_MIN_GAP = 650;
 const PLAN_COMMITMENT = 3.8;
 const MIRROR_CLONE_DURATION = 3.2;
-const VEIL_DURATION = 2.4;
+const PHASE_DASH_COOLDOWN = 3.1;
+const PHASE_AFTERIMAGE_DURATION = 0.46;
 const GHOST_SAFE_GAP = 360;
 const GHOST_PATH_CLEARANCE = 180;
 const DIFFICULTY_SETTINGS = {
@@ -138,7 +144,7 @@ function scaleLegacyLevel(level) {
             { x: 54, y: 220, w: 180, h: 76, kind: "current", flowX: 1, flowY: 0, period: 0 },
             { x: 494, y: 424, w: 210, h: 76, kind: "current", flowX: 0.72, flowY: -0.7, period: 0 },
             { x: 888, y: 612, w: 190, h: 72, kind: "current", flowX: -1, flowY: 0, period: 0 },
-          ]
+        ]
         : [],
   };
 }
@@ -279,16 +285,22 @@ const districtHazards = {
     { x: 1520, y: 225, w: 176, h: 118, kind: "steam", phase: 1.5 },
     { x: 320, y: 1060, w: 176, h: 120, kind: "steam", phase: 5.4 },
     { x: 1830, y: 1120, w: 180, h: 124, kind: "steam", phase: 7.4 },
+    { x: 890, y: 520, w: 184, h: 104, kind: "lava", phase: 1.2 },
+    { x: 1420, y: 940, w: 210, h: 112, kind: "lava", phase: 4.4 },
+    { x: 2000, y: 700, w: 174, h: 106, kind: "lava", phase: 7.1 },
   ],
   drowned: [
     { x: 1370, y: 250, w: 260, h: 112, kind: "current", flowX: 1, flowY: 0 },
     { x: 330, y: 1050, w: 250, h: 118, kind: "current", flowX: 0.7, flowY: -0.7 },
     { x: 1780, y: 1120, w: 270, h: 115, kind: "current", flowX: -1, flowY: 0 },
+    { x: 550, y: 500, w: 230, h: 132, kind: "quicksand", phase: 1.5 },
+    { x: 1420, y: 1130, w: 250, h: 140, kind: "quicksand", phase: 5.2 },
+    { x: 1910, y: 560, w: 222, h: 134, kind: "quicksand", phase: 7.8 },
   ],
   glassgarden: [
-    { x: 1510, y: 210, w: 130, h: 140, kind: "spores", phase: 2.5 },
-    { x: 300, y: 1060, w: 134, h: 142, kind: "spores", phase: 5.7 },
-    { x: 1860, y: 1110, w: 132, h: 138, kind: "spores", phase: 7.6 },
+    { x: 1510, y: 210, w: 140, h: 145, kind: "swarm", phase: 2.5, moveX: 92, moveY: 54, movePeriod: 7.8 },
+    { x: 300, y: 1060, w: 148, h: 142, kind: "swarm", phase: 5.7, moveX: 72, moveY: 64, movePeriod: 9.2 },
+    { x: 1860, y: 1110, w: 142, h: 140, kind: "swarm", phase: 7.6, moveX: 86, moveY: 56, movePeriod: 8.4 },
   ],
   meridian: [
     { x: 1500, y: 220, w: 128, h: 110, kind: "arc_sparks", phase: 1.8 },
@@ -336,8 +348,8 @@ function expandLevel(level) {
   ];
   const hazards = (level.hazards || []).map((hazard) => ({ ...hazard }));
   for (const hazard of districtHazards[level.id]) {
-    const timing = ["steam", "spores", "arc_sparks", "rift_surge"].includes(hazard.kind)
-      ? { period: 9, activeFor: 2.1, warningFor: 1.4 }
+    const timing = ["steam", "spores", "arc_sparks", "rift_surge", "lava", "quicksand", "swarm"].includes(hazard.kind)
+      ? { period: hazard.kind === "lava" ? 10 : 9, activeFor: hazard.kind === "lava" ? 1.8 : 2.4, warningFor: 1.5 }
       : { period: 0 };
     hazards.push({ ...timing, ...hazard });
   }
@@ -375,14 +387,15 @@ const modeLabels = {
   intercept: "LEADING",
   flank: "FLANK",
   ambush: "CUTTING OFF",
-  pounce: "POUNCE",
+  rift_rend: "RIFT REND",
   power_blast: "BLAST",
   rift_mine: "RIFT MINE",
-  phase_step: "RIFT STEP",
+  rift_rush: "RIFT RUSH",
   shadow_dodge: "RIFT SLIDE",
   soul_salvo: "SOUL SALVO",
   summon_wraiths: "WRAITH SWARM",
   meteor_storm: "METEOR STORM",
+  rift_aegis: "RIFT AEGIS",
 };
 const planLabels = {
   steady_pressure: "PRESSING",
@@ -400,21 +413,29 @@ const planStepDescriptions = {
   capitalize: "use a ready skill to exploit the setup",
   assess: "read the outcome and the ghost's response before repeating",
 };
-const commitmentTactics = new Set(["pounce", "power_blast", "rift_mine", "soul_salvo", "shadow_dodge", "summon_wraiths", "meteor_storm"]);
+const commitmentTactics = new Set(["rift_rend", "power_blast", "rift_mine", "soul_salvo", "shadow_dodge", "summon_wraiths", "meteor_storm", "rift_aegis"]);
 const planBreakEvents = new Set([
-  "dash", "soul_burst", "burst_hit", "burst_missed", "shot_hit", "anchor_hit", "anchor_broken",
-  "mirror_echo", "ghost_veil", "rift_hook", "lantern_parry", "blast_hit", "blast_dodged", "blast_blocked",
-  "salvo_hit", "salvo_dodged", "salvo_blocked", "pounce_hit", "pounce_missed", "mine_hit", "mine_evaded",
+  "phase_dash", "soul_burst", "burst_hit", "burst_missed", "shot_hit", "anchor_hit", "anchor_broken",
+  "mirror_echo", "rift_hook", "lantern_parry", "blast_hit", "blast_dodged", "blast_blocked",
+  "salvo_hit", "salvo_dodged", "salvo_blocked", "blast_cover_blocked", "blast_guard_blocked", "blast_decoy_blocked",
+  "salvo_cover_blocked", "salvo_guard_blocked", "salvo_decoy_blocked", "rift_rend_hit", "rift_rend_missed",
+  "rift_rend_evaded", "rift_rend_interrupted",
+  "mine_hit", "mine_evaded", "rift_aegis_activated", "rift_aegis_blocked",
 ]);
 const actionOutcomeEvents = {
-  pounce_hit: ["pounce", "hit"],
-  pounce_blocked: ["pounce", "blocked"],
-  pounce_missed: ["pounce", "missed"],
+  rift_rend_fired: ["rift_rend", "in_swing"],
+  rift_rend_hit: ["rift_rend", "hit"],
+  rift_rend_missed: ["rift_rend", "missed"],
+  rift_rend_interrupted: ["rift_rend", "interrupted"],
+  rift_rend_evaded: ["rift_rend", "evaded"],
   power_blast_fired: ["power_blast", "in_flight"],
   blast_hit: ["power_blast", "hit"],
   blast_missed: ["power_blast", "missed"],
   blast_dodged: ["power_blast", "dodged"],
   blast_blocked: ["power_blast", "blocked"],
+  blast_cover_blocked: ["power_blast", "blocked_by_cover"],
+  blast_guard_blocked: ["power_blast", "parried"],
+  blast_decoy_blocked: ["power_blast", "diverted_by_decoy"],
   blast_canceled: ["power_blast", "interrupted"],
   soul_salvo_windup: ["soul_salvo", "started"],
   soul_salvo_fired: ["soul_salvo", "in_flight"],
@@ -422,14 +443,20 @@ const actionOutcomeEvents = {
   salvo_missed: ["soul_salvo", "missed"],
   salvo_dodged: ["soul_salvo", "dodged"],
   salvo_blocked: ["soul_salvo", "blocked"],
+  salvo_cover_blocked: ["soul_salvo", "blocked_by_cover"],
+  salvo_guard_blocked: ["soul_salvo", "parried"],
+  salvo_decoy_blocked: ["soul_salvo", "diverted_by_decoy"],
   soul_salvo_canceled: ["soul_salvo", "interrupted"],
   mine_placed: ["rift_mine", "deployed"],
   mine_triggered: ["rift_mine", "triggered"],
   mine_hit: ["rift_mine", "hit"],
   mine_evaded: ["rift_mine", "evaded"],
-  phase_step_windup: ["phase_step", "started"],
-  phase_step_used: ["phase_step", "gap_closed"],
-  phase_step_canceled: ["phase_step", "interrupted"],
+  rift_rush_windup: ["rift_rush", "started"],
+  rift_rush_used: ["rift_rush", "charged"],
+  rift_rush_canceled: ["rift_rush", "interrupted"],
+  rift_aegis_activated: ["rift_aegis", "activated"],
+  rift_aegis_blocked: ["rift_aegis", "blocked_a_hit"],
+  rift_aegis_expired: ["rift_aegis", "faded"],
   shadow_dodge_windup: ["shadow_dodge", "started"],
   shadow_dodge_used: ["shadow_dodge", "avoided_shot"],
   shadow_dodge_canceled: ["shadow_dodge", "interrupted"],
@@ -460,10 +487,47 @@ for (const [biome, file] of Object.entries({
   rift: "floor-rift-v2.png",
 })) {
   artwork.floors[biome] = new Image();
+  artwork.floors[biome].addEventListener("load", renderLevelThumbnails, { once: true });
   artwork.floors[biome].src = "/assets/" + file;
 }
 artwork.ghost.src = "/assets/ghost-combat-sheet.png";
 artwork.jev.src = "/assets/jev-combat-sheet.png";
+artwork.skills = new Image();
+artwork.skills.src = "/assets/skill-icons.png";
+
+const skillIconCells = {
+  phase_dash: [0, 0], rift_hook: [1, 0], mirror_echo: [2, 0], lantern_guard: [3, 0],
+  soul_burst: [0, 1], rift_rend: [1, 1], power_blast: [2, 1], soul_salvo: [3, 1],
+  meteor_storm: [0, 2], rift_mine: [1, 2], summon_wraiths: [2, 2], rift_rush: [3, 2],
+  shadow_dodge: [0, 3],
+};
+const skillIconAssets = { rift_aegis: "/assets/rift-aegis-icon.png" };
+artwork.skillExtras = {};
+for (const [skillId, source] of Object.entries(skillIconAssets)) {
+  const image = new Image();
+  image.src = source;
+  artwork.skillExtras[skillId] = image;
+}
+const skillManual = {
+  ghost: [
+    { id: "phase_dash", name: "Phase Dash", key: "Space", description: "Burst through danger; leave a decoy afterimage." },
+    { id: "mirror_echo", name: "Mirror Echo", key: "Q", description: "Create three decoys to draw attacks away." },
+    { id: "lantern_guard", name: "Lantern Guard", key: "Shift / C / right click", description: "Timed parry reflects attacks and staggers Jev. Use against Rift Rend when escape skills are recharging." },
+    { id: "rift_hook", name: "Rift Hook", key: "E", description: "Grapple across a clear route to a safe landing." },
+    { id: "soul_burst", name: "Soul Burst", key: "F / X", description: "Short-range shockwave that interrupts Jev and cracks anchors." },
+  ],
+  jev: [
+    { id: "rift_rend", name: "Rift Rend", description: "A wide close-range slash. Dodge its warning arc or parry it with Lantern Guard." },
+    { id: "power_blast", name: "Power Blast", description: "Charged, aimed projectile with a clear wind-up." },
+    { id: "soul_salvo", name: "Soul Salvo", description: "Three-shot spread against a moving target." },
+    { id: "meteor_storm", name: "Meteor Storm", description: "Marked impacts pressure the ghost out of cover." },
+    { id: "rift_mine", name: "Rift Mine", description: "Delayed trap placed to close a route." },
+    { id: "summon_wraiths", name: "Summon Wraiths", description: "Send tracking wraithlings to flush the ghost." },
+    { id: "rift_rush", name: "Rift Rush", description: "Wind up, then charge through a clear lane." },
+    { id: "shadow_dodge", name: "Shadow Dodge", description: "Sidestep an incoming burst or shot." },
+    { id: "rift_aegis", name: "Rift Aegis", description: "After the anchors fall, block two hits during a brief shield window." },
+  ],
+};
 
 const playerModeLabels = {
   advance_anchor: "MOVE TO ANCHOR",
@@ -473,7 +537,7 @@ const playerModeLabels = {
   evade_warning: "EVADE ATTACK",
   rift_hook: "RIFT HOOK",
   mirror_echo: "MIRROR CLONES",
-  ghost_veil: "GHOST VEIL",
+  phase_dash: "PHASE DASH",
   lantern_guard: "LANTERN GUARD",
   soul_burst: "SOUL BURST",
 };
@@ -524,7 +588,6 @@ const ui = {
   dashTouch: document.querySelector("#dash-touch"),
   pulseTouch: document.querySelector("#pulse-touch"),
   echoTouch: document.querySelector("#echo-touch"),
-  veilTouch: document.querySelector("#veil-touch"),
   hookTouch: document.querySelector("#hook-touch"),
   guardTouch: document.querySelector("#guard-touch"),
   modeHuman: document.querySelector("#mode-human"),
@@ -772,12 +835,13 @@ function makeGame() {
     enraged: false,
     anchors: makeAnchors(),
     player: {
-      x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y, vx: 0, vy: 0, radius: 14, speed: 244,
-      facing: 1, health: 4, shotsFired: 0, hitsLanded: 0, fireCooldown: 0,
+      x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y, vx: 0, vy: 0, radius: 14,
+      speed: selectedMode === "auto" ? 254 : 244,
+      facing: 1, health: selectedMode === "auto" ? 5 : 4, shotsFired: 0, hitsLanded: 0, fireCooldown: 0,
       aim: null, fireHeld: false, dashTimer: 0, dashCooldown: 0, dashVx: 0, dashVy: 0,
       pulseCooldown: 0, pulseTimer: 0, hurtTimer: 0, invulnerable: 0, snaredTimer: 0,
-      echoCooldown: 0, hookCooldown: 0, guardCooldown: 0, guardTimer: 0,
-      veilCooldown: 0, veilTimer: 0, lastKnown: { x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y },
+      echoCooldown: 0, hookCooldown: 0, guardCooldown: 0, guardTimer: 0, guardAdaptUntil: 0,
+      afterimageTimer: 0, lastKnown: { x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y },
       echo: null, clones: [], hookTarget: null, aiInput: { x: 0, y: 0 }, aiTactic: "advance_anchor", aiHistory: [],
       aiObjectiveAnchorId: null, aiObjectivePosition: null,
       aiPath: [], aiNextPathAt: 0, aiActionUntil: 0, aiDecision: null, aiTarget: null,
@@ -786,26 +850,30 @@ function makeGame() {
     jev: {
       x: selectedLevel.jevStart.x, y: selectedLevel.jevStart.y, vx: 0, vy: 0, radius: 17, health: 6, mode: "pursue",
       stunned: 0, recoverTimer: 0, nextPathAt: 0, path: [], facing: -1,
-      pounceCooldown: 0, pouncePhase: "", pounceTimer: 0, pounceTarget: null,
-      pounceVx: 0, pounceVy: 0, pounceHit: false,
+      rendCooldown: 0, rendPhase: "", rendTimer: 0, rendAngle: 0,
       blastCooldown: 0, blastPhase: "", blastTimer: 0, blastTarget: null,
       salvoCooldown: 0, salvoPhase: "", salvoTimer: 0, salvoTarget: null,
-      mineCooldown: 0, phaseStepCooldown: 0, phaseStepPhase: "", phaseStepTimer: 0, phaseStepTarget: null,
+      mineCooldown: 0, riftRushCooldown: 0, riftRushPhase: "", riftRushTimer: 0, riftRushTarget: null,
+      riftRushVx: 0, riftRushVy: 0, riftRushRemaining: 0,
       shadowDodgeCooldown: 0, shadowDodgePhase: "", shadowDodgeTimer: 0, shadowDodgeTarget: null,
       summonCooldown: 0, meteorCooldown: 0,
+      riftAegisCooldown: 0, riftAegisTimer: 0, riftAegisCharges: 0,
       stuckTimer: 0, recoveryTarget: null, recoveryUntil: 0, recoveryAttempts: 0,
+      parryRecoveryUntil: 0,
       flankSide: 1,
       plan: "steady_pressure", planUntil: 0, planStartedAt: 0, planConfidence: 0,
       planStep: "approach", planStepStartedAt: 0, pendingPlan: null, actionHistory: [],
       playerRead: "unpredictable", playerReadAt: -3, planHistory: [],
     },
-    hazards: selectedLevel.hazards.map((hazard) => ({ ...hazard })),
+    hazards: selectedLevel.hazards.map((hazard) => ({ ...hazard, hitCycle: { player: -1, jev: -1 } })),
     projectiles: [],
     minions: [],
     meteors: [],
     meteorImpacts: [],
     history: [],
     actionTimeline: [],
+    skillCallouts: [],
+    rendSlash: null,
     playerTrail: [],
     routeProfile: { pathEfficiency: 1, turns: 0, reversals: 0, revisitedCells: 0, hotspot: null },
     nextTrailSampleAt: 0,
@@ -850,6 +918,129 @@ function renderLevelSelection() {
   ui.levelPicker.setAttribute("aria-label", "Choose an arena. " + selectedLevel.topology);
   ui.levelPrev.disabled = selectedLevelIndex === 0;
   ui.levelNext.disabled = selectedLevelIndex === levels.length - 1;
+  renderLevelThumbnails();
+}
+
+function renderLevelThumbnails() {
+  const grid = document.querySelector("#level-thumbnails");
+  if (!grid) return;
+  if (!grid.childElementCount) {
+    for (const [index, level] of levels.entries()) {
+      const button = document.createElement("button");
+      button.className = "level-thumbnail";
+      button.type = "button";
+      button.setAttribute("aria-label", "Select " + level.name);
+      button.addEventListener("click", () => {
+        selectedLevelIndex = index;
+        renderLevelSelection();
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = 216;
+      canvas.height = 135;
+      canvas.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.textContent = level.name;
+      button.append(canvas, label);
+      grid.append(button);
+    }
+  }
+  [...grid.children].forEach((button, index) => {
+    button.classList.toggle("is-selected", index === selectedLevelIndex);
+    button.setAttribute("aria-pressed", String(index === selectedLevelIndex));
+    drawLevelThumbnail(button.querySelector("canvas"), levels[index]);
+  });
+}
+
+function drawLevelThumbnail(canvas, level) {
+  const ctx = canvas.getContext("2d");
+  const scaleX = canvas.width / WORLD.width;
+  const scaleY = canvas.height / WORLD.height;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#171321";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const floor = artwork.floors[level.biome];
+  if (floor?.complete && floor.naturalWidth > 0) {
+    ctx.globalAlpha = 0.72;
+    ctx.drawImage(floor, 0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+  }
+  ctx.save();
+  ctx.scale(scaleX, scaleY);
+  ctx.fillStyle = "rgba(10, 8, 17, .5)";
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  ctx.fillStyle = "rgba(28, 21, 38, .9)";
+  ctx.strokeStyle = "rgba(239, 224, 243, .55)";
+  ctx.lineWidth = 7;
+  for (const block of level.blocks) {
+    ctx.save();
+    ctx.translate(block.x + block.w / 2, block.y + block.h / 2);
+    ctx.rotate(block.angle || 0);
+    ctx.fillRect(-block.w / 2, -block.h / 2, block.w, block.h);
+    ctx.strokeRect(-block.w / 2, -block.h / 2, block.w, block.h);
+    ctx.restore();
+  }
+  const hazardColors = {
+    lava: "#ff784f", steam: "#ffad73", quicksand: "#d6b472", current: "#61d9d4",
+    swarm: "#bbeb9b", spores: "#aee581", arc_sparks: "#ffd27a", rift_surge: "#d887ff",
+  };
+  for (const hazard of level.hazards) {
+    const bounds = hazardBounds(hazard);
+    ctx.fillStyle = hazardColors[hazard.kind] || "#d887ff";
+    ctx.globalAlpha = 0.78;
+    ctx.beginPath();
+    ctx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, 22);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const point of level.chokepoints) {
+    ctx.fillStyle = "#f0d08c";
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function renderSkillCatalog() {
+  const root = document.querySelector("#skill-catalog");
+  if (!root || root.childElementCount) return;
+  for (const [owner, title] of [["ghost", "Ghost"], ["jev", "Jev"]]) {
+    const group = document.createElement("section");
+    group.className = "skill-group " + owner + "-skill-group";
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    const list = document.createElement("ul");
+    list.className = "skill-list";
+    for (const skill of skillManual[owner]) {
+      const item = document.createElement("li");
+      item.className = "skill-card";
+      const cell = skillIconCells[skill.id];
+      const icon = document.createElement("span");
+      icon.className = "skill-icon";
+      icon.setAttribute("aria-hidden", "true");
+      if (cell) {
+        icon.style.setProperty("--icon-x", (cell[0] * 100 / 3) + "%");
+        icon.style.setProperty("--icon-y", (cell[1] * 100 / 3) + "%");
+      } else if (skillIconAssets[skill.id]) {
+        icon.classList.add("is-custom");
+        icon.style.backgroundImage = "url('" + skillIconAssets[skill.id] + "')";
+      }
+      const copy = document.createElement("span");
+      copy.className = "skill-copy";
+      const name = document.createElement("strong");
+      name.textContent = skill.name;
+      const description = document.createElement("span");
+      description.textContent = skill.description;
+      copy.append(name, description);
+      const key = document.createElement("kbd");
+      key.className = "skill-key";
+      key.textContent = skill.key || "Jev AI";
+      item.append(icon, copy, key);
+      list.append(item);
+    }
+    group.append(heading, list);
+    root.append(group);
+  }
 }
 
 function setSelectedMode(mode) {
@@ -932,10 +1123,12 @@ function setMode(mode, confidence, source = "system_one") {
   const requestedMode = mode;
   const gap = distance(combatTarget(), game.jev);
   const playerGap = distance(game.player, game.jev);
-  if (game.player.pulseTimer > 0 && playerGap < 174 && !game.player.echo && game.jev.shadowDodgeCooldown <= 0) mode = "shadow_dodge";
-  if (mode === "pounce" && (
-    game.jev.pounceCooldown > 0 || game.jev.pouncePhase || gap > 315 ||
-    !isLaneClear(game.jev, predictedPounceTarget(), game.jev.radius)
+  if (requestedMode !== "rift_aegis" && game.player.pulseTimer > 0 && playerGap < 174 &&
+      !game.player.echo && game.jev.shadowDodgeCooldown <= 0) mode = "shadow_dodge";
+  if (mode === "rift_rend" && (
+    game.jev.rendCooldown > 0 || game.jev.rendPhase || playerGap > RIFT_REND_RANGE + game.player.radius || playerGap < 30 ||
+    game.player.invulnerable > 0.12 || game.player.hurtTimer > 0.25 || game.jev.stunned > 0 ||
+    !isLaneClear(game.jev, game.player, game.jev.radius)
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
@@ -943,21 +1136,30 @@ function setMode(mode, confidence, source = "system_one") {
     mode = "flank";
   }
   if (mode === "power_blast" && (
-    game.jev.blastCooldown > 0 || gap < 174 || gap > 475 || game.jev.pouncePhase || game.jev.stunned > 0 ||
+    game.jev.blastCooldown > 0 || gap < 174 || gap > 475 || game.jev.rendPhase || game.jev.stunned > 0 ||
     !isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
   if (mode === "soul_salvo" && (
     game.jev.salvoCooldown > 0 || game.jev.salvoPhase || game.jev.stunned > 0 || gap < 240 || gap > 820 ||
-    !isLaneClear(game.jev, predictedPowerBlastTarget(), game.jev.radius)
+    !isSoulSalvoLaneClear(game.jev, predictedSoulSalvoTarget())
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
-  if (mode === "phase_step" && (
-    game.jev.phaseStepCooldown > 0 || gap < 170 || gap > 540 || game.jev.pouncePhase || game.jev.blastPhase
+  if (mode === "rift_rush" && (
+    game.jev.riftRushCooldown > 0 || gap < 235 || gap > 740 || game.jev.rendPhase ||
+    game.jev.blastPhase || game.jev.salvoPhase || !riftRushDestination()
   )) {
     mode = "intercept";
+  }
+  if (mode === "rift_aegis" && (
+    game.anchors.some((anchor) => anchor.health > 0) || game.jev.riftAegisCooldown > 0 ||
+    game.jev.riftAegisTimer > 0 || game.jev.riftAegisCharges > 0 ||
+    (!isPlayerShotThreateningJev() && !(game.player.pulseTimer > 0 && playerGap < 174))
+  )) mode = "flank";
+  if (game.elapsed < game.jev.parryRecoveryUntil && ["pursue", "intercept", "rift_rush", "ambush"].includes(mode)) {
+    mode = "flank";
   }
   if (mode === "shadow_dodge" && (
     game.jev.stunned > 0 || game.jev.shadowDodgeCooldown > 0 || game.jev.shadowDodgePhase ||
@@ -982,12 +1184,13 @@ function setMode(mode, confidence, source = "system_one") {
     at: game.elapsed,
   });
   if (game.jev.actionHistory.length > 6) game.jev.actionHistory.shift();
+  if (mode === "rift_aegis") startRiftAegis();
   ui.intent.dataset.mode = mode;
   renderJevIntent();
-  if (mode === "pounce") startPounce();
+  if (mode === "rift_rend") startRiftRend();
   if (mode === "power_blast") startPowerBlast();
   if (mode === "rift_mine") startRiftMine();
-  if (mode === "phase_step") startPhaseStep();
+  if (mode === "rift_rush") startRiftRush();
   if (mode === "shadow_dodge") startShadowDodge();
   if (mode === "soul_salvo") startSoulSalvo();
   if (mode === "summon_wraiths") summonWraiths();
@@ -1137,28 +1340,33 @@ function renderJevIntent() {
   if (!game) return;
   const planText = planLabels[game.jev.plan] || "PRESSING";
   const tacticText = modeLabels[game.jev.mode] || "HUNT";
-  const activeSkill = ["pounce", "power_blast", "rift_mine", "phase_step", "shadow_dodge", "soul_salvo", "summon_wraiths", "meteor_storm"].includes(game.jev.mode);
+  const activeSkill = ["rift_rend", "power_blast", "rift_mine", "rift_rush", "shadow_dodge", "soul_salvo", "summon_wraiths", "meteor_storm", "rift_aegis"].includes(game.jev.mode);
   ui.modeLabel.textContent = activeSkill ? tacticText : planText;
   ui.intent.setAttribute("aria-label", "Jev is " + planText.toLowerCase() + "; current tactic: " + tacticText.toLowerCase());
 }
 
 function renderHealth() {
   ui.health.replaceChildren();
-  for (let index = 0; index < 4; index += 1) {
+  const maxHealth = game.mode === "auto" ? 5 : 4;
+  for (let index = 0; index < maxHealth; index += 1) {
     const heart = document.createElement("span");
-    heart.className = "heart-pip" + (index >= game.player.health ? " is-lost" : "");
+    const fill = clamp(game.player.health - index, 0, 1) * 100;
+    heart.className = "heart-pip" + (fill === 0 ? " is-lost" : "");
+    heart.style.setProperty("--pip-fill", fill + "%");
     heart.setAttribute("aria-hidden", "true");
     heart.textContent = "♥";
     ui.health.append(heart);
   }
-  ui.health.setAttribute("aria-label", game.player.health + (game.player.health === 1 ? " life remaining" : " lives remaining"));
+  ui.health.setAttribute("aria-label", game.player.health + " of " + maxHealth + " lives remaining");
 }
 
 function renderJevHealth() {
   ui.jevHealth.replaceChildren();
   for (let index = 0; index < 6; index += 1) {
     const pip = document.createElement("span");
-    pip.className = "jev-pip" + (index >= game.jev.health ? " is-lost" : "");
+    const fill = clamp(game.jev.health - index, 0, 1) * 100;
+    pip.className = "jev-pip" + (fill === 0 ? " is-lost" : "");
+    pip.style.setProperty("--pip-fill", fill + "%");
     pip.setAttribute("aria-hidden", "true");
     ui.jevHealth.append(pip);
   }
@@ -1187,13 +1395,11 @@ function renderHud(force) {
   ui.dashTouch.disabled = game.player.dashCooldown > 0;
   ui.pulseTouch.disabled = game.player.pulseCooldown > 0;
   ui.echoTouch.disabled = game.player.echoCooldown > 0;
-  ui.veilTouch.disabled = game.player.veilCooldown > 0;
   ui.hookTouch.disabled = game.player.hookCooldown > 0;
   ui.guardTouch.disabled = game.player.guardCooldown > 0;
-  ui.dashTouch.setAttribute("aria-label", game.player.dashCooldown > 0 ? "Dash recharging" : "Dash ready");
+  ui.dashTouch.setAttribute("aria-label", game.player.dashCooldown > 0 ? "Phase Dash recharging" : "Phase Dash ready");
   ui.pulseTouch.setAttribute("aria-label", game.player.pulseCooldown > 0 ? "Close-range burst recharging" : "Close-range burst ready");
   ui.echoTouch.setAttribute("aria-label", game.player.echoCooldown > 0 ? "Mirror clones recharging" : "Mirror clones ready");
-  ui.veilTouch.setAttribute("aria-label", game.player.veilCooldown > 0 ? "Ghost veil recharging" : "Vanish: ready");
   ui.hookTouch.setAttribute("aria-label", game.player.hookCooldown > 0 ? "Rift hook recharging" : "Rift hook ready");
   ui.guardTouch.setAttribute("aria-label", game.player.guardCooldown > 0 ? "Lantern guard recharging" : "Lantern guard ready");
 }
@@ -1203,6 +1409,12 @@ function announce(message, duration = 1450) {
   ui.callout.textContent = message;
   ui.callout.hidden = false;
   calloutTimeout = window.setTimeout(() => { ui.callout.hidden = true; }, duration);
+}
+
+function showSkillCallout(owner, abilityId) {
+  if (!game?.running || (!skillIconCells[abilityId] && !skillIconAssets[abilityId])) return;
+  game.skillCallouts = game.skillCallouts.filter((entry) => entry.owner !== owner && game.elapsed - entry.at < 1.2);
+  game.skillCallouts.push({ owner, abilityId, at: game.elapsed, duration: 1.05 });
 }
 
 function remember(eventName) {
@@ -1307,25 +1519,26 @@ function isPlayerShotThreateningJev() {
   return distanceToSegment(game.jev, player, target) < 48 && isLaneClear(player, target, 7);
 }
 
-function isJevPounceThreateningPlayer() {
+function isJevRiftRendThreateningPlayer() {
   const player = game.player;
   const jev = game.jev;
-  if (jev.pouncePhase === "windup" && jev.pounceTarget && distance(jev.pounceTarget, player) < 128) return true;
-  if (jev.pouncePhase !== "lunge" || jev.pounceTimer <= 0) return false;
-  const speedSquared = jev.pounceVx ** 2 + jev.pounceVy ** 2 || 1;
-  const time = clamp(
-    ((player.x - jev.x) * jev.pounceVx + (player.y - jev.y) * jev.pounceVy) / speedSquared,
-    0,
-    Math.min(0.34, jev.pounceTimer),
-  );
-  const predicted = { x: jev.x + jev.pounceVx * time, y: jev.y + jev.pounceVy * time };
-  return distance(predicted, player) < player.radius + jev.radius + 34;
+  if (jev.rendPhase !== "windup") return false;
+  const gap = distance(jev, player);
+  const angleToPlayer = Math.atan2(player.y - jev.y, player.x - jev.x);
+  const angleDelta = Math.atan2(Math.sin(angleToPlayer - jev.rendAngle), Math.cos(angleToPlayer - jev.rendAngle));
+  return gap <= RIFT_REND_RANGE + player.radius + 16 &&
+    Math.abs(angleDelta) <= RIFT_REND_HALF_ANGLE && isLaneClear(jev, player, jev.radius);
 }
 
 function isJevAttackThreateningPlayer() {
   const player = game.player;
   const jev = game.jev;
-  if (isJevPounceThreateningPlayer()) return true;
+  if (isJevRiftRendThreateningPlayer()) return true;
+  if (jev.riftRushPhase === "windup" && jev.riftRushTarget && distance(jev.riftRushTarget, player) < 165) return true;
+  if (jev.riftRushPhase === "charge" && distanceToSegment(player, jev, {
+    x: jev.x + jev.riftRushVx * 0.38,
+    y: jev.y + jev.riftRushVy * 0.38,
+  }) < player.radius + jev.radius + 28) return true;
   const incoming = game.projectiles.some((projectile) => {
     if (projectile.owner !== "jev") return false;
     const speedSquared = projectile.vx ** 2 + projectile.vy ** 2 || 1;
@@ -1358,9 +1571,9 @@ function activeInput() {
   return { x, y };
 }
 
-function startDash() {
+function usePhaseDash() {
   if (!game?.running) return;
-  if (game.player.dashCooldown > 0) { announce("Dash recharging", 700); return; }
+  if (game.player.dashCooldown > 0) { announce("Phase Dash recharging", 700); return; }
   const input = activeInput();
   let x = input.x;
   let y = input.y;
@@ -1372,23 +1585,26 @@ function startDash() {
     x /= length;
     y /= length;
   }
+  game.player.lastKnown = { x: game.player.x, y: game.player.y };
+  game.player.afterimageTimer = PHASE_AFTERIMAGE_DURATION;
   game.player.dashVx = x;
   game.player.dashVy = y;
-  game.player.dashTimer = 0.18;
-  game.player.dashCooldown = 1.15;
-  game.player.invulnerable = Math.max(game.player.invulnerable, 0.25);
-  remember("dash");
-  emitParticles(game.player.x, game.player.y, "#c6e7e7", 9, 100);
+  game.player.dashTimer = 0.21;
+  game.player.dashCooldown = PHASE_DASH_COOLDOWN;
+  game.player.invulnerable = Math.max(game.player.invulnerable, 0.27);
+  remember("phase_dash");
+  showSkillCallout("ghost", "phase_dash");
+  emitParticles(game.player.x, game.player.y, "#8ef3df", 15, 135);
   queueJevDecision();
 }
 
 function useSoulBurst() {
   if (!game?.running) return;
   if (game.player.pulseCooldown > 0) return;
-  breakGhostVeil();
   game.player.pulseCooldown = 3.6;
   game.player.pulseTimer = 0.42;
   remember("soul_burst");
+  showSkillCallout("ghost", "soul_burst");
   const player = game.player;
   const jev = game.jev;
   const gap = distance(player, jev);
@@ -1408,16 +1624,19 @@ function useSoulBurst() {
   } else if (gap < 148 && jev.stunned <= 0) {
     jev.stunned = 0.72;
     jev.recoverTimer = 0;
-    jev.pouncePhase = "";
-    jev.pounceTimer = 0;
+    if (jev.rendPhase === "windup") remember("rift_rend_interrupted");
+    jev.rendPhase = "";
+    jev.rendTimer = 0;
     if (jev.blastPhase) remember("blast_canceled");
     jev.blastPhase = "";
     jev.blastTimer = 0;
     jev.blastTarget = null;
-    jev.phaseStepPhase = "";
-    jev.phaseStepTimer = 0;
-    jev.phaseStepTarget = null;
-    if (game.anchors.every((anchor) => anchor.health <= 0)) jev.health = Math.max(0, jev.health - 1);
+    jev.riftRushPhase = "";
+    jev.riftRushTimer = 0;
+    jev.riftRushTarget = null;
+    if (game.anchors.every((anchor) => anchor.health <= 0) && !absorbRiftAegisHit()) {
+      jev.health = Math.max(0, jev.health - 1);
+    }
     const angle = Math.atan2(jev.y - player.y, jev.x - player.x);
     moveEntity(jev, Math.cos(angle) * 58, Math.sin(angle) * 58, jev.radius);
     remember("burst_hit");
@@ -1457,28 +1676,9 @@ function useMirrorEcho() {
   player.echo = clones[0];
   player.echoCooldown = 10.5;
   remember("mirror_echo");
+  showSkillCallout("ghost", "mirror_echo");
   emitParticles(player.x, player.y, "#a8f3df", 26, 145);
-  announce("Three mirror copies");
   queueJevDecision();
-}
-
-function useGhostVeil() {
-  const player = game?.player;
-  if (!game?.running || !player || player.veilCooldown > 0 || player.veilTimer > 0) return;
-  player.lastKnown = { x: player.x, y: player.y };
-  player.veilTimer = VEIL_DURATION;
-  player.veilCooldown = 13;
-  remember("ghost_veil");
-  emitParticles(player.x, player.y, "#96e9dc", 20, 130);
-  announce("Veil · move to break Jev's lock");
-  queueJevDecision();
-}
-
-function breakGhostVeil() {
-  const player = game?.player;
-  if (!player || player.veilTimer <= 0) return;
-  player.veilTimer = 0;
-  remember("veil_broken");
 }
 
 function useRiftHook(target = null) {
@@ -1491,7 +1691,10 @@ function useRiftHook(target = null) {
   const length = Math.hypot(dx, dy) || 1;
   const travel = Math.min(345, Math.max(120, length - 64));
   const jevGap = game.mode === "auto" ? distance(player, game.jev) : Infinity;
-  const minimumHookGap = Math.min(jevGap, GHOST_SAFE_GAP);
+  const safeLandingGap = jevGap < GHOST_SAFE_GAP
+    ? GHOST_SAFE_GAP + 35
+    : Math.min(jevGap, GHOST_SAFE_GAP + 135);
+  const minimumHookGap = Math.min(jevGap, safeLandingGap);
   let landing = null;
   for (let distanceAlong = travel; distanceAlong >= 105; distanceAlong -= 24) {
     const candidate = {
@@ -1499,7 +1702,7 @@ function useRiftHook(target = null) {
       y: clamp(player.y + dy / length * distanceAlong, 35, WORLD.height - 35),
     };
     const preservesJevGap = game.mode !== "auto" || (
-      distance(candidate, game.jev) >= GHOST_SAFE_GAP &&
+      distance(candidate, game.jev) >= safeLandingGap &&
       distanceToSegment(game.jev, player, candidate) >= minimumHookGap - 1
     );
     if (preservesJevGap && !blocked(candidate.x, candidate.y, player.radius) && isLaneClear(player, candidate, player.radius)) {
@@ -1520,6 +1723,7 @@ function useRiftHook(target = null) {
   player.invulnerable = Math.max(player.invulnerable, 0.22);
   player.hookCooldown = 6.2;
   remember("rift_hook");
+  showSkillCallout("ghost", "rift_hook");
   emitParticles(player.x, player.y, "#c7a0ff", 17, 135);
   queueJevDecision();
   return true;
@@ -1531,8 +1735,8 @@ function useLanternGuard() {
   player.guardTimer = 0.8;
   player.guardCooldown = 4.2;
   remember("lantern_guard");
+  showSkillCallout("ghost", "lantern_guard");
   emitParticles(player.x, player.y, "#b9f4e0", 16, 110);
-  announce("Lantern guard ready");
 }
 
 function nearestObjectiveTarget() {
@@ -1545,8 +1749,8 @@ function nearestObjectiveTarget() {
 function combatTarget() {
   if (!game?.player) return null;
   if (game.player.echo?.life > 0) return game.player.echo;
-  if (game.player.veilTimer > 0) {
-    return { ...game.player.lastKnown, vx: 0, vy: 0, radius: game.player.radius, hidden: true };
+  if (game.player.afterimageTimer > 0) {
+    return { ...game.player.lastKnown, vx: 0, vy: 0, radius: game.player.radius, afterimage: true };
   }
   return game.player;
 }
@@ -1563,7 +1767,6 @@ function predictedShotTarget() {
 
 function firePlayerShot() {
   const player = game.player;
-  breakGhostVeil();
   const target = keys.has("z") || !player.aim ? predictedShotTarget() : player.aim;
   let dx = target.x - player.x;
   let dy = target.y - player.y;
@@ -1587,6 +1790,18 @@ function firePlayerShot() {
   if (game.projectiles.length > 28) game.projectiles.shift();
 }
 
+function absorbRiftAegisHit(eventName = "rift_aegis_blocked") {
+  const jev = game.jev;
+  if (game.anchors.some((anchor) => anchor.health > 0) || jev.riftAegisTimer <= 0 || jev.riftAegisCharges <= 0) return false;
+  jev.riftAegisCharges -= 1;
+  if (jev.riftAegisCharges <= 0) jev.riftAegisTimer = 0;
+  remember(eventName);
+  emitParticles(jev.x, jev.y, "#9be9ed", 18, 122);
+  screenShake = Math.max(screenShake, 2.5);
+  queueJevDecision();
+  return true;
+}
+
 function hitJev(projectile) {
   const jev = game.jev;
   if (game.anchors.some((anchor) => anchor.health > 0)) {
@@ -1594,6 +1809,7 @@ function hitJev(projectile) {
     remember("ward_blocked");
     return;
   }
+  if (absorbRiftAegisHit()) return;
   jev.health = Math.max(0, jev.health - 1);
   jev.hurtTimer = 0.18;
   game.player.hitsLanded += 1;
@@ -1603,16 +1819,16 @@ function hitJev(projectile) {
     jev.blastTarget = null;
     remember("blast_canceled");
   }
-  if (jev.pouncePhase === "windup") {
-    jev.pouncePhase = "";
-    jev.pounceTimer = 0;
-    jev.pounceTarget = null;
+  if (jev.rendPhase === "windup") {
+    jev.rendPhase = "";
+    jev.rendTimer = 0;
+    remember("rift_rend_interrupted");
   }
-  if (jev.phaseStepPhase === "windup") {
-    jev.phaseStepPhase = "";
-    jev.phaseStepTimer = 0;
-    jev.phaseStepTarget = null;
-    remember("phase_step_canceled");
+  if (jev.riftRushPhase === "windup") {
+    jev.riftRushPhase = "";
+    jev.riftRushTimer = 0;
+    jev.riftRushTarget = null;
+    remember("rift_rush_canceled");
   }
   if (jev.shadowDodgePhase === "windup") {
     jev.shadowDodgePhase = "";
@@ -1650,7 +1866,10 @@ function hitAnchor(anchor) {
   screenShake = Math.max(screenShake, anchor.health === 0 ? 4.5 : 2.2);
   renderHud(true);
   if (anchor.health === 0) {
-    announce(game.anchors.every((item) => item.health <= 0) ? "Ward broken · Jev exposed" : "Rift anchor shattered");
+    const wardBroken = game.anchors.every((item) => item.health <= 0);
+    announce(wardBroken ? "Ward broken · Jev exposed" : "Rift anchor shattered");
+    if (wardBroken && game.jev.health > 0 && game.jev.riftAegisCooldown <= 0 &&
+        game.jev.riftAegisTimer <= 0 && game.jev.riftAegisCharges <= 0) startRiftAegis();
     queueJevDecision();
   }
 }
@@ -1681,17 +1900,63 @@ function blocked(x, y, radius) {
 }
 
 function hazardState(hazard) {
-  if (!hazard.period) return { active: true, warning: false };
+  if (!hazard.period) return { active: true, warning: false, cycle: 0 };
   const cycle = (game.elapsed + hazard.phase) % hazard.period;
   return {
     active: cycle < hazard.activeFor,
     warning: cycle >= hazard.period - hazard.warningFor,
+    cycle: Math.floor((game.elapsed + hazard.phase) / hazard.period),
+  };
+}
+
+function hazardBounds(hazard) {
+  if (hazard.kind !== "swarm" || !hazard.movePeriod) return hazard;
+  const angle = ((game?.elapsed || 0) + (hazard.phase || 0)) * Math.PI * 2 / hazard.movePeriod;
+  return {
+    ...hazard,
+    x: clamp(hazard.x + Math.cos(angle) * hazard.moveX, 30, WORLD.width - hazard.w - 30),
+    y: clamp(hazard.y + Math.sin(angle * 0.82) * hazard.moveY, 30, WORLD.height - hazard.h - 30),
   };
 }
 
 function insideHazard(point, hazard) {
-  return point.x >= hazard.x && point.x <= hazard.x + hazard.w &&
-    point.y >= hazard.y && point.y <= hazard.y + hazard.h;
+  const bounds = hazardBounds(hazard);
+  return point.x >= bounds.x && point.x <= bounds.x + bounds.w &&
+    point.y >= bounds.y && point.y <= bounds.y + bounds.h;
+}
+
+function touchesHazard(entity, hazard) {
+  const bounds = hazardBounds(hazard);
+  const nearX = clamp(entity.x, bounds.x, bounds.x + bounds.w);
+  const nearY = clamp(entity.y, bounds.y, bounds.y + bounds.h);
+  return Math.hypot(entity.x - nearX, entity.y - nearY) <= entity.radius;
+}
+
+function updateEnvironmentHazards() {
+  for (const hazard of game.hazards) {
+    if (hazard.kind !== "lava") continue;
+    const status = hazardState(hazard);
+    if (!status.active) continue;
+    for (const [owner, actor] of [["player", game.player], ["jev", game.jev]]) {
+      if (hazard.hitCycle[owner] === status.cycle || !touchesHazard(actor, hazard)) continue;
+      hazard.hitCycle[owner] = status.cycle;
+      if (owner === "player") {
+        const angle = Math.atan2(actor.y - (hazard.y + hazard.h / 2), actor.x - (hazard.x + hazard.w / 2));
+        if (actor.dashTimer > 0 || actor.invulnerable > 0 || actor.hurtTimer > 0) {
+          remember("lava_evaded");
+          continue;
+        }
+        damagePlayer("lava_hit", Math.cos(angle), Math.sin(angle), 0.5, true);
+      } else if (actor.health > 0) {
+        actor.health = Math.max(0, Number((actor.health - 0.75).toFixed(2)));
+        actor.hurtTimer = Math.max(actor.hurtTimer || 0, 0.22);
+        remember("lava_hit");
+        renderJevHealth();
+        emitParticles(actor.x, actor.y, "#ff8150", 12, 105);
+        if (actor.health <= 0 && game.anchors.every((anchor) => anchor.health <= 0)) finishGame("fight");
+      }
+    }
+  }
 }
 
 function environmentEffects(point) {
@@ -1702,8 +1967,11 @@ function environmentEffects(point) {
     if (hazard.kind === "current") {
       effect.flowX += hazard.flowX * 105;
       effect.flowY += hazard.flowY * 105;
-    } else if (status.active && (hazard.kind === "steam" || hazard.kind === "spores")) {
-      effect.speed = Math.min(effect.speed, hazard.kind === "steam" ? 0.56 : 0.68);
+    } else if (status.active && ["steam", "spores", "quicksand", "swarm"].includes(hazard.kind)) {
+      const slowdown = { steam: 0.56, spores: 0.68, quicksand: 0.46, swarm: 0.6 }[hazard.kind];
+      effect.speed = Math.min(effect.speed, slowdown);
+    } else if (status.active && hazard.kind === "lava") {
+      effect.speed = Math.min(effect.speed, 0.72);
     } else if (status.active && hazard.kind === "arc_sparks") {
       const dx = point.x - (hazard.x + hazard.w / 2);
       const dy = point.y - (hazard.y + hazard.h / 2);
@@ -1739,6 +2007,9 @@ function terrainTravelCost(x, y, dx, dy, baseCost) {
     const activeCost = {
       steam: 4.2,
       spores: 2.9,
+      quicksand: 4.6,
+      swarm: 3.1,
+      lava: 2.4,
       arc_sparks: 6.1,
       rift_surge: 4.8,
     }[hazard.kind] || 3.5;
@@ -1757,16 +2028,17 @@ function predictedPowerBlastTarget() {
   return target;
 }
 
-function predictedPounceTarget() {
+function predictedSoulSalvoTarget() {
   const player = combatTarget();
   if (player !== game.player) return { x: player.x, y: player.y };
-  const flightTime = estimateInterceptTime(game.jev, player, POUNCE_SPEED, POUNCE_WINDUP, POUNCE_MAX_FLIGHT);
-  return predictPlayerPosition(POUNCE_WINDUP + flightTime);
+  const origin = { x: game.jev.x, y: game.jev.y - 6 };
+  const flightTime = estimateInterceptTime(origin, player, SOUL_SALVO_SPEED, SOUL_SALVO_WINDUP, 1.8);
+  return predictPlayerPosition(SOUL_SALVO_WINDUP + flightTime);
 }
 
-function predictPlayerPosition(duration) {
-  const player = combatTarget();
-  if (player !== game.player) return { x: player.x, y: player.y };
+function predictPlayerPosition(duration, trackRealGhost = false) {
+  const player = trackRealGhost ? game.player : combatTarget();
+  if (!trackRealGhost && player !== game.player) return { x: player.x, y: player.y };
   const input = activeInput();
   let x = player.x;
   let y = player.y;
@@ -1829,8 +2101,16 @@ function isLaneClear(origin, target, radius) {
   return true;
 }
 
+function isProjectileLaneClear(origin, target, radius) {
+  return !blocked(target.x, target.y, radius) && isLaneClear(origin, target, radius);
+}
+
 function isPowerBlastLaneClear(origin, target) {
-  return isLaneClear(origin, target, 14);
+  return isProjectileLaneClear(origin, target, 14);
+}
+
+function isSoulSalvoLaneClear(origin, target) {
+  return isProjectileLaneClear(origin, target, 11);
 }
 
 function moveEntity(entity, dx, dy, radius) {
@@ -1863,28 +2143,64 @@ function moveEntity(entity, dx, dy, radius) {
   entity.y = clamp(entity.y, 22 + radius, WORLD.height - 21 - radius);
 }
 
-function startPounce() {
+function startRiftRend() {
   const jev = game.jev;
-  const targetActor = combatTarget();
-  if (jev.pounceCooldown > 0 || jev.pouncePhase || jev.blastPhase || jev.stunned > 0) return;
-  if (distance(targetActor, jev) > 315) return;
-  const target = predictedPounceTarget();
-  if (!isLaneClear(jev, target, jev.radius)) return;
-  jev.pounceTarget = target;
-  jev.pouncePhase = "windup";
-  if (Math.abs(target.x - jev.x) > 5) jev.facing = Math.sign(target.x - jev.x);
-  jev.pounceTimer = POUNCE_WINDUP;
-  jev.pounceCooldown = 3.25;
-  jev.pounceHit = false;
+  const gap = distance(game.player, jev);
+  if (jev.rendCooldown > 0 || jev.rendPhase || jev.blastPhase || jev.stunned > 0 ||
+      gap < 30 || gap > RIFT_REND_RANGE + game.player.radius ||
+      game.player.invulnerable > 0.12 || game.player.hurtTimer > 0.25) return;
+  const predicted = predictPlayerPosition(RIFT_REND_WINDUP * 0.55, true);
+  const angle = Math.atan2(predicted.y - jev.y, predicted.x - jev.x);
+  if (!isLaneClear(jev, game.player, jev.radius)) return;
+  jev.rendAngle = angle;
+  jev.rendPhase = "windup";
+  if (Math.abs(Math.cos(angle)) > 0.05) jev.facing = Math.sign(Math.cos(angle));
+  jev.rendTimer = RIFT_REND_WINDUP;
+  jev.rendCooldown = RIFT_REND_COOLDOWN;
   jev.path = [];
-  announce("Jev is winding up!");
-  emitParticles(jev.x, jev.y, "#f07d69", 10, 90);
+  remember("rift_rend_windup");
+  showSkillCallout("jev", "rift_rend");
+  announce("Jev winds up a Rift Rend!");
+  emitParticles(jev.x, jev.y, "#fb686f", 14, 105);
+}
+
+function fireRiftRend() {
+  const jev = game.jev;
+  const player = game.player;
+  const gap = distance(jev, player);
+  const angleToPlayer = Math.atan2(player.y - jev.y, player.x - jev.x);
+  const angleDelta = Math.atan2(Math.sin(angleToPlayer - jev.rendAngle), Math.cos(angleToPlayer - jev.rendAngle));
+  const inArc = gap <= RIFT_REND_RANGE + player.radius && Math.abs(angleDelta) <= RIFT_REND_HALF_ANGLE;
+  const clearLane = isLaneClear(jev, player, jev.radius);
+  remember("rift_rend_fired");
+  game.rendSlash = { x: jev.x, y: jev.y, angle: jev.rendAngle, at: game.elapsed, duration: 0.28 };
+  screenShake = Math.max(screenShake, inArc && clearLane ? 5 : 2);
+  if (inArc && clearLane) {
+    if (player.invulnerable > 0 || player.hurtTimer > 0) {
+      remember("rift_rend_evaded");
+    } else {
+      const dx = Math.cos(jev.rendAngle);
+      const dy = Math.sin(jev.rendAngle);
+      if (damagePlayer("rift_rend_hit", dx, dy, 1, false)) {
+        emitParticles(player.x, player.y, "#ff8792", 23, 185);
+      } else {
+        remember("rift_rend_evaded");
+      }
+    }
+  } else {
+    remember("rift_rend_missed");
+    emitParticles(jev.x + Math.cos(jev.rendAngle) * 96, jev.y + Math.sin(jev.rendAngle) * 96, "#ff9c9e", 12, 115);
+  }
+  jev.rendPhase = "recover";
+  jev.rendTimer = 0.3;
+  jev.vx = 0;
+  jev.vy = 0;
 }
 
 function startPowerBlast() {
   const jev = game.jev;
   const gap = distance(combatTarget(), jev);
-  if (jev.blastCooldown > 0 || jev.blastPhase || jev.pouncePhase || jev.stunned > 0 || gap < 174 || gap > 475) return;
+  if (jev.blastCooldown > 0 || jev.blastPhase || jev.rendPhase || jev.stunned > 0 || gap < 174 || gap > 475) return;
   const target = predictedPowerBlastTarget();
   if (!isPowerBlastLaneClear(jev, target)) return;
   jev.blastTarget = target;
@@ -1899,6 +2215,14 @@ function startPowerBlast() {
 function firePowerBlast() {
   const jev = game.jev;
   if (!jev.blastTarget) return;
+  if (!isPowerBlastLaneClear(jev, jev.blastTarget)) {
+    jev.blastPhase = "";
+    jev.blastTarget = null;
+    jev.blastCooldown = Math.min(jev.blastCooldown, 1.2);
+    remember("blast_cover_blocked");
+    queueJevDecision();
+    return;
+  }
   const dx = jev.blastTarget.x - jev.x;
   const dy = jev.blastTarget.y - jev.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -1906,13 +2230,14 @@ function firePowerBlast() {
     owner: "jev",
     x: jev.x, y: jev.y - 5,
     vx: dx / length * POWER_BLAST_SPEED, vy: dy / length * POWER_BLAST_SPEED,
-    radius: 14, life: 2.2, age: 0,
+    radius: 14, life: 2.2, age: 0, distanceTravelled: 0,
+    maxDistance: length + (combatTarget().radius || game.player.radius) + 14,
   });
   jev.facing = Math.sign(dx || jev.facing);
   jev.blastPhase = "";
   jev.blastTarget = null;
   remember("power_blast_fired");
-  announce("Blast fired!", 700);
+  showSkillCallout("jev", "power_blast");
   emitParticles(jev.x, jev.y, "#ffc977", 12, 125);
 }
 
@@ -1920,9 +2245,9 @@ function startSoulSalvo() {
   const jev = game.jev;
   const target = combatTarget();
   const gap = distance(target, jev);
-  if (jev.salvoCooldown > 0 || jev.salvoPhase || jev.pouncePhase || jev.blastPhase || jev.stunned > 0 || gap < 240 || gap > 820) return;
-  const aim = target === game.player ? predictedPowerBlastTarget() : { x: target.x, y: target.y };
-  if (!isLaneClear(jev, aim, jev.radius)) return;
+  if (jev.salvoCooldown > 0 || jev.salvoPhase || jev.rendPhase || jev.blastPhase || jev.stunned > 0 || gap < 240 || gap > 820) return;
+  const aim = target === game.player ? predictedSoulSalvoTarget() : { x: target.x, y: target.y };
+  if (!isSoulSalvoLaneClear(jev, aim)) return;
   jev.salvoTarget = aim;
   jev.salvoPhase = "windup";
   jev.salvoTimer = SOUL_SALVO_WINDUP;
@@ -1937,20 +2262,38 @@ function startSoulSalvo() {
 function fireSoulSalvo() {
   const jev = game.jev;
   if (!jev.salvoTarget) return;
-  const angle = Math.atan2(jev.salvoTarget.y - jev.y, jev.salvoTarget.x - jev.x);
-  for (const offset of [-0.24, 0, 0.24]) {
+  const origin = { x: jev.x, y: jev.y - 6 };
+  const angle = Math.atan2(jev.salvoTarget.y - origin.y, jev.salvoTarget.x - origin.x);
+  const reach = Math.min(distance(origin, jev.salvoTarget), SOUL_SALVO_SPEED * 1.9);
+  let fired = 0;
+  for (const offset of [-0.035, 0, 0.035]) {
     const shotAngle = angle + offset;
+    const endpoint = {
+      x: origin.x + Math.cos(shotAngle) * reach,
+      y: origin.y + Math.sin(shotAngle) * reach,
+    };
+    if (!isProjectileLaneClear(origin, endpoint, 11)) {
+      remember("salvo_cover_blocked");
+      continue;
+    }
     game.projectiles.push({
-      owner: "jev", kind: "salvo", x: jev.x, y: jev.y - 6,
+      owner: "jev", kind: "salvo", x: origin.x, y: origin.y,
       vx: Math.cos(shotAngle) * SOUL_SALVO_SPEED,
       vy: Math.sin(shotAngle) * SOUL_SALVO_SPEED,
-      radius: 11, life: 1.9, age: 0,
+      radius: 11, life: 1.9, age: 0, distanceTravelled: 0,
+      maxDistance: reach + (combatTarget().radius || game.player.radius) + 11,
     });
+    fired += 1;
   }
   jev.salvoPhase = "";
   jev.salvoTarget = null;
+  if (!fired) {
+    jev.salvoCooldown = Math.min(jev.salvoCooldown, 1.2);
+    queueJevDecision();
+    return;
+  }
   remember("soul_salvo_fired");
-  announce("Soul salvo", 650);
+  showSkillCallout("jev", "soul_salvo");
   emitParticles(jev.x, jev.y, "#ffad7c", 16, 155);
 }
 
@@ -1982,6 +2325,7 @@ function startRiftMine() {
   game.activeMine = { x: point.x, y: point.y, warning: 1.15, life: 3.55, radius: 48 };
   jev.mineCooldown = 6.8;
   remember("mine_placed");
+  showSkillCallout("jev", "rift_mine");
   emitParticles(point.x, point.y, "#cb8ff2", 13, 90);
 }
 
@@ -2012,7 +2356,7 @@ function summonWraiths() {
   game.minions.push(...newWraiths.slice(0, 3 - game.minions.length));
   jev.summonCooldown = 14;
   remember("wraiths_summoned");
-  announce("Wraithlings unleashed");
+  showSkillCallout("jev", "summon_wraiths");
   for (const wraith of newWraiths) emitParticles(wraith.x, wraith.y, "#ca83fa", 10, 88);
 }
 
@@ -2041,6 +2385,7 @@ function startMeteorStorm() {
   }
   jev.meteorCooldown = 11.5;
   remember("meteor_storm_started");
+  showSkillCallout("jev", "meteor_storm");
   announce("Meteor storm incoming");
 }
 
@@ -2140,41 +2485,81 @@ function predictPlayer(seconds) {
   };
 }
 
-function startPhaseStep() {
+function startRiftRush() {
   const jev = game.jev;
   const gap = distance(combatTarget(), jev);
-  if (jev.phaseStepCooldown > 0 || gap < 170 || gap > 540 || jev.pouncePhase || jev.blastPhase) return;
-  jev.phaseStepTarget = predictPlayer(clamp(gap / 900, 0.18, 0.38));
-  jev.phaseStepPhase = "windup";
-  jev.phaseStepTimer = 0.24;
-  jev.phaseStepCooldown = 5.8;
+  const destination = riftRushDestination();
+  if (jev.riftRushCooldown > 0 || gap < 235 || gap > 740 || jev.rendPhase || jev.blastPhase || !destination) return;
+  jev.riftRushTarget = destination;
+  const dx = destination.x - jev.x;
+  const dy = destination.y - jev.y;
+  const length = Math.hypot(dx, dy) || 1;
+  jev.riftRushVx = dx / length * RIFT_RUSH_SPEED;
+  jev.riftRushVy = dy / length * RIFT_RUSH_SPEED;
+  jev.riftRushRemaining = length;
+  jev.riftRushPhase = "windup";
+  jev.riftRushTimer = RIFT_RUSH_WINDUP;
+  jev.riftRushCooldown = RIFT_RUSH_COOLDOWN;
   jev.path = [];
-  remember("phase_step_windup");
-  emitParticles(jev.x, jev.y, "#c491ff", 12, 95);
+  remember("rift_rush_windup");
+  showSkillCallout("jev", "rift_rush");
+  emitParticles(jev.x, jev.y, "#ff9779", 18, 125);
 }
 
-function completePhaseStep() {
+function completeRiftRush() {
   const jev = game.jev;
-  if (!jev.phaseStepTarget) return;
-  const start = { x: jev.x, y: jev.y };
-  const dx = jev.phaseStepTarget.x - jev.x;
-  const dy = jev.phaseStepTarget.y - jev.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const travel = Math.min(260, Math.max(0, length - 105));
-  const steps = Math.max(1, Math.ceil(travel / 7));
-  for (let index = 0; index < steps; index += 1) {
-    const step = travel / steps;
-    const beforeX = jev.x;
-    const beforeY = jev.y;
-    moveEntity(jev, dx / length * step, dy / length * step, jev.radius);
-    if (Math.hypot(jev.x - beforeX, jev.y - beforeY) < step * 0.35) break;
+  if (!jev.riftRushTarget || !isLaneClear(jev, jev.riftRushTarget, jev.radius)) {
+    jev.riftRushPhase = "";
+    jev.riftRushTarget = null;
+    remember("rift_rush_canceled");
+    return;
   }
-  jev.phaseStepPhase = "";
-  jev.phaseStepTarget = null;
-  jev.facing = Math.sign(jev.x - start.x || jev.facing);
-  remember("phase_step_used");
-  emitParticles(start.x, start.y, "#c491ff", 18, 120);
-  emitParticles(jev.x, jev.y, "#eea8ff", 20, 135);
+  jev.riftRushPhase = "charge";
+  jev.facing = Math.sign(jev.riftRushVx || jev.facing);
+  emitParticles(jev.x, jev.y, "#ffb17f", 20, 180);
+}
+
+function riftRushDestination() {
+  if (!game?.jev || !game?.player) return null;
+  const target = combatTarget();
+  const gap = distance(target, game.jev);
+  if (gap < 235 || gap > 740) return null;
+  const aim = target === game.player
+    ? predictPlayer(clamp(gap / RIFT_RUSH_SPEED * 0.42, 0.16, 0.38))
+    : { x: target.x, y: target.y };
+  const dx = aim.x - game.jev.x;
+  const dy = aim.y - game.jev.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const travel = Math.min(RIFT_RUSH_MAX_TRAVEL, Math.max(0, length - 118));
+  if (travel < 145) return null;
+  const destination = {
+    x: clamp(game.jev.x + dx / length * travel, 38, WORLD.width - 38),
+    y: clamp(game.jev.y + dy / length * travel, 38, WORLD.height - 38),
+  };
+  if (blocked(destination.x, destination.y, game.jev.radius) || !isLaneClear(game.jev, destination, game.jev.radius)) return null;
+  return destination;
+}
+
+function startRiftAegis() {
+  const jev = game.jev;
+  const anchorsRemain = game.anchors.some((anchor) => anchor.health > 0);
+  if (anchorsRemain || jev.health <= 0 || jev.riftAegisCooldown > 0 || jev.riftAegisTimer > 0 || jev.riftAegisCharges > 0) return;
+  const actionAlreadyRecorded = [...jev.actionHistory].reverse().some((entry) =>
+    entry.executed === "rift_aegis" && game.elapsed - entry.at < 0.5
+  );
+  if (!actionAlreadyRecorded) {
+    jev.actionHistory.push({
+      plan: jev.plan, requested: "rift_aegis", executed: "rift_aegis", result: "started",
+      outcome: "awaiting_result", source: "phase_transition", at: game.elapsed,
+    });
+    if (jev.actionHistory.length > 6) jev.actionHistory.shift();
+  }
+  jev.riftAegisTimer = 2.8;
+  jev.riftAegisCharges = 2;
+  jev.riftAegisCooldown = 15.5;
+  remember("rift_aegis_activated");
+  showSkillCallout("jev", "rift_aegis");
+  emitParticles(jev.x, jev.y, "#91e1ed", 22, 130);
 }
 
 function startShadowDodge() {
@@ -2204,6 +2589,7 @@ function startShadowDodge() {
   jev.shadowDodgeCooldown = 3.7;
   jev.path = [];
   remember("shadow_dodge_windup");
+  showSkillCallout("jev", "shadow_dodge");
 }
 
 function completeShadowDodge() {
@@ -2234,6 +2620,17 @@ function tacticTarget() {
   const player = combatTarget();
   const jev = game.jev;
   const gap = distance(player, jev);
+  if (game.elapsed < jev.parryRecoveryUntil && ["pursue", "intercept", "flank", "ambush"].includes(jev.mode)) {
+    const ghost = game.player;
+    const ghostGap = Math.max(distance(jev, ghost), 1);
+    const awayX = (jev.x - ghost.x) / ghostGap;
+    const awayY = (jev.y - ghost.y) / ghostGap;
+    const side = jev.flankSide;
+    return {
+      x: clamp(ghost.x + awayX * 278 - awayY * 154 * side, 38, WORLD.width - 38),
+      y: clamp(ghost.y + awayY * 278 + awayX * 154 * side, 38, WORLD.height - 38),
+    };
+  }
   if (jev.mode === "ambush") return strategicTarget();
   if (jev.mode === "intercept") return predictPlayer(clamp(0.58 + gap / 1500, 0.58, 0.96));
   if (jev.mode === "flank") {
@@ -2247,7 +2644,7 @@ function tacticTarget() {
       y: clamp(lead.y + direction.x * 138 * jev.flankSide, 38, WORLD.height - 38),
     };
   }
-  return predictPlayer(jev.mode === "pounce" || jev.mode === "rift_mine" ? 0.22 : 0.34);
+  return predictPlayer(jev.mode === "rift_rend" || jev.mode === "rift_mine" ? 0.22 : 0.34);
 }
 
 function strategicTarget() {
@@ -2320,7 +2717,7 @@ function strategicTarget() {
 }
 
 function jevTarget() {
-  const urgentModes = ["rift_mine", "pounce", "phase_step", "shadow_dodge", "summon_wraiths", "meteor_storm"];
+  const urgentModes = ["rift_mine", "rift_rush", "shadow_dodge", "summon_wraiths", "meteor_storm"];
   if (urgentModes.includes(game.jev.mode)) return tacticTarget();
   const tactical = tacticTarget();
   const strategic = strategicTarget();
@@ -2525,12 +2922,11 @@ function findRecoveryTarget(entity, target, attempts) {
         x: clamp(entity.x + Math.cos(angle) * radius, 38, WORLD.width - 38),
         y: clamp(entity.y + Math.sin(angle) * radius, 39, WORLD.height - 38),
       };
-      if (distance(entity, candidate) < 34 || blocked(candidate.x, candidate.y, entity.radius)) continue;
-      const offsetOrigin = {
-        x: entity.x + Math.cos(angle) * 12,
-        y: entity.y + Math.sin(angle) * 12,
-      };
-      if (!isLaneClear(offsetOrigin, candidate, entity.radius * 0.75)) continue;
+      if (distance(entity, candidate) < 12 || blocked(candidate.x, candidate.y, entity.radius)) continue;
+      // Recovery waypoints must be reachable from the entity's actual position
+      // with its full collision radius. An offset origin or reduced radius can
+      // approve a route that clips a wall, leaving the pathfinder with no path.
+      if (!isLaneClear(entity, candidate, entity.radius)) continue;
       const enemySpacingCost = entity === game.player && game.anchors.some((anchor) => anchor.health > 0)
         ? Math.max(0, 280 - distance(candidate, game.jev)) * 5
         : 0;
@@ -2551,17 +2947,30 @@ function updateJev(dt) {
   const cooldownScale = (game.enraged ? 1.22 : 1) * difficulty.cooldown;
   jev.stunned = Math.max(0, jev.stunned - dt);
   jev.hurtTimer = Math.max(0, (jev.hurtTimer || 0) - dt);
-  jev.pounceCooldown = Math.max(0, jev.pounceCooldown - dt * cooldownScale);
+  jev.rendCooldown = Math.max(0, jev.rendCooldown - dt * cooldownScale);
   jev.blastCooldown = Math.max(0, jev.blastCooldown - dt * cooldownScale);
   jev.salvoCooldown = Math.max(0, jev.salvoCooldown - dt * cooldownScale);
   jev.mineCooldown = Math.max(0, jev.mineCooldown - dt * cooldownScale);
-  jev.phaseStepCooldown = Math.max(0, jev.phaseStepCooldown - dt * cooldownScale);
+  jev.riftRushCooldown = Math.max(0, jev.riftRushCooldown - dt * cooldownScale);
+  jev.riftAegisCooldown = Math.max(0, jev.riftAegisCooldown - dt * cooldownScale);
+  if (jev.riftAegisTimer > 0) {
+    jev.riftAegisTimer = Math.max(0, jev.riftAegisTimer - dt);
+    if (jev.riftAegisTimer === 0 && jev.riftAegisCharges > 0) {
+      jev.riftAegisCharges = 0;
+      remember("rift_aegis_expired");
+    }
+  }
   jev.shadowDodgeCooldown = Math.max(0, jev.shadowDodgeCooldown - dt * cooldownScale);
   jev.summonCooldown = Math.max(0, jev.summonCooldown - dt * cooldownScale);
   jev.meteorCooldown = Math.max(0, jev.meteorCooldown - dt * cooldownScale);
   if (jev.recoverTimer > 0) jev.recoverTimer = Math.max(0, jev.recoverTimer - dt);
   if (jev.stunned > 0) {
-    jev.pouncePhase = "";
+    if (jev.rendPhase === "windup") remember("rift_rend_interrupted");
+    jev.rendPhase = "";
+    jev.rendTimer = 0;
+    jev.riftRushPhase = "";
+    jev.riftRushTimer = 0;
+    jev.riftRushTarget = null;
     if (jev.blastPhase) remember("blast_canceled");
     jev.blastPhase = "";
     jev.blastTimer = 0;
@@ -2573,49 +2982,46 @@ function updateJev(dt) {
     jev.vy *= Math.pow(0.04, dt);
     return;
   }
-  if (jev.pouncePhase === "windup") {
-    jev.pounceTimer -= dt;
+  if (jev.rendPhase === "windup") {
+    jev.rendTimer -= dt;
     jev.vx = 0;
     jev.vy = 0;
-    if (jev.pounceTimer <= 0) {
-      const dx = jev.pounceTarget.x - jev.x;
-      const dy = jev.pounceTarget.y - jev.y;
-      const length = Math.hypot(dx, dy) || 1;
-      jev.pounceVx = dx / length * POUNCE_SPEED;
-      jev.pounceVy = dy / length * POUNCE_SPEED;
-      jev.pouncePhase = "lunge";
-      jev.pounceTimer = Math.min(POUNCE_MAX_FLIGHT, length / POUNCE_SPEED);
-    }
+    if (jev.rendTimer <= 0) fireRiftRend();
     return;
   }
-  if (jev.pouncePhase === "lunge") {
-    const step = Math.min(dt, jev.pounceTimer);
-    jev.vx = jev.pounceVx;
-    jev.vy = jev.pounceVy;
-    if (Math.abs(jev.vx) > 5) jev.facing = Math.sign(jev.vx);
-    moveEntity(jev, jev.vx * step, jev.vy * step, jev.radius);
-    jev.pounceTimer -= dt;
-    if (jev.pounceTimer <= 0) {
-      if (!jev.pounceHit && distance(combatTarget(), jev) > (combatTarget().radius || game.player.radius) + jev.radius + 8) {
-        remember("pounce_missed");
-        queueJevDecision();
-      }
-      jev.pouncePhase = "recover";
-      jev.recoverTimer = 0.22;
-    }
-    return;
-  }
-  if (jev.pouncePhase === "recover" || jev.recoverTimer > 0) {
-    if (jev.recoverTimer <= 0) jev.pouncePhase = "";
+  if (jev.rendPhase === "recover") {
+    jev.rendTimer = Math.max(0, jev.rendTimer - dt);
+    if (jev.rendTimer <= 0) jev.rendPhase = "";
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
     return;
   }
-  if (jev.phaseStepPhase === "windup") {
-    jev.phaseStepTimer -= dt;
+  if (jev.riftRushPhase === "charge") {
+    const requestedStep = Math.min(RIFT_RUSH_SPEED * dt, jev.riftRushRemaining);
+    const beforeX = jev.x;
+    const beforeY = jev.y;
+    moveEntity(jev, jev.riftRushVx / RIFT_RUSH_SPEED * requestedStep, jev.riftRushVy / RIFT_RUSH_SPEED * requestedStep, jev.radius);
+    const travelled = Math.hypot(jev.x - beforeX, jev.y - beforeY);
+    jev.riftRushRemaining = Math.max(0, jev.riftRushRemaining - travelled);
+    jev.vx = jev.riftRushVx;
+    jev.vy = jev.riftRushVy;
+    if (travelled < requestedStep * 0.42 || jev.riftRushRemaining <= 1) {
+      jev.riftRushPhase = "";
+      jev.riftRushTarget = null;
+      jev.riftRushRemaining = 0;
+      jev.vx = 0;
+      jev.vy = 0;
+      remember("rift_rush_used");
+      emitParticles(jev.x, jev.y, "#ffb17f", 16, 130);
+      queueJevDecision();
+    }
+    return;
+  }
+  if (jev.riftRushPhase === "windup") {
+    jev.riftRushTimer -= dt;
     jev.vx = 0;
     jev.vy = 0;
-    if (jev.phaseStepTimer <= 0) completePhaseStep();
+    if (jev.riftRushTimer <= 0) completeRiftRush();
     return;
   }
   if (jev.shadowDodgePhase === "windup") {
@@ -2630,7 +3036,7 @@ function updateJev(dt) {
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
     const target = combatTarget();
-    jev.salvoTarget = target === game.player ? predictedPowerBlastTarget() : { x: target.x, y: target.y };
+    jev.salvoTarget = target === game.player ? predictedSoulSalvoTarget() : { x: target.x, y: target.y };
     if (jev.salvoTimer <= 0) fireSoulSalvo();
     return;
   }
@@ -2640,19 +3046,33 @@ function updateJev(dt) {
     jev.vy *= Math.pow(0.04, dt);
     const predictedTarget = predictedPowerBlastTarget();
     if (isPowerBlastLaneClear(jev, predictedTarget)) jev.blastTarget = predictedTarget;
+    else if (!jev.blastTarget || !isPowerBlastLaneClear(jev, jev.blastTarget)) {
+      jev.blastPhase = "";
+      jev.blastTarget = null;
+      jev.blastCooldown = Math.min(jev.blastCooldown, 1.2);
+      remember("blast_cover_blocked");
+      queueJevDecision();
+      return;
+    }
     if (jev.blastTimer <= 0) firePowerBlast();
     return;
   }
   let target = jevTarget();
   if (jev.recoveryTarget) {
-    if (game.elapsed >= jev.recoveryUntil || distance(jev, jev.recoveryTarget) < 26) {
+    if (game.elapsed >= jev.recoveryUntil || distance(jev, jev.recoveryTarget) < 12) {
       jev.recoveryTarget = null;
       jev.recoveryUntil = 0;
     } else {
       target = jev.recoveryTarget;
     }
   }
-  if (game.elapsed >= jev.nextPathAt || !jev.path.length) {
+  if (jev.recoveryTarget && isLaneClear(jev, jev.recoveryTarget, jev.radius)) {
+    // Recovery points are chosen for direct, full-radius clearance. Follow
+    // those points directly because the coarse path grid can seal narrow
+    // boundary gaps that the collision geometry allows.
+    jev.path = [jev.recoveryTarget];
+    jev.nextPathAt = game.elapsed + 0.14;
+  } else if (game.elapsed >= jev.nextPathAt || !jev.path.length) {
     jev.path = findPath(jev, target);
     jev.nextPathAt = game.elapsed + 0.14;
   }
@@ -2668,15 +3088,15 @@ function updateJev(dt) {
     intercept: 318,
     flank: 310,
     ambush: 270,
-    pounce: 282,
+    rift_rend: 282,
     rift_mine: 296,
-    phase_step: 298,
+    rift_rush: 298,
     shadow_dodge: 340,
     summon_wraiths: 310,
     meteor_storm: 316,
   };
   const terrain = environmentEffects(jev);
-  const autoPressure = game.mode === "auto" ? 1.12 : 1;
+  const autoPressure = game.mode === "auto" ? 1.05 : 1;
   const speed = (speeds[jev.mode] || speeds.pursue) * terrain.speed * autoPressure * difficulty.speed * (game.enraged ? 1.2 : 1);
   jev.vx = dx * speed + terrain.flowX;
   jev.vy = dy * speed + terrain.flowY;
@@ -2690,43 +3110,12 @@ function updateJev(dt) {
   if (distance(jev, target) > 36 && waypointProgress < Math.max(0.5, dt * 20)) jev.stuckTimer += dt;
   else jev.stuckTimer = 0;
   if (jev.stuckTimer >= 0.32) {
-    const targetEntity = combatTarget();
-    if (jev.phaseStepCooldown <= 0 || jev.stuckTimer >= 0.52) {
-      jev.stuckTimer = 0;
-      jev.phaseStepCooldown = 3.6;
-      const angleToTarget = Math.atan2(targetEntity.y - jev.y, targetEntity.x - jev.x);
-      let blinkTarget = null;
-      for (const dist of [180, 140, 220, 100]) {
-        for (const angleOffset of [0, 0.4, -0.4, 0.8, -0.8]) {
-          const pt = {
-            x: clamp(jev.x + Math.cos(angleToTarget + angleOffset) * dist, 40, WORLD.width - 40),
-            y: clamp(jev.y + Math.sin(angleToTarget + angleOffset) * dist, 40, WORLD.height - 40),
-          };
-          if (!blocked(pt.x, pt.y, jev.radius)) {
-            blinkTarget = pt;
-            break;
-          }
-        }
-        if (blinkTarget) break;
-      }
-      if (blinkTarget) {
-        emitParticles(jev.x, jev.y, "#c491ff", 18, 120);
-        jev.x = blinkTarget.x;
-        jev.y = blinkTarget.y;
-        jev.path = [];
-        jev.nextPathAt = game.elapsed;
-        emitParticles(jev.x, jev.y, "#eea8ff", 20, 135);
-        remember("phase_step_used");
-        announce("Jev phases through cover!");
-        return;
-      }
-    }
     const recovery = findRecoveryTarget(jev, jevTarget(), jev.recoveryAttempts);
     jev.recoveryAttempts += 1;
     jev.stuckTimer = 0;
     if (recovery) {
       jev.recoveryTarget = recovery;
-      jev.recoveryUntil = game.elapsed + 0.8;
+      jev.recoveryUntil = game.elapsed + 1.4;
       jev.path = [];
       jev.nextPathAt = game.elapsed;
     } else {
@@ -2744,7 +3133,6 @@ function updatePlayer(dt) {
   player.echoCooldown = Math.max(0, player.echoCooldown - dt);
   player.hookCooldown = Math.max(0, player.hookCooldown - dt);
   player.guardCooldown = Math.max(0, player.guardCooldown - dt);
-  player.veilCooldown = Math.max(0, player.veilCooldown - dt);
   player.guardTimer = Math.max(0, player.guardTimer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
   player.snaredTimer = Math.max(0, player.snaredTimer - dt);
@@ -2752,8 +3140,8 @@ function updatePlayer(dt) {
   player.pulseTimer = Math.max(0, player.pulseTimer - dt);
   player.hurtTimer = Math.max(0, player.hurtTimer - dt);
   player.invulnerable = Math.max(0, player.invulnerable - dt);
-  player.veilTimer = Math.max(0, player.veilTimer - dt);
-  if (player.veilTimer <= 0) player.lastKnown = { x: player.x, y: player.y };
+  player.afterimageTimer = Math.max(0, player.afterimageTimer - dt);
+  if (player.afterimageTimer <= 0) player.lastKnown = { x: player.x, y: player.y };
   updateMirrorClones(dt);
   if (player.hookTarget) {
     player.hookTarget.life -= dt;
@@ -2800,7 +3188,7 @@ function updatePlayer(dt) {
       player.aiNextPathAt = game.elapsed + 0.24;
     }
   }
-  if (player.veilTimer <= 0 && (game.mode === "auto" ? player.fireHeld : player.fireHeld || keys.has("z"))) {
+  if (game.mode === "auto" ? player.fireHeld : player.fireHeld || keys.has("z")) {
     if (player.fireCooldown <= 0) firePlayerShot();
   }
 }
@@ -2894,7 +3282,7 @@ function aiAttackPosition(target, preferredRange = 400) {
   const attackingDemon = target === game.jev;
   const currentGap = distance(game.player, target);
   if (!attackingDemon) {
-    if (currentGap <= 690 && distance(game.player, game.jev) >= GHOST_SAFE_GAP && isLaneClear(game.player, target, 8)) {
+    if (currentGap <= 690 && (distance(game.player, game.jev) >= GHOST_SAFE_GAP || game.jev.stunned > 0) && isLaneClear(game.player, target, 8)) {
       return { x: game.player.x, y: game.player.y };
     }
     return game.player.aiObjectivePosition || target;
@@ -2950,8 +3338,8 @@ function aiEvadePoint() {
   const candidates = Array.from({ length: 16 }, (_, index) => {
     const angle = index * Math.PI / 8;
     const point = {
-      x: clamp(player.x + Math.cos(angle) * 290, 42, WORLD.width - 42),
-      y: clamp(player.y + Math.sin(angle) * 290, 42, WORLD.height - 42),
+      x: clamp(player.x + Math.cos(angle) * 460, 42, WORLD.width - 42),
+      y: clamp(player.y + Math.sin(angle) * 460, 42, WORLD.height - 42),
     };
     const hazardCost = game.hazards.reduce((sum, hazard) => sum + (insideHazard(point, hazard) ? 260 : 0), 0);
     const nearestProjectile = threats.reduce((min, projectile) => Math.min(min, distance(point, projectile)), Infinity);
@@ -2961,7 +3349,7 @@ function aiEvadePoint() {
     const areaThreatCost = Number.isFinite(nearestAreaThreat) ? -Math.min(420, nearestAreaThreat) * 0.72 : 0;
     return { ...point, score: distance(point, game.jev) * -0.28 - Math.min(420, nearestProjectile) * 0.72 + areaThreatCost + hazardCost + objectiveCost };
   }).filter((point) => !blocked(point.x, point.y, player.radius));
-  const safeCandidates = candidates.filter((point) => distance(point, game.jev) >= GHOST_SAFE_GAP);
+  const safeCandidates = candidates.filter((point) => distance(point, game.jev) >= GHOST_SAFE_GAP + 120);
   return (safeCandidates.length ? safeCandidates : candidates).sort((left, right) => left.score - right.score)[0] || player;
 }
 
@@ -2995,9 +3383,9 @@ function updateAIPlayer() {
   let objectiveGap = distance(player, objective);
   let jevGap = distance(player, game.jev);
   let contactSeconds = secondsToGhostSafeGap(player, player, game.jev);
-  let contactRisk = jevGap < GHOST_SAFE_GAP || (contactSeconds !== null && contactSeconds < 0.7 && jevGap < GHOST_SAFE_GAP + 200);
+  let contactRisk = jevGap < GHOST_SAFE_GAP || (contactSeconds !== null && contactSeconds < 0.7 && jevGap < GHOST_SAFE_GAP + 220);
   let threatened = isJevAttackThreateningPlayer();
-  const pounceThreat = isJevPounceThreateningPlayer();
+  let rendThreat = isJevRiftRendThreateningPlayer();
   const areaThreat = (
     game.activeMine && game.activeMine.warning <= 0.34 &&
     distance(game.activeMine, player) < game.activeMine.radius + player.radius + 40
@@ -3007,76 +3395,97 @@ function updateAIPlayer() {
     distance(wraith, player) < wraith.radius + player.radius + 45
   );
 
-  if (tactic === "rift_hook" && player.hookCooldown <= 0 && objectiveGap > 420) {
-    useRiftHook(player.aiObjectivePosition || objective);
-  }
-  if (tactic === "mirror_echo" && player.echoCooldown <= 0 && !player.echo && (threatened || jevGap < 430)) useMirrorEcho();
-  if (tactic === "ghost_veil" && player.veilCooldown <= 0 && (threatened || jevGap < 360)) useGhostVeil();
-  if (tactic === "lantern_guard" && player.guardCooldown <= 0 && threatened) useLanternGuard();
-  if (tactic === "soul_burst" && player.pulseCooldown <= 0 && distance(player, objective) < 165) useSoulBurst();
+  const projectileThreat = game.projectiles.some((projectile) => projectile.owner === "jev" &&
+    distanceToSegment(player, projectile, {
+      x: projectile.x + projectile.vx * 0.5,
+      y: projectile.y + projectile.vy * 0.5,
+    }) < player.radius + projectile.radius + 30);
+  const echoThreat = projectileThreat ||
+    (game.jev.blastPhase === "windup" && jevGap < 610) ||
+    (game.jev.salvoPhase === "windup" && jevGap < 610) ||
+    game.minions.some((wraith) => distance(wraith, player) < 190);
+  const directBurstCounter = jevGap < 138 && (
+    rendThreat || (threatened && player.guardCooldown > 0) || game.jev.stunned > 0
+  );
+  if (player.pulseCooldown <= 0 && (
+    (distance(player, objective) < 145 && (tactic === "soul_burst" || game.jev.stunned > 0)) || directBurstCounter
+  )) useSoulBurst();
 
   objectiveGap = distance(player, objective);
   jevGap = distance(player, game.jev);
   contactSeconds = secondsToGhostSafeGap(player, player, game.jev);
-  contactRisk = jevGap < GHOST_SAFE_GAP || (contactSeconds !== null && contactSeconds < 0.7 && jevGap < GHOST_SAFE_GAP + 200);
+  rendThreat = isJevRiftRendThreateningPlayer();
+  contactRisk = game.jev.stunned <= 0 && (
+    jevGap < GHOST_SAFE_GAP || (contactSeconds !== null && contactSeconds < 0.7 && jevGap < GHOST_SAFE_GAP + 200)
+  );
   threatened = isJevAttackThreateningPlayer();
 
-  const guardNow = player.guardCooldown <= 0 && player.guardTimer <= 0 &&
-    (pounceThreat || jevGap < 125 || (threatened && jevGap < 245));
+  const guardableRend = rendThreat && player.dashCooldown > 0 && player.dashTimer <= 0 &&
+    player.hookCooldown > 0 && player.invulnerable <= 0.08;
+  const guardNow = player.guardCooldown <= 0 && player.guardTimer <= 0 && game.elapsed >= player.guardAdaptUntil &&
+    ((threatened && jevGap < 250 && !rendThreat) || guardableRend);
+  const immediateDanger = threatened || rendThreat || areaThreat || (game.jev.stunned <= 0 && (
+    jevGap < 205 || (contactSeconds !== null && contactSeconds < 0.34 && jevGap < GHOST_SAFE_GAP + 180)
+  ));
+  let usedDefense = false;
   if (guardNow) {
     useLanternGuard();
     recordGhostActionOverride("lantern_guard");
-  } else if ((contactRisk || (threatened && jevGap < 410)) && player.echoCooldown <= 0 && !player.echo) {
+    usedDefense = true;
+  } else if (echoThreat && jevGap < 620 && player.echoCooldown <= 0 && !player.echo) {
     useMirrorEcho();
     recordGhostActionOverride("mirror_echo");
-  } else if ((contactRisk || (threatened && jevGap < 300)) && player.veilCooldown <= 0 && player.veilTimer <= 0) {
-    useGhostVeil();
-    recordGhostActionOverride("ghost_veil");
+    usedDefense = true;
   }
 
-  const mustEvade = threatened || pounceThreat || areaThreat || contactRisk;
-  if (mustEvade && player.dashCooldown <= 0 && player.dashTimer <= 0 && (threatened || jevGap < 185)) {
+  const mustEvade = threatened || rendThreat || areaThreat || contactRisk;
+  if (!usedDefense && immediateDanger && player.dashCooldown <= 0 && player.dashTimer <= 0) {
     const escape = aiEvadePoint();
     const dx = escape.x - player.x;
     const dy = escape.y - player.y;
     const length = Math.hypot(dx, dy) || 1;
     player.aiInput = { x: dx / length, y: dy / length };
-    startDash();
+    usePhaseDash();
     recordGhostActionOverride("evade_warning");
-  } else if (contactRisk && !["lantern_guard", "mirror_echo", "ghost_veil"].includes(player.aiTactic)) {
+    usedDefense = true;
+  } else if (!usedDefense && immediateDanger && player.dashCooldown > 0 && player.dashTimer <= 0 &&
+      player.hookCooldown <= 0 && jevGap < 265) {
+    if (useRiftHook(aiEvadePoint())) {
+      recordGhostActionOverride("rift_hook");
+      usedDefense = true;
+    }
+  } else if (contactRisk && !["lantern_guard", "mirror_echo", "phase_dash"].includes(player.aiTactic)) {
     recordGhostActionOverride("evade_warning");
   }
 
   const anchorApproach = player.aiObjectivePosition || objective;
   const approachGap = distance(player, anchorApproach);
-  const wantsHook = tactic === "rift_hook" || (tactic === "advance_anchor" && approachGap > 780);
-  if (activeAnchors.length && wantsHook && player.hookCooldown <= 0 && !mustEvade && jevGap > GHOST_SAFE_GAP + 90) {
+  const wantsHook = tactic === "rift_hook" || (tactic === "advance_anchor" && approachGap > 900);
+  if (activeAnchors.length && wantsHook && player.hookCooldown <= 0 && !mustEvade &&
+      jevGap > GHOST_SAFE_GAP + 145 && approachGap > 620) {
     if (useRiftHook(anchorApproach) && tactic !== "rift_hook") recordGhostActionOverride("rift_hook");
   }
 
   objectiveGap = distance(player, objective);
   jevGap = distance(player, game.jev);
   const hasAnchorObjective = objective !== game.jev;
-  const safeToFire = !hasAnchorObjective || jevGap >= GHOST_SAFE_GAP;
   const objectiveInRange = objectiveGap <= (hasAnchorObjective ? 690 : 740);
   const clearLane = isLaneClear(player, player.aim, 8);
-  player.fireHeld = player.veilTimer <= 0 && safeToFire && objectiveInRange && clearLane;
+  // Firing is independent of movement, so Jev's proximity should not suppress anchor pressure.
+  player.fireHeld = objectiveInRange && clearLane;
 
-  let destination;
-  const evading = threatened || pounceThreat || areaThreat || contactRisk || (tactic === "evade_warning" && threatened);
-  if (evading) destination = aiEvadePoint();
-  else destination = aiAttackPosition(objective, activeAnchors.length > 0 ? 260 : 420);
-  if (evading) {
+  if (player.recoveryTarget && (
+    game.elapsed >= player.recoveryUntil || distance(player, player.recoveryTarget) < 26
+  )) {
     player.recoveryTarget = null;
     player.recoveryUntil = 0;
-  } else if (player.recoveryTarget) {
-    if (game.elapsed >= player.recoveryUntil || distance(player, player.recoveryTarget) < 26) {
-      player.recoveryTarget = null;
-      player.recoveryUntil = 0;
-    } else {
-      destination = player.recoveryTarget;
-    }
   }
+
+  let destination;
+  const evading = threatened || rendThreat || areaThreat || contactRisk || (tactic === "evade_warning" && threatened);
+  if (player.recoveryTarget) destination = player.recoveryTarget;
+  else if (evading) destination = aiEvadePoint();
+  else destination = aiAttackPosition(objective, activeAnchors.length > 0 ? 260 : 420);
   player.aiTarget = destination;
 
   const pathRefresh = evading ? 0.08 : 0.24;
@@ -3099,21 +3508,29 @@ function checkContact() {
   const player = game.player;
   const jev = game.jev;
   const gap = distance(player, jev);
-  if (gap > player.radius + jev.radius + 2 || player.invulnerable > 0 || player.hurtTimer > 0 || jev.stunned > 0) return;
-  if (jev.pouncePhase === "lunge") {
-    jev.pounceHit = true;
-    remember(player.guardTimer > 0 ? "pounce_blocked" : "pounce_hit");
-  }
+  if (["windup", "recover"].includes(jev.rendPhase) || gap > player.radius + jev.radius + 2 ||
+      player.invulnerable > 0 || player.hurtTimer > 0 || jev.stunned > 0) return;
   const angle = Math.atan2(player.y - jev.y, player.x - jev.x);
   damagePlayer("player_hit", Math.cos(angle), Math.sin(angle));
 }
 
-function damagePlayer(event, knockbackX, knockbackY) {
+function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, canParry = true) {
   const player = game.player;
-  if (player.guardTimer > 0) {
+  if (canParry && player.guardTimer > 0 && event !== "lava_hit") {
     player.guardTimer = 0;
-    player.guardCooldown = 0.4;
+    player.guardCooldown = 2.6;
+    player.guardAdaptUntil = game.elapsed + 4.1;
     game.jev.stunned = Math.max(game.jev.stunned, 0.85);
+    game.jev.parryRecoveryUntil = game.elapsed + 3.8;
+    game.jev.flankSide *= -1;
+    game.jev.mode = "flank";
+    game.jev.path = [];
+    game.jev.nextPathAt = game.elapsed;
+    game.jev.riftRushPhase = "";
+    game.jev.riftRushTimer = 0;
+    game.jev.riftRushTarget = null;
+    game.jev.vx = 0;
+    game.jev.vy = 0;
     remember("lantern_parry");
     emitParticles(player.x, player.y, "#bdf7df", 30, 200);
     announce("PERFECT PARRY!", 900);
@@ -3122,19 +3539,20 @@ function damagePlayer(event, knockbackX, knockbackY) {
     return false;
   }
   if (player.invulnerable > 0 || player.hurtTimer > 0) return false;
-  breakGhostVeil();
-  player.health -= 1;
+  player.health = Math.max(0, Number((player.health - amount).toFixed(2)));
   player.hurtTimer = 1.2;
   player.invulnerable = 0.8;
   moveEntity(player, knockbackX * 45, knockbackY * 45, player.radius);
   remember(event);
   renderHealth();
-  announce(event === "mine_hit"
+  if (!quiet) announce(event === "mine_hit"
     ? player.health > 0 ? "Rift mine detonated" : "Jev caught you"
     : event === "salvo_hit"
       ? player.health > 0 ? "Soul salvo hit" : "Jev caught you"
       : event === "blast_hit"
         ? player.health > 0 ? "Blast hit" : "Jev caught you"
+        : event === "rift_rend_hit"
+          ? player.health > 0 ? "Rift Rend struck" : "Rift Rend caught you"
       : player.health > 0 ? "Jev caught you" : "Jev caught you");
   emitParticles(player.x, player.y, "#ff806d", 20, 170);
   screenShake = Math.max(screenShake, 8);
@@ -3151,6 +3569,14 @@ function updateProjectiles(dt) {
     const distanceThisFrame = Math.hypot(projectile.vx, projectile.vy) * dt;
     const steps = Math.max(1, Math.ceil(distanceThisFrame / 8));
     for (let step = 0; step < steps && !consumed; step += 1) {
+      const stepDistance = distanceThisFrame / steps;
+      if (projectile.maxDistance !== undefined &&
+          (projectile.distanceTravelled || 0) + stepDistance > projectile.maxDistance) {
+        remember(projectile.kind === "salvo" ? "salvo_missed" : "blast_missed");
+        consumed = true;
+        break;
+      }
+      if (projectile.maxDistance !== undefined) projectile.distanceTravelled = (projectile.distanceTravelled || 0) + stepDistance;
       projectile.x += projectile.vx * dt / steps;
       projectile.y += projectile.vy * dt / steps;
       const anchor = projectile.owner === "player"
@@ -3163,6 +3589,9 @@ function updateProjectiles(dt) {
         hitAnchor(anchor);
         consumed = true;
       } else if (mirrorClone) {
+        if (projectile.owner === "jev" && ["blast", "salvo"].includes(projectile.kind)) {
+          remember(projectile.kind === "salvo" ? "salvo_decoy_blocked" : "blast_decoy_blocked");
+        }
         breakMirrorClone(mirrorClone);
         consumed = true;
       } else {
@@ -3182,8 +3611,9 @@ function updateProjectiles(dt) {
             });
           }
           const projectileOutcome = projectile.kind === "salvo" ? "salvo_hit" : "blast_hit";
+          const attackPrefix = projectile.kind === "salvo" ? "salvo" : "blast";
           const knockback = Math.hypot(projectile.vx, projectile.vy) || 1;
-          if (parrying) remember(projectile.kind === "salvo" ? "salvo_blocked" : "blast_blocked");
+          if (parrying) remember(attackPrefix + "_guard_blocked");
           if (!damagePlayer(projectileOutcome, projectile.vx / knockback, projectile.vy / knockback) && !parrying) {
             remember(projectile.kind === "salvo" ? "salvo_dodged" : "blast_dodged");
             emitParticles(projectile.x, projectile.y, "#bfe8ef", 12, 105);
@@ -3191,7 +3621,8 @@ function updateProjectiles(dt) {
         }
         consumed = true;
         } else if (blocked(projectile.x, projectile.y, projectile.radius)) {
-          remember(projectile.owner === "player" ? "shot_blocked" : projectile.kind === "salvo" ? "salvo_blocked" : "blast_blocked");
+          const attackPrefix = projectile.kind === "salvo" ? "salvo" : "blast";
+          remember(projectile.owner === "player" ? "shot_blocked" : attackPrefix + "_cover_blocked");
           emitParticles(projectile.x, projectile.y, projectile.owner === "player" ? "#9ff7e2" : "#e5ae72", 10, 80);
           consumed = true;
         }
@@ -3235,6 +3666,7 @@ function update(dt) {
   }
   updateRiftMine(dt);
   updateJev(dt);
+  updateEnvironmentHazards();
   updateProjectiles(dt);
   checkContact();
   checkWin();
@@ -3324,6 +3756,7 @@ function drawWorld() {
   drawPlayer(ctx);
   drawProjectiles(ctx);
   drawTacticalEffects(ctx);
+  drawSkillCallouts(ctx);
   ctx.restore();
   if (game.elapsed - lastMapDrawAt > 0.12) {
     drawMapOverview();
@@ -3468,8 +3901,9 @@ function drawMapOverview() {
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
   for (const hazard of game.hazards) {
     const status = hazardState(hazard);
+    const bounds = hazardBounds(hazard);
     ctx.fillStyle = status.active ? "rgb(252 124 151 / 54%)" : status.warning ? "rgb(255 209 126 / 48%)" : "rgb(175 144 210 / 22%)";
-    ctx.fillRect(hazard.x, hazard.y, hazard.w, hazard.h);
+    ctx.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
   }
   ctx.fillStyle = "rgb(26 20 35 / 90%)";
   ctx.strokeStyle = "rgb(242 226 242 / 35%)";
@@ -3722,18 +4156,19 @@ function drawHazards(ctx) {
   for (const hazard of game.hazards) {
     const status = hazardState(hazard);
     const colors = {
+      lava: [255, 91, 53],
       steam: [255, 124, 72],
       current: [100, 221, 219],
+      quicksand: [213, 179, 111],
+      swarm: [168, 227, 134],
       spores: [174, 229, 128],
       arc_sparks: [255, 210, 119],
       rift_surge: [216, 135, 255],
     };
     const color = colors[hazard.kind] || [204, 172, 255];
-    const alpha = hazard.kind === "current" ? 0.12 : status.active ? 0.27 : status.warning ? 0.2 + Math.sin(game.elapsed * 12) * 0.06 : 0.045;
-    const x = hazard.x;
-    const y = hazard.y;
-    const w = hazard.w;
-    const h = hazard.h;
+    const alpha = hazard.kind === "current" ? 0.12 : status.active ? 0.31 : status.warning ? 0.24 + Math.sin(game.elapsed * 12) * 0.06 : 0.055;
+    const bounds = hazardBounds(hazard);
+    const { x, y, w, h } = bounds;
     ctx.save();
     ctx.fillStyle = "rgba(" + color.join(",") + ", " + alpha + ")";
     ctx.shadowColor = "rgba(" + color.join(",") + ", " + (status.active || status.warning ? 0.7 : 0.18) + ")";
@@ -3747,7 +4182,22 @@ function drawHazards(ctx) {
     ctx.setLineDash(hazard.kind === "current" ? [8, 8] : status.warning ? [4, 5] : []);
     ctx.stroke();
     ctx.setLineDash([]);
-    if (hazard.kind === "current") {
+    if (hazard.kind === "lava") {
+      ctx.fillStyle = status.active ? "rgba(255, 114, 54, 0.42)" : "rgba(255, 126, 62, 0.12)";
+      ctx.beginPath();
+      ctx.roundRect(x + 7, y + 7, w - 14, h - 14, 14);
+      ctx.fill();
+      ctx.strokeStyle = status.warning ? "#ffe3a0" : "rgba(255, 193, 113, 0.8)";
+      ctx.lineWidth = status.warning ? 2.4 : 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.18, y + h * 0.24);
+      ctx.lineTo(x + w * 0.35, y + h * 0.48);
+      ctx.lineTo(x + w * 0.27, y + h * 0.78);
+      ctx.moveTo(x + w * 0.68, y + h * 0.15);
+      ctx.lineTo(x + w * 0.56, y + h * 0.45);
+      ctx.lineTo(x + w * 0.77, y + h * 0.72);
+      ctx.stroke();
+    } else if (hazard.kind === "current") {
       const flowLength = Math.hypot(hazard.flowX, hazard.flowY) || 1;
       const flowX = hazard.flowX / flowLength;
       const flowY = hazard.flowY / flowLength;
@@ -3765,6 +4215,20 @@ function drawHazards(ctx) {
         ctx.lineTo(centerX + flowX * 7 + flowY * 7, centerY + flowY * 7 - flowX * 7);
         ctx.stroke();
       }
+    } else if (hazard.kind === "quicksand" || hazard.kind === "swarm") {
+      ctx.globalAlpha = status.active ? 0.82 : status.warning ? 0.54 : 0.32;
+      ctx.strokeStyle = "rgba(" + color.join(",") + ", 0.78)";
+      ctx.lineWidth = hazard.kind === "swarm" ? 2 : 1.5;
+      if (hazard.kind === "swarm") ctx.setLineDash([3, 6]);
+      for (let ring = 0; ring < 4; ring += 1) {
+        const cx = x + w * (0.2 + (ring % 2) * 0.42) + Math.sin(game.elapsed * 2 + ring) * 5;
+        const cy = y + h * (0.26 + Math.floor(ring / 2) * 0.4) + Math.cos(game.elapsed * 2.4 + ring) * 4;
+        const radius = (hazard.kind === "swarm" ? 8 : 10) + ring * 2 + (status.active ? Math.sin(game.elapsed * 5 + ring) * 2 : 0);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, radius * 1.4, radius, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
     } else {
       ctx.globalAlpha = status.active ? 0.8 : status.warning ? 0.44 : 0.2;
       ctx.strokeStyle = "rgba(" + color.join(",") + ", 0.7)";
@@ -3799,13 +4263,15 @@ function drawWorldLighting(ctx) {
   ];
   const hotspots = [
     ...movingLights,
-    ...game.hazards.map((hazard) => ({
-      x: hazard.x + hazard.w / 2,
-      y: hazard.y + hazard.h / 2,
+    ...game.hazards.map((hazard) => {
+      const bounds = hazardBounds(hazard);
+      return {
+      x: bounds.x + bounds.w / 2,
+      y: bounds.y + bounds.h / 2,
       color: accent,
-      radius: Math.max(hazard.w, hazard.h) * 0.8,
+      radius: Math.max(bounds.w, bounds.h) * 0.8,
       strength: hazardState(hazard).active ? 0.19 : 0.09,
-    })),
+    }; }),
   ];
   for (const { x, y, radius, color: lightColor, strength } of hotspots) {
     const gradient = ctx.createRadialGradient(x, y, 2, x, y, radius);
@@ -4444,7 +4910,7 @@ function drawTacticalEffects(ctx) {
     ctx.stroke();
     ctx.restore();
   }
-  if (jev.phaseStepPhase === "windup" && jev.phaseStepTarget) {
+  if (jev.riftRushPhase === "windup" && jev.riftRushTarget) {
     const pulse = 0.36 + Math.sin(game.elapsed * 30) * 0.12;
     ctx.save();
     ctx.globalAlpha = pulse;
@@ -4454,43 +4920,79 @@ function drawTacticalEffects(ctx) {
     ctx.setLineDash([5, 8]);
     ctx.beginPath();
     ctx.moveTo(jev.x, jev.y);
-    ctx.lineTo(jev.phaseStepTarget.x, jev.phaseStepTarget.y);
+    ctx.lineTo(jev.riftRushTarget.x, jev.riftRushTarget.y);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(jev.phaseStepTarget.x, jev.phaseStepTarget.y, 32, 0, Math.PI * 2);
+    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 32, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (jev.riftRushPhase === "charge") {
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.strokeStyle = "#ffad82";
+    ctx.shadowColor = "#ff765f";
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 24;
+    ctx.beginPath();
+    ctx.moveTo(jev.x - jev.riftRushVx * 0.34, jev.y - jev.riftRushVy * 0.34);
+    ctx.lineTo(jev.x, jev.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255, 235, 214, .9)";
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
   }
-  if (jev.pouncePhase === "windup" && jev.pounceTarget) {
-    const pulse = 0.72 + Math.sin(game.elapsed * 23) * 0.16;
+  if (jev.rendPhase === "windup") {
+    const pulse = 0.72 + Math.sin(game.elapsed * 25) * 0.12;
+    const startAngle = jev.rendAngle - RIFT_REND_HALF_ANGLE;
+    const endAngle = jev.rendAngle + RIFT_REND_HALF_ANGLE;
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = "#ff7768";
-    ctx.fillStyle = "rgb(255 103 88 / 12%)";
+    ctx.fillStyle = "rgb(255 96 116 / 13%)";
+    ctx.strokeStyle = "rgb(255 139 151 / 85%)";
+    ctx.shadowColor = "#ff586f";
+    ctx.shadowBlur = 22;
     ctx.lineWidth = 3;
-    ctx.setLineDash([7, 7]);
     ctx.beginPath();
     ctx.moveTo(jev.x, jev.y);
-    ctx.lineTo(jev.pounceTarget.x, jev.pounceTarget.y);
+    ctx.arc(jev.x, jev.y, RIFT_REND_RANGE, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fill();
+    ctx.setLineDash([8, 6]);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(jev.pounceTarget.x, jev.pounceTarget.y, 36, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(jev.x, jev.y);
+    ctx.lineTo(jev.x + Math.cos(jev.rendAngle) * RIFT_REND_RANGE, jev.y + Math.sin(jev.rendAngle) * RIFT_REND_RANGE);
+    ctx.strokeStyle = "rgba(255, 232, 231, .78)";
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
-  } else if (jev.pouncePhase === "lunge") {
-    ctx.save();
-    ctx.globalAlpha = 0.52;
-    ctx.strokeStyle = "#ff9b7d";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(jev.x - jev.pounceVx * 0.075, jev.y - jev.pounceVy * 0.075);
-    ctx.lineTo(jev.x, jev.y);
-    ctx.stroke();
-    ctx.restore();
+  }
+  if (game.rendSlash) {
+    const progress = (game.elapsed - game.rendSlash.at) / game.rendSlash.duration;
+    if (progress >= 1) game.rendSlash = null;
+    else if (progress >= 0) {
+      ctx.save();
+      ctx.translate(game.rendSlash.x, game.rendSlash.y);
+      ctx.rotate(game.rendSlash.angle);
+      ctx.globalAlpha = (1 - progress) * 0.92;
+      ctx.strokeStyle = "#ffd0d1";
+      ctx.shadowColor = "#ff536e";
+      ctx.shadowBlur = 26;
+      ctx.lineWidth = 16 * (1 - progress) + 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, RIFT_REND_RANGE * 0.72, -RIFT_REND_HALF_ANGLE * 0.9, RIFT_REND_HALF_ANGLE * 0.9);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255, 245, 239, .92)";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   if (jev.blastPhase === "windup" && jev.blastTarget) {
     const pulse = 0.66 + Math.sin(game.elapsed * 28) * 0.2;
@@ -4587,19 +5089,41 @@ function drawJev(ctx) {
   const jev = game.jev;
   if (jev.health <= 0) return;
   const bob = jev.stunned > 0 ? Math.sin(game.elapsed * 35) * 3 : Math.sin(game.elapsed * 12) * 1.5;
+  if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
+    const pulse = 0.72 + Math.sin(game.elapsed * 18) * 0.12;
+    ctx.save();
+    ctx.translate(jev.x, jev.y + bob);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = "rgba(117, 222, 232, 0.09)";
+    ctx.strokeStyle = "#9ceaf0";
+    ctx.shadowColor = "#66d7ea";
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 47, 43, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    for (let index = 0; index < jev.riftAegisCharges; index += 1) {
+      ctx.fillStyle = "#d6ffff";
+      ctx.beginPath();
+      ctx.arc(-7 + index * 14, -48, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
   if (artwork.jev.complete && artwork.jev.naturalWidth > 0) {
     const modeColors = {
       pursue: "#f27d68", intercept: "#f4c774", flank: "#d69df0", ambush: "#a9dec8",
-      pounce: "#ff7768", power_blast: "#ffc977", rift_mine: "#d69df0", phase_step: "#dfa7ff",
-      shadow_dodge: "#8fead3", soul_salvo: "#ff9c73",
+      rift_rend: "#ff7768", power_blast: "#ffc977", rift_mine: "#d69df0", rift_rush: "#dfa7ff",
+      shadow_dodge: "#8fead3", soul_salvo: "#ff9c73", rift_aegis: "#9ceaf0",
     };
     const frame = jev.hurtTimer > 0 ? 11
       : jev.salvoPhase || jev.blastPhase ? 4
-        : jev.pouncePhase === "windup" ? 6
-          : jev.pouncePhase === "lunge" ? 7
-            : jev.pouncePhase === "recover" ? 11
+        : jev.rendPhase === "windup" ? 6
+          : jev.rendPhase === "recover" ? 7
               : jev.mode === "rift_mine" ? 8
-                : jev.mode === "phase_step" ? 9
+                : jev.mode === "rift_rush" ? 9
                   : jev.mode === "shadow_dodge" ? 10
                     : Math.hypot(jev.vx, jev.vy) > 35 ? 1 + Math.floor(game.elapsed * 8) % 3 : 0;
     ctx.save();
@@ -4630,6 +5154,27 @@ function drawJev(ctx) {
     }
     ctx.restore();
     drawSpriteFrame(ctx, artwork.jev, frame, jev.x, jev.y + bob, 78, 84, jev.facing > 0);
+    if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.84 + Math.sin(game.elapsed * 16) * 0.1;
+      ctx.strokeStyle = "#b3f7fa";
+      ctx.shadowColor = "#66d7ea";
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      ctx.ellipse(jev.x, jev.y + bob, 53, 49, 0, game.elapsed * 0.42, game.elapsed * 0.42 + Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
+      for (let index = 0; index < jev.riftAegisCharges; index += 1) {
+        ctx.fillStyle = "#e1ffff";
+        ctx.beginPath();
+        ctx.arc(jev.x - 7 + index * 14, jev.y - 53 + bob, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
     return;
   }
   ctx.save();
@@ -4644,10 +5189,10 @@ function drawJev(ctx) {
     intercept: "#f4c774",
     flank: "#d69df0",
     ambush: "#a9dec8",
-    pounce: "#ff7768",
+    rift_rend: "#ff7768",
     power_blast: "#ffc977",
     rift_mine: "#d69df0",
-    phase_step: "#dfa7ff",
+    rift_rush: "#dfa7ff",
     shadow_dodge: "#8fead3",
   };
   ctx.strokeStyle = jev.stunned > 0 ? "#ffe08a" : modeColors[jev.mode] || modeColors.pursue;
@@ -4685,7 +5230,7 @@ function drawPlayer(ctx) {
   const player = game.player;
   const heading = Math.atan2(player.vy, player.vx || 1);
   const dash = player.dashTimer > 0;
-  if (player.veilTimer > 0) {
+  if (player.afterimageTimer > 0) {
     ctx.save();
     ctx.globalAlpha = 0.22 + Math.sin(game.elapsed * 18) * 0.06;
     ctx.strokeStyle = "#92f3e2";
@@ -4724,6 +5269,14 @@ function drawPlayer(ctx) {
     const frame = player.hurtTimer > 0 ? 11 : dash ? 4 : player.pulseTimer > 0 ? 6 : player.guardTimer > 0 ? 8
       : player.fireHeld || keys.has("z") ? 5
       : player.hookTarget ? 9 : speed > 35 ? 1 + Math.floor(game.elapsed * 10) % 3 : 0;
+    if (player.afterimageTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.32 * clamp(player.afterimageTimer / PHASE_AFTERIMAGE_DURATION, 0, 1);
+      ctx.shadowColor = "#72eed9";
+      ctx.shadowBlur = 15;
+      drawSpriteFrame(ctx, artwork.ghost, 0, player.lastKnown.x, player.lastKnown.y, 64, 70, player.facing < 0);
+      ctx.restore();
+    }
     ctx.save();
     ctx.translate(player.x, player.y + 11);
     const groundShadow = ctx.createRadialGradient(0, 21, 2, 0, 21, 27);
@@ -4744,7 +5297,7 @@ function drawPlayer(ctx) {
     ctx.restore();
     const stretch = dash ? 1.08 : 1;
     ctx.save();
-    ctx.globalAlpha = player.veilTimer > 0 ? 0.24 : 1;
+    ctx.globalAlpha = 1;
     drawSpriteFrame(ctx, artwork.ghost, frame, player.x, player.y + Math.sin(game.elapsed * 9) * 1.5, 70 * stretch, 76 / stretch, player.facing < 0);
     ctx.restore();
     if (player.pulseTimer > 0) {
@@ -4758,7 +5311,7 @@ function drawPlayer(ctx) {
     return;
   }
   ctx.save();
-  ctx.globalAlpha = player.veilTimer > 0 ? 0.24 : 1;
+  ctx.globalAlpha = 1;
   ctx.translate(player.x, player.y + Math.sin(game.elapsed * 9) * 1.5);
   if (player.snaredTimer > 0) {
     ctx.strokeStyle = "rgb(217 158 243 / 76%)";
@@ -4788,6 +5341,51 @@ function drawPlayer(ctx) {
     ctx.beginPath(); ctx.arc(0, 0, 20 + progress * 128, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
+}
+
+function drawSkillCallouts(ctx) {
+  if (!game.skillCallouts.length) return;
+  game.skillCallouts = game.skillCallouts.filter((entry) => game.elapsed - entry.at < entry.duration);
+  for (const entry of game.skillCallouts) {
+    const actor = entry.owner === "jev" ? game.jev : game.player;
+    const skill = skillManual[entry.owner].find((item) => item.id === entry.abilityId);
+    const cell = skillIconCells[entry.abilityId];
+    const customIcon = artwork.skillExtras?.[entry.abilityId];
+    if (!skill || (!cell && !customIcon)) continue;
+    const progress = clamp((game.elapsed - entry.at) / entry.duration, 0, 1);
+    const alpha = Math.min(1, (1 - progress) * 4.2);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = "700 12px Inter, ui-sans-serif, system-ui, sans-serif";
+    const textWidth = ctx.measureText(skill.name).width;
+    const boxWidth = textWidth + 45;
+    const opponent = entry.owner === "jev" ? game.player : game.jev;
+    const relativeX = opponent.x - actor.x;
+    const side = Math.abs(relativeX) < 145 ? -Math.sign(relativeX || (entry.owner === "jev" ? -1 : 1)) : 1;
+    const x = clamp(actor.x + side * 28 - (side < 0 ? boxWidth : 0), 24, WORLD.width - boxWidth - 24);
+    const y = actor.y - 48 - progress * 12;
+    ctx.fillStyle = "rgba(17, 14, 25, 0.9)";
+    ctx.strokeStyle = entry.owner === "ghost" ? "rgba(145, 235, 213, 0.78)" : "rgba(255, 148, 112, 0.78)";
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = entry.owner === "ghost" ? "#79e6cd" : "#f07160";
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.roundRect(x, y - 17, boxWidth, 32, 10);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+    if (cell && artwork.skills.complete && artwork.skills.naturalWidth > 0) {
+      const cellWidth = artwork.skills.naturalWidth / 4;
+      const cellHeight = artwork.skills.naturalHeight / 4;
+      ctx.drawImage(artwork.skills, cell[0] * cellWidth, cell[1] * cellHeight, cellWidth, cellHeight, x + 4, y - 14, 26, 26);
+    } else if (customIcon?.complete && customIcon.naturalWidth > 0) {
+      ctx.drawImage(customIcon, x + 4, y - 14, 26, 26);
+    }
+    ctx.fillStyle = "#fff5e8";
+    ctx.textBaseline = "middle";
+    ctx.fillText(skill.name, x + 34, y - 1, boxWidth - 39);
+    ctx.restore();
+  }
 }
 
 function renderDecisionCard(owner, action, probabilities, selectedAction = action) {
@@ -4863,14 +5461,21 @@ function toggleDecisionOptions(owner) {
 
 function modeFallback() {
   const gap = distance(combatTarget(), game.jev);
+  const playerGap = distance(game.player, game.jev);
+  if (game.jev.rendCooldown <= 0 && playerGap >= 30 &&
+      playerGap <= RIFT_REND_RANGE + game.player.radius &&
+      isLaneClear(game.jev, game.player, game.jev.radius)) return "rift_rend";
+  const anchorsBroken = game.anchors.every((anchor) => anchor.health <= 0);
+  const burstThreat = game.player.pulseTimer > 0 && distance(game.player, game.jev) < 174;
+  if (anchorsBroken && game.jev.riftAegisCooldown <= 0 && game.jev.riftAegisTimer <= 0 &&
+      game.jev.riftAegisCharges <= 0 && (isPlayerShotThreateningJev() || burstThreat)) return "rift_aegis";
   if (game.player.pulseTimer > 0 && gap < 165 && game.jev.shadowDodgeCooldown <= 0) return "shadow_dodge";
   if (game.jev.shadowDodgeCooldown <= 0 && isPlayerShotThreateningJev()) return "shadow_dodge";
   if (game.jev.meteorCooldown <= 0 && game.meteors.length === 0 && gap >= 250 && gap <= 920) return "meteor_storm";
   if (game.jev.summonCooldown <= 0 && game.minions.length === 0 && gap > 260) return "summon_wraiths";
-  if (game.jev.pounceCooldown <= 0 && gap < 330 && isLaneClear(game.jev, predictedPounceTarget(), game.jev.radius)) return "pounce";
   if (game.jev.blastCooldown <= 0 && gap >= 175 && gap <= 490 && isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())) return "power_blast";
-  if (game.jev.salvoCooldown <= 0 && gap >= 240 && gap <= 820 && isLaneClear(game.jev, predictedPowerBlastTarget(), game.jev.radius)) return "soul_salvo";
-  if (game.jev.phaseStepCooldown <= 0 && gap >= 245 && gap <= 520) return "phase_step";
+  if (game.jev.salvoCooldown <= 0 && gap >= 240 && gap <= 820 && isSoulSalvoLaneClear(game.jev, predictedSoulSalvoTarget())) return "soul_salvo";
+  if (game.jev.riftRushCooldown <= 0 && gap >= 245 && gap <= 520) return "rift_rush";
   if (game.jev.mineCooldown <= 0 && !game.activeMine && gap < 340 && game.elapsed % 13 > 10) return "rift_mine";
   if (game.routeProfile.revisitedCells > 5) return "flank";
   if (Math.hypot(game.player.vx, game.player.vy) > 120) return "intercept";
@@ -4879,10 +5484,14 @@ function modeFallback() {
 
 function playerModeFallback() {
   const threatened = isJevAttackThreateningPlayer();
+  const rendThreat = isJevRiftRendThreateningPlayer();
   const jevGap = distance(game.player, game.jev);
   const objective = aiObjectiveTarget();
-  if (game.player.guardCooldown <= 0 && threatened) return "lantern_guard";
-  if (game.player.veilCooldown <= 0 && (threatened || jevGap < 280)) return "ghost_veil";
+  if (rendThreat && game.player.dashCooldown <= 0) return "phase_dash";
+  if (rendThreat && game.player.hookCooldown <= 0) return "rift_hook";
+  if (rendThreat && game.player.guardCooldown <= 0) return "lantern_guard";
+  if (game.player.guardCooldown <= 0 && threatened && !rendThreat) return "lantern_guard";
+  if (game.player.dashCooldown <= 0 && threatened) return "phase_dash";
   if (game.player.echoCooldown <= 0 && !game.player.echo && (threatened || jevGap < 400)) return "mirror_echo";
   if (game.player.hookCooldown <= 0 && (jevGap < 260 || distance(game.player, objective) > 500)) return "rift_hook";
   if (game.player.pulseCooldown <= 0 && distance(game.player, objective) < 145) return "soul_burst";
@@ -4916,8 +5525,8 @@ function getJevState() {
   const player = game.player;
   const jev = game.jev;
   const objectiveTarget = aiObjectiveTarget();
-  const modelPosition = player.veilTimer > 0 ? player.lastKnown : player;
-  const modelVelocity = player.veilTimer > 0 ? { vx: 0, vy: 0 } : player;
+  const modelPosition = player.afterimageTimer > 0 ? player.lastKnown : player;
+  const modelVelocity = player.afterimageTimer > 0 ? { vx: 0, vy: 0 } : player;
   const timeToGhostBuffer = secondsToGhostSafeGap(modelPosition, modelVelocity, jev);
   return {
     map_id: game.level.id,
@@ -4935,23 +5544,22 @@ function getJevState() {
     },
     player: {
       x: Math.round(modelPosition.x), y: Math.round(modelPosition.y),
-      vx: player.veilTimer > 0 ? 0 : Math.round(player.vx), vy: player.veilTimer > 0 ? 0 : Math.round(player.vy),
-      hidden: player.veilTimer > 0,
-      invisibility_seconds: Math.round(player.veilTimer * 10) / 10,
-      veil_ready: player.veilCooldown <= 0,
-      last_known_position: player.veilTimer > 0 ? { x: Math.round(player.lastKnown.x), y: Math.round(player.lastKnown.y) } : null,
+      vx: player.afterimageTimer > 0 ? 0 : Math.round(player.vx), vy: player.afterimageTimer > 0 ? 0 : Math.round(player.vy),
+      afterimage_active: player.afterimageTimer > 0,
+      last_known_position: player.afterimageTimer > 0 ? { x: Math.round(player.lastKnown.x), y: Math.round(player.lastKnown.y) } : null,
       health: player.health,
-      dash_ready: player.dashCooldown <= 0,
+      phase_dash_ready: player.dashCooldown <= 0,
       burst_ready: player.pulseCooldown <= 0,
       echo_ready: player.echoCooldown <= 0,
       hook_ready: player.hookCooldown <= 0,
       guard_ready: player.guardCooldown <= 0,
       guard_active: player.guardTimer > 0,
+      guard_adapting: game.elapsed < player.guardAdaptUntil,
       echo: player.echo ? { x: Math.round(player.echo.x), y: Math.round(player.echo.y), seconds_left: Math.round(player.echo.life * 10) / 10 } : null,
       clones: player.clones.slice(0, 3).map((clone) => ({
         x: Math.round(clone.x), y: Math.round(clone.y), seconds_left: Math.round(clone.life * 10) / 10,
       })),
-      firing: player.veilTimer <= 0 && (player.fireHeld || keys.has("z")),
+      firing: player.fireHeld || keys.has("z"),
       current_tactic: player.aiTactic,
       objective_target: objectiveTarget === game.jev
         ? { type: "jev" }
@@ -4972,7 +5580,7 @@ function getJevState() {
       recent_route: game.playerTrail.map((point) => ({
         x: point.x, y: point.y, seconds_ago: Math.round((game.elapsed - point.at) * 10) / 10,
       })),
-      route_profile: player.veilTimer > 0 ? { ...game.routeProfile, hotspot: null } : game.routeProfile,
+      route_profile: player.afterimageTimer > 0 ? { ...game.routeProfile, hotspot: null } : game.routeProfile,
       recent_actions: game.history.slice(-8),
       projectiles: game.projectiles.filter((projectile) => projectile.owner === "player").slice(-6).map((projectile) => ({
         x: Math.round(projectile.x), y: Math.round(projectile.y), vx: Math.round(projectile.vx), vy: Math.round(projectile.vy),
@@ -4980,6 +5588,11 @@ function getJevState() {
       action_timeline: game.actionTimeline.map((entry) => ({
         event: entry.event, seconds_ago: Math.round((game.elapsed - entry.at) * 10) / 10,
       })),
+      soul_burst_threat: player.pulseTimer > 0 && distance(player, jev) < 174,
+      route_pattern: player.afterimageTimer > 0 ? "hidden"
+        : game.routeProfile.revisitedCells >= 5 ? "looping"
+          : game.routeProfile.reversals >= 4 && game.routeProfile.turns >= 8 ? "erratic"
+            : "open",
       slowed: player.snaredTimer > 0 || environmentEffects(player).speed < 0.98,
     },
     jev: {
@@ -5005,11 +5618,13 @@ function getJevState() {
         plan: entry.plan, seconds_ago: Math.round((game.elapsed - entry.at) * 10) / 10,
       })),
       stunned: jev.stunned > 0, health: jev.health,
-      pounce_ready: jev.pounceCooldown <= 0,
-      pounce_lane_clear: isLaneClear(jev, predictedPounceTarget(), jev.radius),
-      pounce_phase: jev.pouncePhase || "ready",
+      rend_ready: jev.rendCooldown <= 0,
+      rend_lane_clear: isLaneClear(jev, game.player, jev.radius),
+      rend_arc_threatening: isJevRiftRendThreateningPlayer(),
+      rend_phase: jev.rendPhase || "ready",
       blast_ready: jev.blastCooldown <= 0,
       blast_lane_clear: isPowerBlastLaneClear(jev, predictedPowerBlastTarget()),
+      salvo_lane_clear: isSoulSalvoLaneClear(jev, predictedSoulSalvoTarget()),
       blast_phase: jev.blastPhase || "ready",
       mine_ready: jev.mineCooldown <= 0 && !game.activeMine,
       active_mine: game.activeMine ? {
@@ -5018,8 +5633,14 @@ function getJevState() {
         warning_seconds_left: Math.round(Math.max(0, game.activeMine.warning) * 10) / 10,
         radius: game.activeMine.radius,
       } : null,
-      phase_step_ready: jev.phaseStepCooldown <= 0,
-      phase_step_phase: jev.phaseStepPhase || "ready",
+      rift_rush_ready: jev.riftRushCooldown <= 0,
+      rift_rush_phase: jev.riftRushPhase || "ready",
+      rift_aegis_ready: game.anchors.every((anchor) => anchor.health <= 0) &&
+        jev.riftAegisCooldown <= 0 && jev.riftAegisTimer <= 0 && jev.riftAegisCharges <= 0,
+      rift_aegis_active_seconds: Math.round(jev.riftAegisTimer * 10) / 10,
+      rift_aegis_charges: jev.riftAegisCharges,
+      recently_parried: game.elapsed < jev.parryRecoveryUntil,
+      parry_recovery_seconds: Math.max(0, Math.round((jev.parryRecoveryUntil - game.elapsed) * 10) / 10),
       shadow_dodge_ready: jev.shadowDodgeCooldown <= 0,
       shadow_dodge_phase: jev.shadowDodgePhase || "ready",
       soul_salvo_ready: jev.salvoCooldown <= 0,
@@ -5235,10 +5856,9 @@ function handleKeyDown(event) {
   if (event.repeat) { keys.add(key); return; }
   keys.add(key);
   if (game?.mode !== "auto") {
-    if (key === " ") startDash();
+    if (key === " ") usePhaseDash();
     if (key === "f" || key === "x") useSoulBurst();
     if (key === "q") useMirrorEcho();
-    if (key === "r") useGhostVeil();
     if (key === "e") useRiftHook();
     if (key === "c" || key === "shift") useLanternGuard();
   }
@@ -5293,10 +5913,9 @@ window.addEventListener("keydown", handleKeyDown, { passive: false });
 window.addEventListener("keyup", handleKeyUp);
 window.addEventListener("blur", () => { keys.clear(); setStick(0, 0); if (game?.player) game.player.fireHeld = false; });
 window.addEventListener("resize", resizeCanvas);
-ui.dashTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); startDash(); });
+ui.dashTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); usePhaseDash(); });
 ui.pulseTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useSoulBurst(); });
 ui.echoTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useMirrorEcho(); });
-ui.veilTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useGhostVeil(); });
 ui.hookTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useRiftHook(); });
 ui.guardTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useLanternGuard(); });
 ui.stickZone.addEventListener("pointerdown", (event) => {
@@ -5331,6 +5950,7 @@ ui.canvas.addEventListener("pointerup", endPlayerFire);
 ui.canvas.addEventListener("pointercancel", endPlayerFire);
 
 renderLevelSelection();
+renderSkillCatalog();
 renderMusicButton();
 resizeCanvas();
 checkConnection();

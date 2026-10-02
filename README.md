@@ -20,7 +20,7 @@ Open http://127.0.0.1:4173. The API key stays on the server. If Jev's API is una
 
 - Move: W A S D or arrow keys
 - Aim and fire: pointer or Z
-- Dash: Space
+- Phase Dash: Space
 - Soul burst: X
 - Mirror echo decoy: Q
 - Rift hook: E
@@ -35,14 +35,14 @@ System One returns typed Choices over one named game-state snapshot. Jev chooses
 
 The model receives a 64-by-40 ASCII arena with compact actor, anchor, hazard, and projectile state. Exact actor and threat coordinates complement the grid; cover is represented in the topology. Repeated histories are capped, and the ghost's locked objective is sent only in AI-vs-AI mode. The game engine owns navigation, telegraphs, cooldowns, collisions, damage, and progression.
 
-Jev can pounce, phase step, lay rift mines, fire aimed power blasts, launch a three-shot soul salvo, summon wraithlings, call meteor strikes, and sidestep incoming fire. The ghost can dash, turn briefly invisible, split into mirror clones, use a close soul burst, hook across open space, and parry with lantern guard.
+Jev uses Rift Rend, aimed power blasts, a three-shot Soul Salvo, Rift Rush, rift mines, wraithlings, meteor strikes, and Shadow Dodge. After all three anchors break, Rift Aegis blocks two incoming hits during a short shield window. The ghost has five distinct skills: Phase Dash (burst movement with an afterimage), Rift Hook, Mirror Echo, Lantern Guard, and Soul Burst. Both fighters share each map's hazards and can be damaged or slowed by them.
 
 ## Arenas
 
 - **The Last Crossing** — four linked customs-office districts with loops around a guarded central cross.
-- **Cinderworks** — broken forge spines, furnace islands, and timed steam vents.
-- **Drowned Archive** — offset shelves, water currents, long lanes, and narrow reading-room gates.
-- **Verdant Glasshouse** — hedge loops, reflecting pools, trellis cuts, and spore pockets.
+- **Cinderworks** — broken forge spines, furnace islands, timed steam vents, and warning-marked lava.
+- **Drowned Archive** — offset shelves, water currents, quicksand, long lanes, and narrow reading-room gates.
+- **Verdant Glasshouse** — hedge loops, reflecting pools, trellis cuts, and moving swarms.
 - **Meridian Vault** — rotated radial ribs, reliquaries, looped chambers, and arc fields.
 - **The Fractured Span** — island bridges, long flanks, diagonal routes, and volatile rift surges.
 
