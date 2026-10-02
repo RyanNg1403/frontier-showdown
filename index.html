@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#171321" />
+    <meta name="description" content="Break Jev's rift anchors, expose the demon, and fight your way through six expanding afterlife arenas." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>JEVil — Rift Hunt</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/game.js?v=jev-agency-input-20260930" type="module"></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="JEVil home">
+          <span class="brand-mark" aria-hidden="true">J</span>
+          <span class="brand-word">JEV<span>il</span></span>
+        </a>
+        <div class="connection-status" id="connection-status" role="status" aria-label="Jev connection">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="sr-only" id="connection-label">Checking Jev connection</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="landing" id="landing-screen" aria-labelledby="landing-title">
+          <div class="landing-copy">
+            <h1 id="landing-title">Break<br />the<br /><em>hunt.</em></h1>
+            <p class="landing-description" id="landing-description">Shatter three rift anchors to expose Jev. Then take the fight to the demon.</p>
+
+            <div class="mode-picker" role="group" aria-label="Choose who controls the ghost">
+              <button class="mode-option is-selected" id="mode-human" type="button" data-mode="human" aria-pressed="true">You vs Jev</button>
+              <button class="mode-option" id="mode-auto" type="button" data-mode="auto" aria-pressed="false">Jev vs Jev</button>
+            </div>
+
+            <div class="level-picker" id="level-picker" data-biome="office" aria-label="Choose an arena">
+              <button class="level-arrow" id="level-prev" type="button" aria-label="Previous arena" disabled>←</button>
+              <div class="level-selection" aria-live="polite">
+                <span class="level-number" id="level-number">01 / 06</span>
+                <span class="level-name" id="level-name">The Last Crossing</span>
+              </div>
+              <button class="level-arrow" id="level-next" type="button" aria-label="Next arena">→</button>
+            </div>
+
+            <button class="button button-primary" id="start-button" type="button">
+              <span>Enter the rift</span><span class="button-arrow" aria-hidden="true">↗</span>
+            </button>
+            <div class="landing-controls" aria-label="Controls">
+              <span><kbd>W A S D</kbd> move</span>
+              <span><kbd>L-CLICK / Z</kbd> fire</span>
+              <span><kbd>SPACE</kbd> dash</span>
+              <span><kbd>R-CLICK / SHIFT</kbd> parry</span>
+              <span><kbd>Q</kbd> clone · <kbd>E</kbd> hook · <kbd>R</kbd> veil · <kbd>F</kbd> burst</span>
+            </div>
+          </div>
+
+          <div class="hero-art">
+            <img src="/assets/last-crossing-hero.png" alt="A lantern-carrying ghost faces Jev in a glowing afterlife arena" />
+          </div>
+        </section>
+
+        <section class="arena-screen" id="arena-screen" hidden aria-label="Shatter the rift anchors and fight Jev">
+          <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat Jev. Move with WASD or arrow keys, aim and fire with left-click or Z, dash with Space, parry with right-click or Shift, use F for soul burst, Q for mirror clones, R to vanish, and E for rift hook." ></canvas>
+
+          <div class="arena-topline">
+            <h2 id="arena-name">THE LAST CROSSING</h2>
+            <div class="arena-tools">
+              <button class="music-toggle" id="music-toggle" type="button" aria-label="Mute music" aria-pressed="true" data-muted="false">♫</button>
+              <button class="decision-toggle" id="decision-toggle" type="button" aria-label="Hide decision panels" aria-pressed="true">◉</button>
+              <button class="decision-toggle settings-toggle" id="settings-toggle" type="button" aria-label="Pause and open settings" aria-haspopup="dialog">⚙</button>
+            </div>
+          </div>
+
+          <div class="arena-hud" aria-live="polite">
+            <div class="hud-cluster player-cluster">
+              <div class="health-pips" id="health-pips" aria-label="Four lives remaining"></div>
+              <div class="anchor-progress" id="anchor-progress" aria-label="Three rift anchors remaining">
+                <span class="anchor-pip"></span><span class="anchor-pip"></span><span class="anchor-pip"></span>
+              </div>
+            </div>
+            <div class="timer-block">
+              <div class="timer" id="timer">01:15</div>
+              <span class="timer-caption" id="timer-caption">UNTIL RIFT SURGE</span>
+            </div>
+            <div class="hud-cluster demon-cluster">
+              <div class="jev-health-pips" id="jev-health-pips" role="img" aria-label="Jev: six health remaining"></div>
+              <div class="jev-intent" id="jev-intent" data-mode="pursue" aria-live="polite"><span class="intent-dot"></span><span id="jev-mode-label">PRESSING</span></div>
+            </div>
+          </div>
+
+          <div class="objective-callout" id="objective-callout" aria-live="polite">
+            <span class="objective-symbol" aria-hidden="true">◇</span>
+            <span id="objective-label">Break the rift anchors</span>
+          </div>
+          <canvas class="map-overview" id="map-overview" width="256" height="160" aria-label="Arena map overview"></canvas>
+          <div class="game-callout" id="game-callout" aria-live="polite" hidden></div>
+
+          <div class="decision-panels" id="decision-panels" aria-label="Jev decision data">
+            <article class="decision-card demon-decision" id="jev-decision-card" aria-label="Jev decision">
+              <span class="decision-owner">JEV</span>
+              <strong class="decision-action" id="jev-decision-action">Reading the arena</strong>
+              <div class="decision-options" id="jev-decision-options"></div>
+              <button class="decision-expand" id="jev-decision-expand" type="button" aria-expanded="false">View all tactics</button>
+            </article>
+            <article class="decision-card ghost-decision" id="player-decision-card" aria-label="Ghost decision" hidden>
+              <span class="decision-owner">GHOST</span>
+              <strong class="decision-action" id="player-decision-action">Choosing a route</strong>
+              <div class="decision-options" id="player-decision-options"></div>
+              <button class="decision-expand" id="player-decision-expand" type="button" aria-expanded="false">View all tactics</button>
+            </article>
+          </div>
+
+          <div class="touch-controls" id="touch-controls">
+            <div class="stick-zone" id="stick-zone" role="application" aria-label="Touch movement control"><span class="stick-ring"></span><span class="stick-knob" id="stick-knob"></span></div>
+            <div class="touch-actions">
+              <button class="touch-action skill-echo" id="echo-touch" type="button" aria-label="Three mirror clones: Q">◌</button>
+              <button class="touch-action skill-veil" id="veil-touch" type="button" aria-label="Veil: R">◍</button>
+              <button class="touch-action skill-hook" id="hook-touch" type="button" aria-label="Rift hook: E">↗</button>
+              <button class="touch-action dash-action" id="dash-touch" type="button" aria-label="Dash: Space">⤴</button>
+              <button class="touch-action pulse-action" id="pulse-touch" type="button" aria-label="Soul burst: X">✦</button>
+              <button class="touch-action skill-guard" id="guard-touch" type="button" aria-label="Lantern guard: C">◈</button>
+            </div>
+          </div>
+
+          <div class="settings-overlay" id="settings-overlay" hidden>
+            <section class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
+              <header class="settings-header">
+                <div><span class="settings-kicker">PAUSED</span><h2 id="settings-title">Settings</h2></div>
+                <button class="settings-close" id="settings-close" type="button" aria-label="Resume game">×</button>
+              </header>
+              <div class="settings-options">
+                <label class="setting-row" for="settings-music"><span>Music</span><input id="settings-music" type="checkbox" checked /></label>
+                <label class="setting-row volume-row" for="settings-volume"><span>Volume</span><input id="settings-volume" type="range" min="0" max="100" value="55" /><output id="settings-volume-value" for="settings-volume">55%</output></label>
+                <label class="setting-row" for="settings-difficulty"><span>Difficulty</span><select id="settings-difficulty"><option value="calm">Calm</option><option value="standard" selected>Standard</option><option value="nightmare">Nightmare</option></select></label>
+              </div>
+              <section class="hotkey-manual" aria-labelledby="hotkey-title">
+                <h3 id="hotkey-title">Hotkeys</h3>
+                <dl>
+                  <div><dt>WASD / arrows</dt><dd>Move</dd></div>
+                  <div><dt>Left-click / Z</dt><dd>Fire soul bolts</dd></div>
+                  <div><dt>Right-click / Shift / C</dt><dd>Lantern guard & parry</dd></div>
+                  <div><dt>Space</dt><dd>Spectral dash</dd></div>
+                  <div><dt>Q</dt><dd>Mirror clones</dd></div>
+                  <div><dt>E</dt><dd>Rift hook</dd></div>
+                  <div><dt>R</dt><dd>Ghost veil (invisibility)</dd></div>
+                  <div><dt>F / X</dt><dd>Soul burst shockwave</dd></div>
+                  <div><dt>Esc</dt><dd>Resume / pause</dd></div>
+                </dl>
+              </section>
+              <button class="button button-primary settings-resume" id="settings-resume" type="button">Resume <span aria-hidden="true">↗</span></button>
+            </section>
+          </div>
+
+          <div class="result-overlay" id="result-overlay" hidden>
+            <p class="result-kicker" id="result-kicker">ANCHORS BROKEN</p>
+            <h2 id="result-title">The hunt is yours.</h2>
+            <p id="result-copy"></p>
+            <div class="result-actions">
+              <button class="button button-primary" id="next-level-button" type="button"><span>Next arena</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+              <button class="button button-secondary" id="restart-button" type="button"><span>Run it back</span><span class="button-arrow" aria-hidden="true">↻</span></button>
+              <button class="result-home" id="home-button" type="button">Choose arena</button>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer class="site-footer"><span>JEVIL · RIFT HUNT</span></footer>
+    </div>
+  </body>
+</html>
