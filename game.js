@@ -15,6 +15,8 @@ const RIFT_RUSH_COOLDOWN = 8.6;
 const RIFT_RUSH_MAX_TRAVEL = 430;
 const PLAYER_SHOT_SPEED = 780;
 const PLAYER_SHOT_INTERVAL = 0.38;
+const CHARACTER_SPRITE_WIDTH = 100;
+const CHARACTER_SPRITE_HEIGHT = 110;
 const SURVIVAL_SECONDS = 75;
 const TACTIC_DECISION_INTERVAL = 820;
 const TACTIC_DECISION_MIN_GAP = 650;
@@ -64,7 +66,7 @@ const music = {
 const baseLevels = [
   {
     id: "crossing",
-    name: "The Last Crossing",
+    name: "OpenAI Glass Atrium",
     biome: "office",
     topology: "Open hall with paired pillars, a broad central desk, and two lower benches.",
     chokepoints: [{ x: 640, y: 332, name: "desk approach" }, { x: 640, y: 491, name: "lower passage" }],
@@ -80,7 +82,7 @@ const baseLevels = [
   },
   {
     id: "cinder",
-    name: "Cinderworks",
+    name: "OpenAI Compute Studio",
     biome: "cinder",
     topology: "A broken central spine creates a narrow crossing, while furnace islands split the outer lanes.",
     chokepoints: [{ x: 480, y: 300, name: "broken spine" }, { x: 590, y: 285, name: "furnace cut-through" }],
@@ -99,7 +101,7 @@ const baseLevels = [
   },
   {
     id: "drowned",
-    name: "Drowned Archive",
+    name: "Anthropic Reading Room",
     biome: "archive",
     topology: "Offset rows of flooded shelves form a weaving maze with several tight turns and long sightlines.",
     chokepoints: [{ x: 480, y: 180, name: "upper shelf gap" }, { x: 480, y: 300, name: "central aisle" }],
@@ -152,7 +154,7 @@ const authoredLevels = [
   ...baseLevels.map(scaleLegacyLevel),
   {
     id: "glassgarden",
-    name: "Verdant Glasshouse",
+    name: "Anthropic Living Studio",
     biome: "garden",
     topology: "Three hedge loops wrap a broad reflecting pool, with offset trellises, flowerbeds, and cross-cut passages between long outer lanes.",
     chokepoints: [{ x: 640, y: 226, name: "pool crossing" }, { x: 640, y: 537, name: "south garden opening" }],
@@ -181,7 +183,7 @@ const authoredLevels = [
   },
   {
     id: "meridian",
-    name: "Meridian Vault",
+    name: "Anthropic Quiet Commons",
     biome: "vault",
     topology: "A circular heart and broken radial walls split the vault into five chambers; rotated ribs create diagonal cut-throughs and looping bypass routes.",
     chokepoints: [{ x: 378, y: 400, name: "western breach" }, { x: 905, y: 400, name: "eastern breach" }],
@@ -211,7 +213,7 @@ const authoredLevels = [
   },
   {
     id: "fractured",
-    name: "The Fractured Span",
+    name: "Frontier Collaboration Hall",
     biome: "rift",
     topology: "Offset island walls form three winding bridges across a volatile center, with broad upper and lower flanks that reconnect behind the player.",
     chokepoints: [{ x: 640, y: 239, name: "upper bridge" }, { x: 514, y: 427, name: "western bridge" }, { x: 780, y: 431, name: "eastern bridge" }],
@@ -477,37 +479,136 @@ const playerReadLabels = {
   close_brawler: true,
   unpredictable: true,
 };
-const artwork = { floors: {}, ghost: new Image(), jev: new Image() };
+const skinCatalog = Object.freeze({
+  sam: Object.freeze({
+    id: "sam",
+    name: "Sam Altman",
+    company: "OpenAI",
+    victoryHeadline: "OpenAI won, GPT is AGI",
+    skillIconSheet: "frontier-skill-icons-openai-pixel.png",
+    sprite: "frontier-sam-pixel-v3.png",
+    // Normalized run atlas built by tools/build_run_atlas.py (one scale + pivot for every frame).
+    runAtlas: "frontier-sam-run-atlas.png",
+    // World pixels travelled per full run cycle; frames advance with distance so feet do not skate.
+    runStrideDistance: Object.freeze({ side: 150, vertical: 132 }),
+    companion: "codex",
+    mirrorLeftProfile: true,
+    accent: "#79e4cf",
+    light: [115, 226, 205],
+    spriteVisualScale: 1.12,
+    spriteRows: 4,
+    spriteFrameBounds: [
+      [[87, 44, 143, 266], [83, 44, 158, 266], [84, 44, 154, 266], [81, 45, 146, 265]],
+      [[78, 44, 162, 266], [55, 43, 203, 267], [63, 39, 195, 271], [79, 42, 161, 268]],
+      [[84, 35, 152, 273], [66, 36, 191, 272], [72, 36, 194, 272], [80, 34, 155, 274]],
+      [[87, 16, 150, 263], [60, 18, 174, 260], [84, 16, 164, 263], [78, 18, 157, 261]],
+    ],
+    futureGameplay: Object.freeze({ statModifiers: null, skillOverrides: null }),
+  }),
+  dario: Object.freeze({
+    id: "dario",
+    name: "Dario Amodei",
+    company: "Anthropic",
+    victoryHeadline: "Anthropic won, Claude is AGI",
+    skillIconSheet: "frontier-skill-icons-anthropic-pixel.png",
+    sprite: "frontier-dario-pixel-v5.png",
+    runAtlas: "frontier-dario-run-atlas.png",
+    runStrideDistance: Object.freeze({ side: 150, vertical: 132 }),
+    companion: "claude",
+    accent: "#f29a68",
+    light: [242, 143, 91],
+    spriteVisualScale: 1.12,
+    spriteRows: 4,
+    normalizeSpriteFrames: true,
+    mirrorLeftProfile: true,
+    futureGameplay: Object.freeze({ statModifiers: null, skillOverrides: null }),
+  }),
+});
+const companionSpriteCatalog = Object.freeze({
+  codex: Object.freeze({ columns: 4, rows: 3, horizontalFrameColumn: 0 }),
+  claude: Object.freeze({ columns: 4, rows: 3, horizontalFrameColumn: 0 }),
+});
+const storedRunnerSkin = readPreference("frontier.runnerSkin", "sam");
+const storedChaserSkin = readPreference("frontier.chaserSkin", "dario");
+let selectedRunnerSkin = Object.hasOwn(skinCatalog, storedRunnerSkin) ? storedRunnerSkin : "sam";
+let selectedChaserSkin = Object.hasOwn(skinCatalog, storedChaserSkin) ? storedChaserSkin : "dario";
+if (selectedRunnerSkin === selectedChaserSkin) {
+  selectedChaserSkin = selectedRunnerSkin === "sam" ? "dario" : "sam";
+  writePreference("frontier.chaserSkin", selectedChaserSkin);
+}
+const artwork = { floors: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
 for (const [biome, file] of Object.entries({
-  office: "floor-crossing-v2.png",
-  cinder: "floor-cinder-v2.png",
-  archive: "floor-archive-v2.png",
-  garden: "floor-garden-v2.png",
-  vault: "floor-vault-v2.png",
-  rift: "floor-rift-v2.png",
+  office: "frontier-floor-openai-atrium.png",
+  cinder: "frontier-floor-openai-compute.png",
+  archive: "frontier-floor-anthropic-library.png",
+  garden: "frontier-floor-anthropic-living.png",
+  vault: "frontier-floor-anthropic-quiet.png",
+  rift: "frontier-floor-frontier-common.png",
 })) {
   artwork.floors[biome] = new Image();
   artwork.floors[biome].addEventListener("load", renderLevelThumbnails, { once: true });
   artwork.floors[biome].src = "/assets/" + file;
 }
-artwork.ghost.src = "/assets/ghost-combat-sheet.png";
-artwork.jev.src = "/assets/jev-combat-sheet.png";
-artwork.skills = new Image();
-artwork.skills.src = "/assets/skill-icons.png";
-
+for (const skin of Object.values(skinCatalog)) {
+  const sprite = new Image();
+  sprite.addEventListener("load", () => {
+    if (skin.normalizeSpriteFrames) artwork.spriteBounds[skin.id] = prepareSpriteFrameBounds(sprite);
+  }, { once: true });
+  sprite.src = "/assets/" + skin.sprite;
+  artwork.skins[skin.id] = sprite;
+  const runAtlas = new Image();
+  runAtlas.addEventListener("load", () => {
+    artwork.runFrames[skin.id] = prepareRunAtlasFrames(runAtlas);
+  }, { once: true });
+  runAtlas.src = "/assets/" + skin.runAtlas;
+  artwork.runs[skin.id] = runAtlas;
+  const skillIcons = new Image();
+  skillIcons.src = "/assets/" + skin.skillIconSheet;
+  artwork.skillIcons[skin.id] = skillIcons;
+}
+for (const [companion, file] of Object.entries({
+  codex: "frontier-codex-pixel-v3.png",
+  claude: "frontier-claude-pixel-v7.png",
+})) {
+  artwork.companions[companion] = new Image();
+  artwork.companions[companion].src = "/assets/" + file;
+}
+for (const [lab, file] of Object.entries({
+  openai: "frontier-props-openai-pixel-v2.png",
+  anthropic: "frontier-props-anthropic-pixel-v2.png",
+  shared: "frontier-props-shared.png",
+})) {
+  artwork.props[lab] = new Image();
+  artwork.props[lab].src = "/assets/" + file;
+}
+for (const [lab, file] of Object.entries({
+  openai: "frontier-barriers-openai-pixel-v2.png",
+  anthropic: "frontier-barriers-anthropic-pixel-v2.png",
+})) {
+  artwork.barriers[lab] = new Image();
+  artwork.barriers[lab].addEventListener("load", () => {
+    artwork.barrierBounds[lab] = prepareAtlasFrameBounds(artwork.barriers[lab], 4, 2);
+  }, { once: true });
+  artwork.barriers[lab].src = "/assets/" + file;
+}
+for (const [brand, file] of Object.entries({
+  openai: "brand-openai-blossom.svg",
+  anthropic: "brand-anthropic-wordmark.svg",
+  anthropicMark: "brand-anthropic-mark.svg",
+})) {
+  artwork.brandMarks[brand] = new Image();
+  artwork.brandMarks[brand].addEventListener("load", () => {
+    renderLevelThumbnails();
+    buildAnchorBrandSpriteSheets();
+  }, { once: true });
+  artwork.brandMarks[brand].src = "/assets/" + file;
+}
 const skillIconCells = {
   phase_dash: [0, 0], rift_hook: [1, 0], mirror_echo: [2, 0], lantern_guard: [3, 0],
   soul_burst: [0, 1], rift_rend: [1, 1], power_blast: [2, 1], soul_salvo: [3, 1],
   meteor_storm: [0, 2], rift_mine: [1, 2], summon_wraiths: [2, 2], rift_rush: [3, 2],
-  shadow_dodge: [0, 3],
+  shadow_dodge: [0, 3], rift_aegis: [1, 3],
 };
-const skillIconAssets = { rift_aegis: "/assets/rift-aegis-icon.png" };
-artwork.skillExtras = {};
-for (const [skillId, source] of Object.entries(skillIconAssets)) {
-  const image = new Image();
-  image.src = source;
-  artwork.skillExtras[skillId] = image;
-}
 const skillManual = {
   ghost: [
     { id: "phase_dash", name: "Phase Dash", key: "Space", description: "Burst through danger; leave a decoy afterimage." },
@@ -548,6 +649,13 @@ const ui = {
   arena: document.querySelector("#arena-screen"),
   start: document.querySelector("#start-button"),
   landingDescription: document.querySelector("#landing-description"),
+  runnerSkinChoices: [...document.querySelectorAll('input[name="runner-skin"]')],
+  runnerSkinCard: document.querySelector("#runner-skin-card"),
+  runnerCompany: document.querySelector("#runner-company"),
+  chaserSkinChoices: [...document.querySelectorAll('input[name="chaser-skin"]')],
+  chaserSkinCard: document.querySelector("#chaser-skin-card"),
+  chaserCompany: document.querySelector("#chaser-company"),
+  skinSwap: document.querySelector("#skin-swap-button"),
   levelPicker: document.querySelector("#level-picker"),
   levelPrev: document.querySelector("#level-prev"),
   levelNext: document.querySelector("#level-next"),
@@ -610,6 +718,422 @@ const ui = {
   nextLevel: document.querySelector("#next-level-button"),
   home: document.querySelector("#home-button"),
 };
+
+function skinForRole(role) {
+  const selected = game?.skinLoadout?.[role]
+    ?? (role === "runner" ? selectedRunnerSkin : selectedChaserSkin);
+  return Object.hasOwn(skinCatalog, selected) ? skinCatalog[selected] : skinCatalog.sam;
+}
+
+function spriteForRole(role) {
+  return artwork.skins[skinForRole(role).id];
+}
+
+function createAnimationCanvas(width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+function measureAlphaBounds(canvas, minimumAlpha = 1) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  let minX = canvas.width;
+  let minY = canvas.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < canvas.height; y += 1) {
+    for (let x = 0; x < canvas.width; x += 1) {
+      if (pixels[(y * canvas.width + x) * 4 + 3] < minimumAlpha) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (maxX < minX || maxY < minY) return null;
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+function prepareAtlasFrameBounds(sheet, columns, rows) {
+  const frameWidth = sheet.naturalWidth / columns;
+  const frameHeight = sheet.naturalHeight / rows;
+  return Array.from({ length: rows * columns }, (_, frame) => {
+    const cell = createAnimationCanvas(Math.ceil(frameWidth), Math.ceil(frameHeight));
+    const column = frame % columns;
+    const row = Math.floor(frame / columns);
+    cell.getContext("2d").drawImage(
+      sheet,
+      column * frameWidth, row * frameHeight, frameWidth, frameHeight,
+      0, 0, frameWidth, frameHeight,
+    );
+    return measureAlphaBounds(cell);
+  });
+}
+
+function prepareSpriteFrameBounds(sheet) {
+  const columns = 4;
+  const rows = 4;
+  const frameWidth = sheet.naturalWidth / columns;
+  const frameHeight = sheet.naturalHeight / rows;
+  let union = { minX: frameWidth, minY: frameHeight, maxX: -1, maxY: -1 };
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const cell = createAnimationCanvas(Math.ceil(frameWidth), Math.ceil(frameHeight));
+      cell.getContext("2d").drawImage(
+        sheet,
+        column * frameWidth, row * frameHeight, frameWidth, frameHeight,
+        0, 0, frameWidth, frameHeight,
+      );
+      const content = measureAlphaBounds(cell);
+      if (!content) continue;
+      union = {
+        minX: Math.min(union.minX, content.x),
+        minY: Math.min(union.minY, content.y),
+        maxX: Math.max(union.maxX, content.x + content.width - 1),
+        maxY: Math.max(union.maxY, content.y + content.height - 1),
+      };
+    }
+  }
+  if (union.maxX < union.minX || union.maxY < union.minY) return null;
+  const sharedBounds = {
+    x: union.minX,
+    y: union.minY,
+    width: union.maxX - union.minX + 1,
+    height: union.maxY - union.minY + 1,
+  };
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: columns }, () => sharedBounds)
+  );
+}
+
+function prepareProfileRunFrames(sheet, skin, sideSheet = null) {
+  if (skin.normalizeSpriteFrames) {
+    const animation = prepareNormalizedProfileRunFrames(sheet, skin);
+    if (sideSheet?.complete && sideSheet.naturalWidth) {
+      const sideFrames = prepareProfileSideRunFrames(sideSheet, animation.bounds, skin);
+      if (sideFrames) {
+        animation.frames.right = sideFrames.right;
+        animation.frames.left = sideFrames.left;
+      }
+    }
+    return animation;
+  }
+  const columns = skin.runAtlasColumns || 4;
+  const rows = skin.runAtlasRows || 2;
+  const frameWidth = sheet.naturalWidth / columns;
+  const frameHeight = sheet.naturalHeight / rows;
+  const frameCount = skin.runFrameCount || 4;
+  let union = { minX: frameWidth, minY: frameHeight, maxX: -1, maxY: -1 };
+  const frameCells = {};
+  const directions = Object.keys(skin.runFrameRows || { right: 0, left: 2 });
+  for (const direction of directions) {
+    frameCells[direction] = Array.from({ length: frameCount }, (_, index) => {
+      const column = index % columns;
+      const row = skin.runFrameRows[direction] + Math.floor(index / columns);
+      const sourceX = column * frameWidth;
+      const sourceY = row * frameHeight;
+      const scan = createAnimationCanvas(Math.ceil(frameWidth), Math.ceil(frameHeight));
+      const scanContext = scan.getContext("2d", { willReadFrequently: true });
+      scanContext.drawImage(sheet, sourceX, sourceY, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+      removeDetachedRedSpecks(scan);
+      const pixels = scanContext.getImageData(0, 0, scan.width, scan.height).data;
+      let minX = scan.width;
+      let minY = scan.height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = 0; y < scan.height; y += 1) {
+        for (let x = 0; x < scan.width; x += 1) {
+          if (pixels[(y * scan.width + x) * 4 + 3] < 24) continue;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      union = {
+        minX: Math.min(union.minX, minX),
+        minY: Math.min(union.minY, minY),
+        maxX: Math.max(union.maxX, maxX),
+        maxY: Math.max(union.maxY, maxY),
+      };
+      return scan;
+    });
+  }
+  const padding = 4;
+  union.minX = Math.max(0, union.minX - padding);
+  union.minY = Math.max(0, union.minY - padding);
+  union.maxX = Math.min(frameWidth - 1, union.maxX + padding);
+  union.maxY = Math.min(frameHeight - 1, union.maxY + padding);
+  const cropWidth = Math.ceil(union.maxX - union.minX + 1);
+  const cropHeight = Math.ceil(union.maxY - union.minY + 1);
+  const frames = Object.fromEntries(directions.map((direction) => [
+    direction,
+    frameCells[direction].map((cell) => {
+      const frame = createAnimationCanvas(cropWidth, cropHeight);
+      frame.getContext("2d").drawImage(
+        cell, union.minX, union.minY, cropWidth, cropHeight,
+        0, 0, frame.width, frame.height,
+      );
+      return frame;
+    }),
+  ]));
+  return { frames, bounds: union };
+}
+
+function prepareNormalizedProfileRunFrames(sheet, skin) {
+  const columns = skin.runAtlasColumns || 4;
+  const rows = skin.runAtlasRows || 2;
+  const frameWidth = sheet.naturalWidth / columns;
+  const frameHeight = sheet.naturalHeight / rows;
+  const frameCount = skin.runFrameCount || 4;
+  let union = { minX: frameWidth, minY: frameHeight, maxX: -1, maxY: -1 };
+  const frameCells = {};
+  const directions = Object.keys(skin.runFrameRows || { right: 0, left: 2 });
+  for (const direction of directions) {
+    frameCells[direction] = Array.from({ length: frameCount }, (_, index) => {
+      const column = index % columns;
+      const row = skin.runFrameRows[direction] + Math.floor(index / columns);
+      const sourceX = column * frameWidth;
+      const sourceY = row * frameHeight;
+      const cell = createAnimationCanvas(Math.ceil(frameWidth), Math.ceil(frameHeight));
+      cell.getContext("2d").drawImage(sheet, sourceX, sourceY, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+      removeDetachedRedSpecks(cell);
+      const content = measureAlphaBounds(cell);
+      if (content) {
+        union = {
+          minX: Math.min(union.minX, content.x),
+          minY: Math.min(union.minY, content.y),
+          maxX: Math.max(union.maxX, content.x + content.width - 1),
+          maxY: Math.max(union.maxY, content.y + content.height - 1),
+        };
+      }
+      return cell;
+    });
+  }
+  if (union.maxX < union.minX || union.maxY < union.minY) return null;
+  const padding = 2;
+  const cropX = Math.max(0, union.minX - padding);
+  const cropY = Math.max(0, union.minY - padding);
+  const cropWidth = Math.ceil(Math.min(frameWidth - cropX, union.maxX - cropX + padding + 1));
+  const cropHeight = Math.ceil(Math.min(frameHeight - cropY, union.maxY - cropY + padding + 1));
+  const frames = Object.fromEntries(directions.map((direction) => [
+    direction,
+    frameCells[direction].map((cell) => {
+      const frame = createAnimationCanvas(cropWidth, cropHeight);
+      frame.getContext("2d").drawImage(cell, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+      return frame;
+    }),
+  ]));
+  return { frames, bounds: { x: cropX, y: cropY, width: cropWidth, height: cropHeight }, normalized: true };
+}
+
+function prepareProfileSideRunFrames(sheet, targetBounds, skin) {
+  const columns = skin.runSideAtlasColumns || 4;
+  const rows = skin.runSideAtlasRows || 2;
+  const frameWidth = sheet.naturalWidth / columns;
+  const frameHeight = sheet.naturalHeight / rows;
+  const frameCount = Math.min(skin.runSideFrameCount || columns * rows, columns * rows);
+  const sourceFrames = Array.from({ length: frameCount }, (_, index) => {
+    const frame = createAnimationCanvas(Math.ceil(frameWidth), Math.ceil(frameHeight));
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    frame.getContext("2d").drawImage(
+      sheet,
+      column * frameWidth, row * frameHeight, frameWidth, frameHeight,
+      0, 0, frame.width, frame.height,
+    );
+    removeDetachedRedSpecks(frame);
+    return frame;
+  });
+  const outputWidth = targetBounds?.width || Math.ceil(frameWidth);
+  const outputHeight = targetBounds?.height || Math.ceil(frameHeight);
+  const contentHeight = Math.max(1, outputHeight - 16);
+  const right = sourceFrames.map((source) => {
+    const content = measureAlphaBounds(source, 24);
+    if (!content) return createAnimationCanvas(outputWidth, outputHeight);
+    const padding = 2;
+    const cropX = Math.max(0, content.x - padding);
+    const cropY = Math.max(0, content.y - padding);
+    const cropWidth = Math.min(source.width - cropX, content.width + padding * 2);
+    const cropHeight = Math.min(source.height - cropY, content.height + padding * 2);
+    const sourceDrawHeight = Math.max(1, contentHeight - padding * 2);
+    const scale = Math.min(sourceDrawHeight / cropHeight, (outputWidth - 12) / cropWidth);
+    const drawWidth = cropWidth * scale;
+    const drawHeight = cropHeight * scale;
+    const frame = createAnimationCanvas(outputWidth, outputHeight);
+    frame.getContext("2d").drawImage(
+      source,
+      cropX, cropY, cropWidth, cropHeight,
+      (outputWidth - drawWidth) / 2, outputHeight - 4 - drawHeight, drawWidth, drawHeight,
+    );
+    return frame;
+  });
+  const left = right.map((source) => {
+    const frame = createAnimationCanvas(outputWidth, outputHeight);
+    const context = frame.getContext("2d");
+    context.translate(outputWidth, 0);
+    context.scale(-1, 1);
+    context.drawImage(source, 0, 0);
+    return frame;
+  });
+  return { right, left, bounds: targetBounds || { x: 0, y: 0, width: outputWidth, height: outputHeight } };
+}
+
+function removeDetachedRedSpecks(canvas) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const image = context.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = image.data;
+  const total = canvas.width * canvas.height;
+  const seen = new Uint8Array(total);
+  const queue = new Int32Array(total);
+  const isRedPixel = (pixelIndex) => {
+    const offset = pixelIndex * 4;
+    const red = pixels[offset];
+    return pixels[offset + 3] >= 48 && red >= 72 && red > pixels[offset + 1] * 1.28 && red > pixels[offset + 2] * 1.12;
+  };
+  let changed = false;
+  for (let start = 0; start < total; start += 1) {
+    if (seen[start] || !isRedPixel(start)) continue;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    seen[start] = 1;
+    while (head < tail) {
+      const pixelIndex = queue[head++];
+      const x = pixelIndex % canvas.width;
+      const y = Math.floor(pixelIndex / canvas.width);
+      for (let nextY = Math.max(0, y - 1); nextY <= Math.min(canvas.height - 1, y + 1); nextY += 1) {
+        for (let nextX = Math.max(0, x - 1); nextX <= Math.min(canvas.width - 1, x + 1); nextX += 1) {
+          const next = nextY * canvas.width + nextX;
+          if (seen[next] || !isRedPixel(next)) continue;
+          seen[next] = 1;
+          queue[tail++] = next;
+        }
+      }
+    }
+    if (tail > 36) continue;
+    for (let index = 0; index < tail; index += 1) pixels[queue[index] * 4 + 3] = 0;
+    changed = true;
+  }
+  if (changed) context.putImageData(image, 0, 0);
+}
+
+function drawProfileRunFrame(ctx, skinId, direction, frameIndex, x, y, width, height) {
+  const animation = artwork.runFrames[skinId];
+  const skin = skinCatalog[skinId];
+  if (!animation || !skin) return false;
+  const frames = animation.frames[direction];
+  if (!frames) return false;
+  const frame = frames[frameIndex % frames.length];
+  const scale = Math.min(width / frame.width, height / frame.height)
+    * (skin.spriteVisualScale ?? 1)
+    * (animation.normalized ? skin.frameSizeScale ?? 1 : 1);
+  const scaledWidth = frame.width * scale;
+  const scaledHeight = frame.height * scale;
+  const phase = frameIndex / frames.length * Math.PI * 2;
+  const bounce = (1 - Math.cos(phase * 2)) * 1.5;
+  const lean = Math.sin(phase) * 0.03;
+  const nativeSideRun = skin.nativeSideRunMotion && (direction === "left" || direction === "right");
+  ctx.save();
+  ctx.translate(x + (nativeSideRun ? 0 : Math.cos(phase) * 1.2), y + height / 2 - (nativeSideRun ? 0 : bounce));
+  if (!nativeSideRun) ctx.rotate(lean);
+  ctx.drawImage(frame, -scaledWidth / 2, -scaledHeight, scaledWidth, scaledHeight);
+  ctx.restore();
+  return true;
+}
+
+function profileRunPose(entity, skinId, direction) {
+  const skin = skinCatalog[skinId];
+  const isSideways = direction === "left" || direction === "right";
+  const frameCount = artwork.runFrames[skinId]?.frames[direction]?.length || 8;
+  if (isSideways && skin?.sideRunStrideDistance) {
+    const speed = Math.hypot(Number(entity.vx) || 0, Number(entity.vy) || 0);
+    const cycleDuration = clamp(skin.sideRunStrideDistance / Math.max(speed, 1), 0.46, 1.12);
+    return Math.floor((entity.spriteAnimationTime || 0) / (cycleDuration / frameCount)) % frameCount;
+  }
+  const frameDuration = 0.075;
+  return Math.floor((entity.spriteAnimationTime || 0) / frameDuration) % frameCount;
+}
+
+function syncSkinSelector(role) {
+  const skin = role === "runner" ? skinCatalog[selectedRunnerSkin] : skinCatalog[selectedChaserSkin];
+  const controls = role === "runner" ? ui.runnerSkinChoices : ui.chaserSkinChoices;
+  const card = role === "runner" ? ui.runnerSkinCard : ui.chaserSkinCard;
+  const company = role === "runner" ? ui.runnerCompany : ui.chaserCompany;
+  for (const control of controls) control.checked = control.value === skin.id;
+  card.dataset.skin = skin.id;
+  company.textContent = skin.company;
+}
+
+function skinForLoadoutRole(role) {
+  return skinCatalog[role === "ghost" ? selectedRunnerSkin : selectedChaserSkin];
+}
+
+function brandedSkillName(skill, skin) {
+  const openAiNames = {
+    phase_dash: "Codex Slipstream",
+    rift_hook: "Codex Tether",
+    mirror_echo: "Codex Fork",
+    lantern_guard: "Safety Kernel",
+    soul_burst: "Codex Overload",
+    rift_rend: "Vector Sweep",
+    power_blast: "Vector Lance",
+    soul_salvo: "Parallel Salvo",
+    meteor_storm: "Compute Rain",
+    rift_mine: "Latent Trap",
+    summon_wraiths: "Codex Agents",
+    rift_rush: "Inference Rush",
+    shadow_dodge: "Low-Latency Step",
+    rift_aegis: "Safety Shield",
+  };
+  const anthropicNames = {
+    phase_dash: "Claude Slipstream",
+    rift_hook: "Constitution Thread",
+    mirror_echo: "Claude Echo Bloom",
+    lantern_guard: "Constitution Guard",
+    soul_burst: "Claude Ember Bloom",
+    rift_rend: "Redline Rend",
+    power_blast: "Claude Ember Lance",
+    soul_salvo: "Claude Scatterflare",
+    meteor_storm: "Redline Meteor",
+    rift_mine: "Tripwire Warden",
+    summon_wraiths: "Claude Wardens",
+    rift_rush: "Redline Charge",
+    shadow_dodge: "Constitution Sidestep",
+    rift_aegis: "Constitution Aegis",
+  };
+  const names = skin?.company === "Anthropic" ? anthropicNames : openAiNames;
+  return names[skill.id] || skill.name;
+}
+
+function setSelectedSkin(role, skinId) {
+  if (!Object.hasOwn(skinCatalog, skinId)) return;
+  const previousRunnerSkin = selectedRunnerSkin;
+  const previousChaserSkin = selectedChaserSkin;
+  if (role === "runner") {
+    selectedRunnerSkin = skinId;
+    if (selectedChaserSkin === skinId) selectedChaserSkin = previousRunnerSkin;
+  } else {
+    selectedChaserSkin = skinId;
+    if (selectedRunnerSkin === skinId) selectedRunnerSkin = previousChaserSkin;
+  }
+  writePreference("frontier.runnerSkin", selectedRunnerSkin);
+  writePreference("frontier.chaserSkin", selectedChaserSkin);
+  syncSkinSelector("runner");
+  syncSkinSelector("chaser");
+  renderSkillCatalog();
+}
+
+function swapSkinRoles() {
+  [selectedRunnerSkin, selectedChaserSkin] = [selectedChaserSkin, selectedRunnerSkin];
+  writePreference("frontier.runnerSkin", selectedRunnerSkin);
+  writePreference("frontier.chaserSkin", selectedChaserSkin);
+  syncSkinSelector("runner");
+  syncSkinSelector("chaser");
+  renderSkillCatalog();
+}
 
 function ensureMusic() {
   if (music.context) return true;
@@ -770,6 +1294,7 @@ function toggleSettings() {
 }
 
 let game = null;
+const cameraState = { x: 0, y: 0, updatedAt: 0, ready: false };
 let keys = new Set();
 let stick = { x: 0, y: 0, pointer: null, originX: 0, originY: 0 };
 let animationFrame = 0;
@@ -792,6 +1317,7 @@ let lastDecisionPanelPlacementAt = -1;
 let decisionPanelX = -1;
 let decisionPanelY = -1;
 const collisionGridCache = new WeakMap();
+const pathEdgeClearCache = new WeakMap();
 
 function makeAnchors() {
   const seeds = [
@@ -826,6 +1352,7 @@ function makeGame() {
   return {
     level: selectedLevel,
     mode: selectedMode,
+    skinLoadout: { runner: selectedRunnerSkin, chaser: selectedChaserSkin },
     running: true,
     paused: false,
     pauseVersion: 0,
@@ -843,8 +1370,8 @@ function makeGame() {
       echoCooldown: 0, hookCooldown: 0, guardCooldown: 0, guardTimer: 0, guardAdaptUntil: 0,
       afterimageTimer: 0, lastKnown: { x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y },
       echo: null, clones: [], hookTarget: null, aiInput: { x: 0, y: 0 }, aiTactic: "advance_anchor", aiHistory: [],
-      aiObjectiveAnchorId: null, aiObjectivePosition: null,
-      aiPath: [], aiNextPathAt: 0, aiActionUntil: 0, aiDecision: null, aiTarget: null,
+      aiObjectiveAnchorId: null, aiObjectivePosition: null, evadeTarget: null, evadeTargetUntil: 0,
+      aiPath: [], aiNextPathAt: 0, aiArrivalTarget: null, aiActionUntil: 0, aiDecision: null, aiTarget: null,
       stuckTimer: 0, recoveryTarget: null, recoveryUntil: 0, recoveryAttempts: 0,
     },
     jev: {
@@ -858,6 +1385,7 @@ function makeGame() {
       shadowDodgeCooldown: 0, shadowDodgePhase: "", shadowDodgeTimer: 0, shadowDodgeTarget: null,
       summonCooldown: 0, meteorCooldown: 0,
       riftAegisCooldown: 0, riftAegisTimer: 0, riftAegisCharges: 0,
+      contactStrike: null,
       stuckTimer: 0, recoveryTarget: null, recoveryUntil: 0, recoveryAttempts: 0,
       parryRecoveryUntil: 0,
       flankSide: 1,
@@ -912,8 +1440,8 @@ function renderLevelSelection() {
   blocks = selectedLevel.blocks;
   ui.levelNumber.textContent = String(selectedLevelIndex + 1).padStart(2, "0") + " / " + String(levels.length).padStart(2, "0");
   ui.levelName.textContent = selectedLevel.name;
-  ui.landingDescription.textContent = "Break three rift anchors, expose Jev, and defeat him in " + selectedLevel.name + ".";
-  ui.start.firstElementChild.textContent = "Enter " + selectedLevel.name;
+  ui.landingDescription.textContent = "Break three rift anchors, then defeat your rival.";
+  ui.start.firstElementChild.textContent = "Enter the arena";
   ui.levelPicker.dataset.biome = selectedLevel.biome;
   ui.levelPicker.setAttribute("aria-label", "Choose an arena. " + selectedLevel.topology);
   ui.levelPrev.disabled = selectedLevelIndex === 0;
@@ -930,6 +1458,7 @@ function renderLevelThumbnails() {
       button.className = "level-thumbnail";
       button.type = "button";
       button.setAttribute("aria-label", "Select " + level.name);
+      button.title = level.name;
       button.addEventListener("click", () => {
         selectedLevelIndex = index;
         renderLevelSelection();
@@ -953,30 +1482,30 @@ function renderLevelThumbnails() {
 
 function drawLevelThumbnail(canvas, level) {
   const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
   const scaleX = canvas.width / WORLD.width;
   const scaleY = canvas.height / WORLD.height;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#171321";
+  ctx.fillStyle = "#111719";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const floor = artwork.floors[level.biome];
   if (floor?.complete && floor.naturalWidth > 0) {
-    ctx.globalAlpha = 0.72;
-    ctx.drawImage(floor, 0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 1;
+    for (let y = 0; y < canvas.height; y += floor.naturalHeight * scaleY) {
+      for (let x = 0; x < canvas.width; x += floor.naturalWidth * scaleX) {
+        ctx.drawImage(floor, x, y, floor.naturalWidth * scaleX, floor.naturalHeight * scaleY);
+      }
+    }
   }
   ctx.save();
   ctx.scale(scaleX, scaleY);
-  ctx.fillStyle = "rgba(10, 8, 17, .5)";
+  ctx.fillStyle = "rgba(10, 16, 15, .12)";
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-  ctx.fillStyle = "rgba(28, 21, 38, .9)";
-  ctx.strokeStyle = "rgba(239, 224, 243, .55)";
-  ctx.lineWidth = 7;
+  drawCompanyFloorBranding(ctx, level.biome, 0.74, level);
   for (const block of level.blocks) {
     ctx.save();
     ctx.translate(block.x + block.w / 2, block.y + block.h / 2);
     ctx.rotate(block.angle || 0);
-    ctx.fillRect(-block.w / 2, -block.h / 2, block.w, block.h);
-    ctx.strokeRect(-block.w / 2, -block.h / 2, block.w, block.h);
+    drawPixelOfficeObstacle(ctx, { ...block, x: -block.w / 2, y: -block.h / 2 }, level.biome);
     ctx.restore();
   }
   const hazardColors = {
@@ -987,9 +1516,7 @@ function drawLevelThumbnail(canvas, level) {
     const bounds = hazardBounds(hazard);
     ctx.fillStyle = hazardColors[hazard.kind] || "#d887ff";
     ctx.globalAlpha = 0.78;
-    ctx.beginPath();
-    ctx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, 22);
-    ctx.fill();
+    ctx.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
   }
   ctx.globalAlpha = 1;
   for (const point of level.chokepoints) {
@@ -1003,8 +1530,17 @@ function drawLevelThumbnail(canvas, level) {
 
 function renderSkillCatalog() {
   const root = document.querySelector("#skill-catalog");
-  if (!root || root.childElementCount) return;
-  for (const [owner, title] of [["ghost", "Ghost"], ["jev", "Jev"]]) {
+  if (!root) return;
+  if (root.childElementCount) {
+    syncSkillCatalogIcons(root);
+    for (const name of root.querySelectorAll("[data-skill-name]")) {
+      const skin = skinForLoadoutRole(name.dataset.skillOwner);
+      const skill = skillManual[name.dataset.skillOwner]?.find((item) => item.id === name.dataset.skillId);
+      if (skill) name.textContent = brandedSkillName(skill, skin);
+    }
+    return;
+  }
+  for (const [owner, title] of [["ghost", "Runner"], ["jev", "Chaser"]]) {
     const group = document.createElement("section");
     group.className = "skill-group " + owner + "-skill-group";
     const heading = document.createElement("h3");
@@ -1017,18 +1553,19 @@ function renderSkillCatalog() {
       const cell = skillIconCells[skill.id];
       const icon = document.createElement("span");
       icon.className = "skill-icon";
+      icon.dataset.owner = owner;
       icon.setAttribute("aria-hidden", "true");
       if (cell) {
         icon.style.setProperty("--icon-x", (cell[0] * 100 / 3) + "%");
         icon.style.setProperty("--icon-y", (cell[1] * 100 / 3) + "%");
-      } else if (skillIconAssets[skill.id]) {
-        icon.classList.add("is-custom");
-        icon.style.backgroundImage = "url('" + skillIconAssets[skill.id] + "')";
       }
       const copy = document.createElement("span");
       copy.className = "skill-copy";
       const name = document.createElement("strong");
-      name.textContent = skill.name;
+      name.dataset.skillName = "true";
+      name.dataset.skillId = skill.id;
+      name.dataset.skillOwner = owner;
+      name.textContent = brandedSkillName(skill, skinForLoadoutRole(owner));
       const description = document.createElement("span");
       description.textContent = skill.description;
       copy.append(name, description);
@@ -1040,6 +1577,17 @@ function renderSkillCatalog() {
     }
     group.append(heading, list);
     root.append(group);
+  }
+  syncSkillCatalogIcons(root);
+}
+
+function syncSkillCatalogIcons(root = document.querySelector("#skill-catalog")) {
+  if (!root) return;
+  for (const icon of root.querySelectorAll(".skill-icon[data-owner]")) {
+    const role = icon.dataset.owner === "ghost" ? "runner" : "chaser";
+    const skin = skinForRole(role);
+    icon.style.backgroundImage = `url("/assets/${skin.skillIconSheet}")`;
+    icon.style.setProperty("--skill-accent", skin.accent);
   }
 }
 
@@ -1072,6 +1620,8 @@ function startGame() {
   window.clearTimeout(urgentJevDecisionTimer);
   urgentJevDecisionQueued = false;
   game = makeGame();
+  cameraState.ready = false;
+  cameraState.updatedAt = performance.now();
   ui.settingsOverlay.hidden = true;
   ui.settingsToggle.setAttribute("aria-label", "Pause and open settings");
   ui.settingsMusic.checked = music.enabled;
@@ -1158,7 +1708,11 @@ function setMode(mode, confidence, source = "system_one") {
     game.jev.riftAegisTimer > 0 || game.jev.riftAegisCharges > 0 ||
     (!isPlayerShotThreateningJev() && !(game.player.pulseTimer > 0 && playerGap < 174))
   )) mode = "flank";
-  if (game.elapsed < game.jev.parryRecoveryUntil && ["pursue", "intercept", "rift_rush", "ambush"].includes(mode)) {
+  const parryRecoveryActions = [
+    "pursue", "intercept", "rift_rush", "ambush", "rift_rend", "power_blast",
+    "soul_salvo", "rift_mine", "summon_wraiths", "meteor_storm",
+  ];
+  if (game.elapsed < game.jev.parryRecoveryUntil && parryRecoveryActions.includes(mode)) {
     mode = "flank";
   }
   if (mode === "shadow_dodge" && (
@@ -1412,9 +1966,16 @@ function announce(message, duration = 1450) {
 }
 
 function showSkillCallout(owner, abilityId) {
-  if (!game?.running || (!skillIconCells[abilityId] && !skillIconAssets[abilityId])) return;
+  if (!game?.running || !skillIconCells[abilityId]) return;
   game.skillCallouts = game.skillCallouts.filter((entry) => entry.owner !== owner && game.elapsed - entry.at < 1.2);
-  game.skillCallouts.push({ owner, abilityId, at: game.elapsed, duration: 1.05 });
+  const role = owner === "ghost" ? "runner" : "chaser";
+  const skin = skinForRole(role);
+  const skill = skillManual[owner].find((item) => item.id === abilityId);
+  game.skillCallouts.push({
+    owner, abilityId, skinId: skin.id,
+    skillName: skill ? brandedSkillName(skill, skin) : abilityId,
+    at: game.elapsed, duration: 1.05,
+  });
 }
 
 function remember(eventName) {
@@ -1695,17 +2256,18 @@ function useRiftHook(target = null) {
     ? GHOST_SAFE_GAP + 35
     : Math.min(jevGap, GHOST_SAFE_GAP + 135);
   const minimumHookGap = Math.min(jevGap, safeLandingGap);
+  const movementRadius = player.clearanceRadius ?? player.radius;
   let landing = null;
   for (let distanceAlong = travel; distanceAlong >= 105; distanceAlong -= 24) {
     const candidate = {
-      x: clamp(player.x + dx / length * distanceAlong, 35, WORLD.width - 35),
-      y: clamp(player.y + dy / length * distanceAlong, 35, WORLD.height - 35),
+      x: clamp(player.x + dx / length * distanceAlong, 21 + movementRadius, WORLD.width - 21 - movementRadius),
+      y: clamp(player.y + dy / length * distanceAlong, 22 + movementRadius, WORLD.height - 21 - movementRadius),
     };
     const preservesJevGap = game.mode !== "auto" || (
       distance(candidate, game.jev) >= safeLandingGap &&
       distanceToSegment(game.jev, player, candidate) >= minimumHookGap - 1
     );
-    if (preservesJevGap && !blocked(candidate.x, candidate.y, player.radius) && isLaneClear(player, candidate, player.radius)) {
+    if (preservesJevGap && !blocked(candidate.x, candidate.y, movementRadius) && isLaneClear(player, candidate, movementRadius)) {
       landing = candidate;
       break;
     }
@@ -1779,6 +2341,7 @@ function firePlayerShot() {
   remember("shot_fired");
   game.projectiles.push({
     owner: "player",
+    skinId: skinForRole("runner").id,
     x: player.x + dx * 19,
     y: player.y + dy * 19,
     vx: dx * PLAYER_SHOT_SPEED,
@@ -1787,6 +2350,8 @@ function firePlayerShot() {
     life: 1.24,
     age: 0,
   });
+  const runnerSkin = skinForRole("runner");
+  emitParticles(player.x + dx * 19, player.y + dy * 19, runnerSkin.accent, 3, 64, runnerSkin);
   if (game.projectiles.length > 28) game.projectiles.shift();
 }
 
@@ -1804,8 +2369,9 @@ function absorbRiftAegisHit(eventName = "rift_aegis_blocked") {
 
 function hitJev(projectile) {
   const jev = game.jev;
+  const skin = skinCatalog[projectile.skinId] || skinForRole("runner");
   if (game.anchors.some((anchor) => anchor.health > 0)) {
-    emitParticles(projectile.x, projectile.y, "#ccadff", 9, 95);
+    emitParticles(projectile.x, projectile.y, skin.accent, 9, 95, skin);
     remember("ward_blocked");
     return;
   }
@@ -1846,7 +2412,7 @@ function hitJev(projectile) {
   moveEntity(jev, projectile.vx / speed * 9, projectile.vy / speed * 9, jev.radius);
   remember("shot_hit");
   renderJevHealth();
-  emitParticles(projectile.x, projectile.y, "#9ff7e2", 15, 125);
+  emitParticles(projectile.x, projectile.y, skin.accent, 15, 125, skin);
   screenShake = Math.max(screenShake, 2.2);
   if (jev.health <= 0) {
     announce("Jev defeated");
@@ -1856,13 +2422,13 @@ function hitJev(projectile) {
   }
 }
 
-function hitAnchor(anchor) {
+function hitAnchor(anchor, skin = skinForRole("runner")) {
   if (!anchor || anchor.health <= 0) return;
   anchor.health = Math.max(0, anchor.health - 1);
   anchor.hitFlash = 0.3;
   game.player.hitsLanded += 1;
   remember(anchor.health === 0 ? "anchor_broken" : "anchor_hit");
-  emitParticles(anchor.x, anchor.y, anchor.health === 0 ? "#a3f1d8" : "#c2a2ff", anchor.health === 0 ? 30 : 13, 130);
+  emitParticles(anchor.x, anchor.y, skin.accent, anchor.health === 0 ? 30 : 13, 130, skin);
   screenShake = Math.max(screenShake, anchor.health === 0 ? 4.5 : 2.2);
   renderHud(true);
   if (anchor.health === 0) {
@@ -1891,7 +2457,11 @@ function obstacleContains(x, y, block, radius = 0) {
     const ry = block.h / 2 + radius;
     return (localX / rx) ** 2 + (localY / ry) ** 2 < 1;
   }
-  return Math.abs(localX) < block.w / 2 + radius && Math.abs(localY) < block.h / 2 + radius;
+  const halfWidth = block.w / 2;
+  const halfHeight = block.h / 2;
+  const outsideX = Math.max(0, Math.abs(localX) - halfWidth);
+  const outsideY = Math.max(0, Math.abs(localY) - halfHeight);
+  return (outsideX === 0 && outsideY === 0) || outsideX ** 2 + outsideY ** 2 < radius ** 2;
 }
 
 function blocked(x, y, radius) {
@@ -2089,16 +2659,86 @@ function estimateInterceptTime(origin, target, projectileSpeed, windup, maxFligh
     : clamp(positiveTime, 0.08, maxFlight);
 }
 
-function isLaneClear(origin, target, radius) {
-  const dx = target.x - origin.x;
-  const dy = target.y - origin.y;
-  const steps = Math.ceil(Math.hypot(dx, dy) / 8);
-  for (let index = 1; index < steps; index += 1) {
-    const x = origin.x + dx * index / steps;
-    const y = origin.y + dy * index / steps;
-    if (blocked(x, y, radius)) return false;
+function laneIntersectsBlock(origin, target, block, radius) {
+  const centerX = block.x + block.w / 2;
+  const centerY = block.y + block.h / 2;
+  const angle = block.angle || 0;
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  const toLocal = (point) => {
+    const dx = point.x - centerX;
+    const dy = point.y - centerY;
+    return { x: dx * cosine + dy * sine, y: -dx * sine + dy * cosine };
+  };
+  const start = toLocal(origin);
+  const end = toLocal(target);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (block.shape === "circle") {
+    const obstacleRadius = block.radius || Math.min(block.w, block.h) / 2;
+    return distanceToSegment({ x: 0, y: 0 }, start, end) < obstacleRadius + radius;
   }
-  return true;
+  if (block.shape === "ellipse") {
+    const rx = block.w / 2 + radius;
+    const ry = block.h / 2 + radius;
+    const inverseRxSquared = 1 / (rx * rx);
+    const inverseRySquared = 1 / (ry * ry);
+    const denominator = dx * dx * inverseRxSquared + dy * dy * inverseRySquared;
+    const projection = denominator > 0
+      ? clamp(-(start.x * dx * inverseRxSquared + start.y * dy * inverseRySquared) / denominator, 0, 1)
+      : 0;
+    const nearestX = start.x + dx * projection;
+    const nearestY = start.y + dy * projection;
+    return nearestX * nearestX * inverseRxSquared + nearestY * nearestY * inverseRySquared < 1;
+  }
+
+  const halfWidth = block.w / 2;
+  const halfHeight = block.h / 2;
+  let entry = 0;
+  let exit = 1;
+  let intersectsCore = true;
+  for (const [position, delta, halfExtent] of [
+    [start.x, dx, halfWidth],
+    [start.y, dy, halfHeight],
+  ]) {
+    if (Math.abs(delta) < 1e-9) {
+      if (position < -halfExtent || position > halfExtent) {
+        intersectsCore = false;
+        break;
+      }
+      continue;
+    }
+    const first = (-halfExtent - position) / delta;
+    const second = (halfExtent - position) / delta;
+    entry = Math.max(entry, Math.min(first, second));
+    exit = Math.min(exit, Math.max(first, second));
+    if (entry > exit) {
+      intersectsCore = false;
+      break;
+    }
+  }
+  if (intersectsCore) return true;
+
+  const pointToRectDistanceSquared = (point) => {
+    const outsideX = Math.max(0, Math.abs(point.x) - halfWidth);
+    const outsideY = Math.max(0, Math.abs(point.y) - halfHeight);
+    return outsideX * outsideX + outsideY * outsideY;
+  };
+  let nearestDistanceSquared = Math.min(pointToRectDistanceSquared(start), pointToRectDistanceSquared(end));
+  for (const cornerX of [-halfWidth, halfWidth]) {
+    for (const cornerY of [-halfHeight, halfHeight]) {
+      nearestDistanceSquared = Math.min(
+        nearestDistanceSquared,
+        distanceToSegment({ x: cornerX, y: cornerY }, start, end) ** 2,
+      );
+    }
+  }
+  return nearestDistanceSquared < radius * radius;
+}
+
+function isLaneClear(origin, target, radius) {
+  if (blocked(origin.x, origin.y, radius) || blocked(target.x, target.y, radius)) return false;
+  return !blocks.some((block) => laneIntersectsBlock(origin, target, block, radius));
 }
 
 function isProjectileLaneClear(origin, target, radius) {
@@ -2114,19 +2754,20 @@ function isSoulSalvoLaneClear(origin, target) {
 }
 
 function moveEntity(entity, dx, dy, radius) {
+  const movementRadius = entity.clearanceRadius ?? radius;
   const nextX = entity.x + dx;
   const nextY = entity.y + dy;
-  if (!blocked(nextX, nextY, radius) && isLaneClear(entity, { x: nextX, y: nextY }, radius)) {
+  if (!blocked(nextX, nextY, movementRadius) && isLaneClear(entity, { x: nextX, y: nextY }, movementRadius)) {
     entity.x = nextX;
     entity.y = nextY;
   } else {
     let movedX = false;
     let movedY = false;
-    if (!blocked(nextX, entity.y, radius) && isLaneClear(entity, { x: nextX, y: entity.y }, radius)) {
+    if (!blocked(nextX, entity.y, movementRadius) && isLaneClear(entity, { x: nextX, y: entity.y }, movementRadius)) {
       entity.x = nextX;
       movedX = true;
     }
-    if (!blocked(entity.x, nextY, radius) && isLaneClear(entity, { x: entity.x, y: nextY }, radius)) {
+    if (!blocked(entity.x, nextY, movementRadius) && isLaneClear(entity, { x: entity.x, y: nextY }, movementRadius)) {
       entity.y = nextY;
       movedY = true;
     }
@@ -2134,13 +2775,21 @@ function moveEntity(entity, dx, dy, radius) {
       for (const frac of [0.6, 0.3]) {
         const fx = entity.x + dx * frac;
         const fy = entity.y + dy * frac;
-        if (!blocked(fx, entity.y, radius)) { entity.x = fx; break; }
-        if (!blocked(entity.x, fy, radius)) { entity.y = fy; break; }
+        if (!blocked(fx, entity.y, movementRadius) &&
+            isLaneClear(entity, { x: fx, y: entity.y }, movementRadius)) {
+          entity.x = fx;
+          break;
+        }
+        if (!blocked(entity.x, fy, movementRadius) &&
+            isLaneClear(entity, { x: entity.x, y: fy }, movementRadius)) {
+          entity.y = fy;
+          break;
+        }
       }
     }
   }
-  entity.x = clamp(entity.x, 21 + radius, WORLD.width - 21 - radius);
-  entity.y = clamp(entity.y, 22 + radius, WORLD.height - 21 - radius);
+  entity.x = clamp(entity.x, 21 + movementRadius, WORLD.width - 21 - movementRadius);
+  entity.y = clamp(entity.y, 22 + movementRadius, WORLD.height - 21 - movementRadius);
 }
 
 function startRiftRend() {
@@ -2208,8 +2857,10 @@ function startPowerBlast() {
   if (Math.abs(target.x - jev.x) > 5) jev.facing = Math.sign(target.x - jev.x);
   jev.blastTimer = POWER_BLAST_WINDUP;
   jev.blastCooldown = 3.45;
-  announce("Jev is charging a blast!");
-  emitParticles(jev.x, jev.y, "#f2c36f", 14, 110);
+  const skin = skinForRole("chaser");
+  const skill = skillManual.jev.find((item) => item.id === "power_blast");
+  announce(brandedSkillName(skill, skin) + " charging");
+  emitParticles(jev.x, jev.y, skin.accent, 14, 110, skin);
 }
 
 function firePowerBlast() {
@@ -2227,7 +2878,8 @@ function firePowerBlast() {
   const dy = jev.blastTarget.y - jev.y;
   const length = Math.hypot(dx, dy) || 1;
   game.projectiles.push({
-    owner: "jev",
+    owner: "jev", kind: "blast",
+    skinId: skinForRole("chaser").id,
     x: jev.x, y: jev.y - 5,
     vx: dx / length * POWER_BLAST_SPEED, vy: dy / length * POWER_BLAST_SPEED,
     radius: 14, life: 2.2, age: 0, distanceTravelled: 0,
@@ -2238,7 +2890,7 @@ function firePowerBlast() {
   jev.blastTarget = null;
   remember("power_blast_fired");
   showSkillCallout("jev", "power_blast");
-  emitParticles(jev.x, jev.y, "#ffc977", 12, 125);
+  emitParticles(jev.x, jev.y, skinForRole("chaser").accent, 12, 125, skinForRole("chaser"));
 }
 
 function startSoulSalvo() {
@@ -2255,8 +2907,10 @@ function startSoulSalvo() {
   jev.path = [];
   jev.facing = Math.sign(aim.x - jev.x || jev.facing);
   remember("soul_salvo_windup");
-  announce("Jev is gathering a soul salvo");
-  emitParticles(jev.x, jev.y, "#ff9c73", 17, 120);
+  const skin = skinForRole("chaser");
+  const skill = skillManual.jev.find((item) => item.id === "soul_salvo");
+  announce(brandedSkillName(skill, skin) + " assembling");
+  emitParticles(jev.x, jev.y, skin.accent, 17, 120, skin);
 }
 
 function fireSoulSalvo() {
@@ -2277,7 +2931,7 @@ function fireSoulSalvo() {
       continue;
     }
     game.projectiles.push({
-      owner: "jev", kind: "salvo", x: origin.x, y: origin.y,
+      owner: "jev", kind: "salvo", skinId: skinForRole("chaser").id, x: origin.x, y: origin.y,
       vx: Math.cos(shotAngle) * SOUL_SALVO_SPEED,
       vy: Math.sin(shotAngle) * SOUL_SALVO_SPEED,
       radius: 11, life: 1.9, age: 0, distanceTravelled: 0,
@@ -2294,7 +2948,7 @@ function fireSoulSalvo() {
   }
   remember("soul_salvo_fired");
   showSkillCallout("jev", "soul_salvo");
-  emitParticles(jev.x, jev.y, "#ffad7c", 16, 155);
+  emitParticles(jev.x, jev.y, skinForRole("chaser").accent, 16, 155, skinForRole("chaser"));
 }
 
 function startRiftMine() {
@@ -2738,24 +3392,55 @@ function jevTarget() {
   };
 }
 
-function cellBlocked(gx, gy) {
+function cellBlocked(gx, gy, radius = 17) {
   const cols = WORLD.width / WORLD.cell;
   const rows = WORLD.height / WORLD.cell;
   if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
-  let grid = collisionGridCache.get(blocks);
+  let grids = collisionGridCache.get(blocks);
+  if (!grids) {
+    grids = new Map();
+    collisionGridCache.set(blocks, grids);
+  }
+  const clearance = Math.ceil(radius);
+  let grid = grids.get(clearance);
   if (!grid) {
     grid = new Uint8Array(cols * rows);
     for (let y = 0; y < rows; y += 1) {
       for (let x = 0; x < cols; x += 1) {
         const centerX = x * WORLD.cell + WORLD.cell / 2;
         const centerY = y * WORLD.cell + WORLD.cell / 2;
-        const edge = centerX - 17 < 21 || centerX + 17 > WORLD.width - 21 || centerY - 17 < 22 || centerY + 17 > WORLD.height - 21;
-        if (edge || blocks.some((block) => obstacleContains(centerX, centerY, block, 17))) grid[y * cols + x] = 1;
+        const edge = centerX - clearance < 21 || centerX + clearance > WORLD.width - 21 ||
+          centerY - clearance < 22 || centerY + clearance > WORLD.height - 21;
+        if (edge || blocks.some((block) => obstacleContains(centerX, centerY, block, clearance))) grid[y * cols + x] = 1;
       }
     }
-    collisionGridCache.set(blocks, grid);
+    grids.set(clearance, grid);
   }
   return grid[gy * cols + gx] === 1;
+}
+
+function pathEdgeClear(fromCell, toCell, radius) {
+  const cols = WORLD.width / WORLD.cell;
+  const totalCells = cols * (WORLD.height / WORLD.cell);
+  const fromKey = fromCell.y * cols + fromCell.x;
+  const toKey = toCell.y * cols + toCell.x;
+  const edgeKey = Math.min(fromKey, toKey) * totalCells + Math.max(fromKey, toKey);
+  let clearanceGrids = pathEdgeClearCache.get(blocks);
+  if (!clearanceGrids) {
+    clearanceGrids = new Map();
+    pathEdgeClearCache.set(blocks, clearanceGrids);
+  }
+  let edges = clearanceGrids.get(radius);
+  if (!edges) {
+    edges = new Map();
+    clearanceGrids.set(radius, edges);
+  }
+  if (edges.has(edgeKey)) return edges.get(edgeKey);
+  const from = { x: fromCell.x * WORLD.cell + WORLD.cell / 2, y: fromCell.y * WORLD.cell + WORLD.cell / 2 };
+  const to = { x: toCell.x * WORLD.cell + WORLD.cell / 2, y: toCell.y * WORLD.cell + WORLD.cell / 2 };
+  const clear = isLaneClear(from, to, radius);
+  edges.set(edgeKey, clear);
+  return clear;
 }
 
 function findPath(start, target, avoidEntity = null) {
@@ -2763,14 +3448,23 @@ function findPath(start, target, avoidEntity = null) {
   const rows = WORLD.height / WORLD.cell;
   const toCell = (value, count) => clamp(Math.floor(value / WORLD.cell), 0, count - 1);
   const keyOf = (x, y) => y * cols + x;
-  const nearestOpenCell = (centerX, centerY) => {
-    if (!cellBlocked(centerX, centerY)) return { x: centerX, y: centerY };
+  const movementRadius = start.clearanceRadius ?? start.radius;
+  const pointForCell = (cell) => ({
+    x: cell.x * WORLD.cell + WORLD.cell / 2,
+    y: cell.y * WORLD.cell + WORLD.cell / 2,
+  });
+  const nearestOpenCell = (centerX, centerY, reachableFrom) => {
+    const isReachable = (x, y) => {
+      if (cellBlocked(x, y, movementRadius)) return false;
+      return isLaneClear(reachableFrom, pointForCell({ x, y }), movementRadius);
+    };
+    if (isReachable(centerX, centerY)) return { x: centerX, y: centerY };
     for (let radius = 1; radius < Math.max(cols, rows); radius += 1) {
       let best = null;
       let bestDistance = Infinity;
       for (let y = Math.max(0, centerY - radius); y <= Math.min(rows - 1, centerY + radius); y += 1) {
         for (let x = Math.max(0, centerX - radius); x <= Math.min(cols - 1, centerX + radius); x += 1) {
-          if (Math.max(Math.abs(x - centerX), Math.abs(y - centerY)) !== radius || cellBlocked(x, y)) continue;
+          if (Math.max(Math.abs(x - centerX), Math.abs(y - centerY)) !== radius || !isReachable(x, y)) continue;
           const dx = x - centerX;
           const dy = y - centerY;
           const candidateDistance = dx * dx + dy * dy;
@@ -2782,10 +3476,11 @@ function findPath(start, target, avoidEntity = null) {
       }
       if (best) return best;
     }
-    return { x: centerX, y: centerY };
+    return null;
   };
-  const startCell = nearestOpenCell(toCell(start.x, cols), toCell(start.y, rows));
-  const endCell = nearestOpenCell(toCell(target.x, cols), toCell(target.y, rows));
+  const startCell = nearestOpenCell(toCell(start.x, cols), toCell(start.y, rows), start);
+  const endCell = nearestOpenCell(toCell(target.x, cols), toCell(target.y, rows), target);
+  if (!startCell || !endCell) return [];
   const sx = startCell.x;
   const sy = startCell.y;
   const ex = endCell.x;
@@ -2861,15 +3556,20 @@ function findPath(start, target, avoidEntity = null) {
     for (const [dx, dy, stepCost] of directions) {
       const x = current.x + dx;
       const y = current.y + dy;
-      if (x < 0 || x >= cols || y < 0 || y >= rows || cellBlocked(x, y)) continue;
-      if (dx && dy && (cellBlocked(current.x + dx, current.y) || cellBlocked(current.x, current.y + dy))) continue;
+      if (x < 0 || x >= cols || y < 0 || y >= rows || cellBlocked(x, y, movementRadius)) continue;
+      if (dx && dy && (cellBlocked(current.x + dx, current.y, movementRadius) || cellBlocked(current.x, current.y + dy, movementRadius))) continue;
+      if (!pathEdgeClear(current, { x, y }, movementRadius)) continue;
       const key = keyOf(x, y);
       const center = { x: x * WORLD.cell + WORLD.cell / 2, y: y * WORLD.cell + WORLD.cell / 2 };
+      const currentCenter = pointForCell(current);
+      if (!escapingAvoidZone && !routeClear(currentCenter, center)) continue;
       if (avoidEntity) {
         const nextAvoidGap = distance(center, avoidEntity);
-        const currentCenter = { x: current.x * WORLD.cell + WORLD.cell / 2, y: current.y * WORLD.cell + WORLD.cell / 2 };
-        const currentAvoidGap = distance(currentCenter, avoidEntity);
-        if ((!escapingAvoidZone && nextAvoidGap < avoidDistance) || (escapingAvoidZone && nextAvoidGap < currentAvoidGap - 1)) continue;
+        // Once an actor is already inside the preferred clearance radius,
+        // allow a temporary step toward the threat when a wall or corner
+        // makes that the only route out. The spacing cost still strongly
+        // favors paths that regain distance as soon as geometry allows.
+        if (!escapingAvoidZone && nextAvoidGap < avoidDistance) continue;
       }
       const spacingCost = avoidEntity
         ? Math.max(0, avoidDistance + 54 - distance(center, avoidEntity)) * 2.6
@@ -2884,7 +3584,10 @@ function findPath(start, target, avoidEntity = null) {
   }
   const destinationKey = reachedTarget ? endKey : nearestKey;
   if (destinationKey === startKey) {
-    return !blocked(target.x, target.y, start.radius) && isLaneClear(start, target, start.radius) ? [target] : [];
+    if (!blocked(target.x, target.y, movementRadius) && isLaneClear(start, target, movementRadius)) return [target];
+    const startCenter = pointForCell(startCell);
+    return distance(start, startCenter) > 12 && isLaneClear(start, startCenter, movementRadius) &&
+      isLaneClear(startCenter, target, movementRadius) ? [startCenter, target] : [];
   }
   const rawPath = [];
   let cursor = destinationKey;
@@ -2896,18 +3599,54 @@ function findPath(start, target, avoidEntity = null) {
     if (cursor === undefined || rawPath.length > cols * rows) return [];
   }
   rawPath.reverse();
+  rawPath.unshift(pointForCell(startCell));
   const path = [];
   let anchor = start;
   let nextIndex = 0;
   while (nextIndex < rawPath.length) {
-    let farthest = rawPath.length - 1;
-    while (farthest > nextIndex && (!isLaneClear(anchor, rawPath[farthest], start.radius) || !routeClear(anchor, rawPath[farthest]))) farthest -= 1;
+    let farthest = -1;
+    for (let candidateIndex = rawPath.length - 1; candidateIndex >= nextIndex; candidateIndex -= 1) {
+      if (isLaneClear(anchor, rawPath[candidateIndex], movementRadius) && routeClear(anchor, rawPath[candidateIndex])) {
+        farthest = candidateIndex;
+        break;
+      }
+    }
+    if (farthest < 0 && escapingAvoidZone && isLaneClear(anchor, rawPath[nextIndex], movementRadius)) {
+      farthest = nextIndex;
+    }
+    if (farthest < 0) return [];
     anchor = rawPath[farthest];
     path.push(anchor);
     nextIndex = farthest + 1;
   }
-  if (reachedTarget && !blocked(target.x, target.y, start.radius) && isLaneClear(anchor, target, start.radius)) path.push(target);
+  if (reachedTarget && !blocked(target.x, target.y, movementRadius) && isLaneClear(anchor, target, movementRadius) && routeClear(anchor, target)) {
+    path.push(target);
+  }
   return path;
+}
+
+function openEscapeDirections(point, radius) {
+  const directions = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [Math.SQRT1_2, Math.SQRT1_2], [Math.SQRT1_2, -Math.SQRT1_2],
+    [-Math.SQRT1_2, Math.SQRT1_2], [-Math.SQRT1_2, -Math.SQRT1_2],
+  ];
+  return directions.reduce((count, [dx, dy]) => {
+    const shortProbe = { x: point.x + dx * 56, y: point.y + dy * 56 };
+    const longProbe = { x: point.x + dx * 112, y: point.y + dy * 112 };
+    return count + (!blocked(shortProbe.x, shortProbe.y, radius) && !blocked(longProbe.x, longProbe.y, radius) ? 1 : 0);
+  }, 0);
+}
+
+function deadEndPenalty(point, radius) {
+  const edgeClearance = Math.min(
+    point.x - (21 + radius), WORLD.width - 21 - radius - point.x,
+    point.y - (22 + radius), WORLD.height - 21 - radius - point.y,
+  );
+  const edgeCost = Math.max(0, 220 - edgeClearance) * 1.25;
+  const exits = openEscapeDirections(point, radius);
+  const exitCost = Math.max(0, 4 - exits) * 105;
+  return edgeCost + exitCost;
 }
 
 function findRecoveryTarget(entity, target, attempts) {
@@ -2922,21 +3661,23 @@ function findRecoveryTarget(entity, target, attempts) {
         x: clamp(entity.x + Math.cos(angle) * radius, 38, WORLD.width - 38),
         y: clamp(entity.y + Math.sin(angle) * radius, 39, WORLD.height - 38),
       };
-      if (distance(entity, candidate) < 12 || blocked(candidate.x, candidate.y, entity.radius)) continue;
+      const movementRadius = entity.clearanceRadius ?? entity.radius;
+      if (distance(entity, candidate) < 12 || blocked(candidate.x, candidate.y, movementRadius)) continue;
       // Recovery waypoints must be reachable from the entity's actual position
       // with its full collision radius. An offset origin or reduced radius can
       // approve a route that clips a wall, leaving the pathfinder with no path.
-      if (!isLaneClear(entity, candidate, entity.radius)) continue;
+      if (!isLaneClear(entity, candidate, movementRadius)) continue;
       const enemySpacingCost = entity === game.player && game.anchors.some((anchor) => anchor.health > 0)
         ? Math.max(0, 280 - distance(candidate, game.jev)) * 5
         : 0;
-      const cost = distance(candidate, target) + distance(entity, candidate) * 0.2 + enemySpacingCost;
+      const hazardCost = game.hazards.reduce((sum, hazard) => sum + (insideHazard(candidate, hazard) ? 220 : 0), 0);
+      const cost = distance(candidate, target) + distance(entity, candidate) * 0.2 +
+        deadEndPenalty(candidate, movementRadius) + enemySpacingCost + hazardCost;
       if (cost < bestCost) {
         best = candidate;
         bestCost = cost;
       }
     }
-    if (best) return best;
   }
   return best;
 }
@@ -3058,6 +3799,7 @@ function updateJev(dt) {
     return;
   }
   let target = jevTarget();
+  const movementRadius = jev.clearanceRadius ?? jev.radius;
   if (jev.recoveryTarget) {
     if (game.elapsed >= jev.recoveryUntil || distance(jev, jev.recoveryTarget) < 12) {
       jev.recoveryTarget = null;
@@ -3066,18 +3808,23 @@ function updateJev(dt) {
       target = jev.recoveryTarget;
     }
   }
-  if (jev.recoveryTarget && isLaneClear(jev, jev.recoveryTarget, jev.radius)) {
+  if (jev.recoveryTarget && isLaneClear(jev, jev.recoveryTarget, movementRadius)) {
     // Recovery points are chosen for direct, full-radius clearance. Follow
     // those points directly because the coarse path grid can seal narrow
     // boundary gaps that the collision geometry allows.
     jev.path = [jev.recoveryTarget];
     jev.nextPathAt = game.elapsed + 0.14;
-  } else if (game.elapsed >= jev.nextPathAt || !jev.path.length) {
+  } else if (game.elapsed >= jev.nextPathAt ||
+      (jev.path.length > 0 && !isLaneClear(jev, jev.path[0], movementRadius))) {
     jev.path = findPath(jev, target);
     jev.nextPathAt = game.elapsed + 0.14;
   }
-  while (jev.path.length && distance(jev, jev.path[0]) < 13) jev.path.shift();
-  const targetLaneClear = !blocked(target.x, target.y, jev.radius) && isLaneClear(jev, target, jev.radius);
+  while (jev.path.length && distance(jev, jev.path[0]) < 13) {
+    const nextWaypoint = jev.path[1];
+    if (nextWaypoint && !isLaneClear(jev, nextWaypoint, movementRadius) && distance(jev, jev.path[0]) > 1) break;
+    jev.path.shift();
+  }
+  const targetLaneClear = !blocked(target.x, target.y, movementRadius) && isLaneClear(jev, target, movementRadius);
   const waypoint = jev.path[0] || (targetLaneClear ? target : jev);
   let dx = waypoint.x - jev.x;
   let dy = waypoint.y - jev.y;
@@ -3104,8 +3851,17 @@ function updateJev(dt) {
   const beforeX = jev.x;
   const beforeY = jev.y;
   const waypointGap = distance(jev, waypoint);
-  moveEntity(jev, jev.vx * dt, jev.vy * dt, jev.radius);
-  const moved = Math.hypot(jev.x - beforeX, jev.y - beforeY);
+  let stepX = jev.vx * dt;
+  let stepY = jev.vy * dt;
+  if (length > 0 && length <= speed * dt && isLaneClear(jev, waypoint, movementRadius)) {
+    // Land on a clear waypoint exactly so the next segment starts from the
+    // same collision-safe point used by path smoothing.
+    stepX = dx * length;
+    stepY = dy * length;
+  }
+  moveEntity(jev, stepX, stepY, jev.radius);
+  jev.vx = dt > 0 ? (jev.x - beforeX) / dt : 0;
+  jev.vy = dt > 0 ? (jev.y - beforeY) / dt : 0;
   const waypointProgress = waypointGap - distance(jev, waypoint);
   if (distance(jev, target) > 36 && waypointProgress < Math.max(0.5, dt * 20)) jev.stuckTimer += dt;
   else jev.stuckTimer = 0;
@@ -3168,7 +3924,20 @@ function updatePlayer(dt) {
   if (Math.abs(facingInput) > 0.12) player.facing = Math.sign(facingInput);
   const beforeX = player.x;
   const beforeY = player.y;
-  moveEntity(player, player.vx * dt, player.vy * dt, player.radius);
+  let stepX = player.vx * dt;
+  let stepY = player.vy * dt;
+  const arrivalTarget = game.mode === "auto" ? player.aiArrivalTarget : null;
+  player.aiArrivalTarget = null;
+  const movementRadius = player.clearanceRadius ?? player.radius;
+  if (arrivalTarget && player.dashTimer <= 0 && isLaneClear(player, arrivalTarget, movementRadius)) {
+    // Auto movement lands on a clear route pivot precisely, avoiding a corner
+    // cut when the next waypoint lies on the far side of an obstacle.
+    stepX = arrivalTarget.x - player.x;
+    stepY = arrivalTarget.y - player.y;
+  }
+  moveEntity(player, stepX, stepY, player.radius);
+  player.vx = dt > 0 ? (player.x - beforeX) / dt : 0;
+  player.vy = dt > 0 ? (player.y - beforeY) / dt : 0;
   if (game.mode === "auto" && player.aiTarget && distance(player, player.aiTarget) > 36 && Math.hypot(player.x - beforeX, player.y - beforeY) < Math.max(0.7, dt * 32)) {
     player.stuckTimer += dt;
   } else {
@@ -3199,6 +3968,8 @@ function updateMirrorClones(dt) {
   for (const clone of player.clones) {
     clone.life -= dt;
     if (clone.life <= 0) continue;
+    const previousX = clone.x;
+    const previousY = clone.y;
     clone.angle += dt * (clone.direction || 1) * 1.65;
     const target = {
       x: clamp(player.x + Math.cos(clone.angle) * clone.orbit, 36, WORLD.width - 36),
@@ -3211,6 +3982,8 @@ function updateMirrorClones(dt) {
       const travel = Math.min(gap, 420 * dt);
       if (gap > 0.1) moveEntity(clone, dx / gap * travel, dy / gap * travel, clone.radius);
     }
+    clone.vx = dt > 0 ? (clone.x - previousX) / dt : 0;
+    clone.vy = dt > 0 ? (clone.y - previousY) / dt : 0;
     clone.facing = player.facing;
     active.push(clone);
   }
@@ -3335,22 +4108,47 @@ function aiEvadePoint() {
     ...game.meteors.filter((meteor) => meteor.delay < 1.5).map((meteor) => ({ ...meteor, radius: meteor.radius + player.radius + 34 })),
     ...game.minions.filter((wraith) => distance(wraith, player) < 210).map((wraith) => ({ ...wraith, radius: wraith.radius + player.radius + 34 })),
   ];
-  const candidates = Array.from({ length: 16 }, (_, index) => {
-    const angle = index * Math.PI / 8;
-    const point = {
-      x: clamp(player.x + Math.cos(angle) * 460, 42, WORLD.width - 42),
-      y: clamp(player.y + Math.sin(angle) * 460, 42, WORLD.height - 42),
-    };
-    const hazardCost = game.hazards.reduce((sum, hazard) => sum + (insideHazard(point, hazard) ? 260 : 0), 0);
-    const nearestProjectile = threats.reduce((min, projectile) => Math.min(min, distance(point, projectile)), Infinity);
-    const nearestAreaThreat = areaThreats.reduce((min, hazard) => Math.min(min, Math.max(0, distance(point, hazard) - hazard.radius)), Infinity);
-    const anchor = aiObjectiveTarget();
-    const objectiveCost = game.anchors.some((item) => item.health > 0) ? distance(point, anchor) * 0.08 : 0;
-    const areaThreatCost = Number.isFinite(nearestAreaThreat) ? -Math.min(420, nearestAreaThreat) * 0.72 : 0;
-    return { ...point, score: distance(point, game.jev) * -0.28 - Math.min(420, nearestProjectile) * 0.72 + areaThreatCost + hazardCost + objectiveCost };
-  }).filter((point) => !blocked(point.x, point.y, player.radius));
+  const candidates = [];
+  const candidateKeys = new Set();
+  const anchor = aiObjectiveTarget();
+  const hasActiveAnchors = game.anchors.some((item) => item.health > 0);
+  for (const travel of [300, 460]) {
+    for (let index = 0; index < 16; index += 1) {
+      const angle = index * Math.PI / 8;
+      const point = {
+        x: clamp(player.x + Math.cos(angle) * travel, 42, WORLD.width - 42),
+        y: clamp(player.y + Math.sin(angle) * travel, 42, WORLD.height - 42),
+      };
+      const key = Math.round(point.x / 24) + ":" + Math.round(point.y / 24);
+      if (candidateKeys.has(key) || blocked(point.x, point.y, player.radius)) continue;
+      candidateKeys.add(key);
+      const hazardCost = game.hazards.reduce((sum, hazard) => sum + (insideHazard(point, hazard) ? 260 : 0), 0);
+      const nearestProjectile = threats.reduce((min, projectile) => Math.min(min, distance(point, projectile)), Infinity);
+      const nearestAreaThreat = areaThreats.reduce((min, hazard) => Math.min(min, Math.max(0, distance(point, hazard) - hazard.radius)), Infinity);
+      const objectiveCost = hasActiveAnchors ? distance(point, anchor) * 0.08 : 0;
+      const areaThreatCost = Number.isFinite(nearestAreaThreat) ? -Math.min(420, nearestAreaThreat) * 0.72 : 0;
+      const routeCost = isLaneClear(player, point, player.radius) ? 0 : 165;
+      const score = distance(point, game.jev) * -0.28 - Math.min(420, nearestProjectile) * 0.72 +
+        areaThreatCost + hazardCost + objectiveCost + routeCost + deadEndPenalty(point, player.radius);
+      candidates.push({ ...point, score });
+    }
+  }
   const safeCandidates = candidates.filter((point) => distance(point, game.jev) >= GHOST_SAFE_GAP + 120);
   return (safeCandidates.length ? safeCandidates : candidates).sort((left, right) => left.score - right.score)[0] || player;
+}
+
+function stableEvasionTarget() {
+  const player = game.player;
+  const current = player.evadeTarget;
+  const stale = !current || game.elapsed >= player.evadeTargetUntil ||
+    distance(player, current) < 84 || blocked(current.x, current.y, player.radius) ||
+    distance(game.jev, current) < GHOST_SAFE_GAP + 80 ||
+    game.hazards.some((hazard) => insideHazard(current, hazard));
+  if (stale) {
+    player.evadeTarget = aiEvadePoint();
+    player.evadeTargetUntil = game.elapsed + 0.62;
+  }
+  return player.evadeTarget;
 }
 
 function secondsToGhostSafeGap(position, velocity, jev) {
@@ -3374,8 +4172,10 @@ function recordGhostActionOverride(tactic) {
   renderDecisionCard("ghost", tactic, lastDecision.ghost?.probabilities, selected);
 }
 
-function updateAIPlayer() {
+function updateAIPlayer(dt) {
   const player = game.player;
+  const movementRadius = player.clearanceRadius ?? player.radius;
+  player.aiArrivalTarget = null;
   const tactic = player.aiTactic;
   const activeAnchors = game.anchors.filter((anchor) => anchor.health > 0);
   const objective = aiObjectiveTarget();
@@ -3439,8 +4239,8 @@ function updateAIPlayer() {
   }
 
   const mustEvade = threatened || rendThreat || areaThreat || contactRisk;
+  const escape = mustEvade ? stableEvasionTarget() : null;
   if (!usedDefense && immediateDanger && player.dashCooldown <= 0 && player.dashTimer <= 0) {
-    const escape = aiEvadePoint();
     const dx = escape.x - player.x;
     const dy = escape.y - player.y;
     const length = Math.hypot(dx, dy) || 1;
@@ -3450,7 +4250,7 @@ function updateAIPlayer() {
     usedDefense = true;
   } else if (!usedDefense && immediateDanger && player.dashCooldown > 0 && player.dashTimer <= 0 &&
       player.hookCooldown <= 0 && jevGap < 265) {
-    if (useRiftHook(aiEvadePoint())) {
+    if (useRiftHook(escape)) {
       recordGhostActionOverride("rift_hook");
       usedDefense = true;
     }
@@ -3484,23 +4284,46 @@ function updateAIPlayer() {
   let destination;
   const evading = threatened || rendThreat || areaThreat || contactRisk || (tactic === "evade_warning" && threatened);
   if (player.recoveryTarget) destination = player.recoveryTarget;
-  else if (evading) destination = aiEvadePoint();
+  else if (evading) destination = escape || stableEvasionTarget();
   else destination = aiAttackPosition(objective, activeAnchors.length > 0 ? 260 : 420);
+  if (!evading) {
+    player.evadeTarget = null;
+    player.evadeTargetUntil = 0;
+  }
   player.aiTarget = destination;
 
   const pathRefresh = evading ? 0.08 : 0.24;
-  if (game.elapsed >= player.aiNextPathAt || !player.aiPath.length) {
+  const blockedCurrentLeg = player.aiPath.length > 0 && !isLaneClear(player, player.aiPath[0], movementRadius);
+  if (game.elapsed >= player.aiNextPathAt || blockedCurrentLeg) {
     player.aiPath = findPath(player, destination, game.jev);
     player.aiNextPathAt = game.elapsed + pathRefresh;
   }
-  while (player.aiPath.length && distance(player, player.aiPath[0]) < 18) player.aiPath.shift();
-  const targetLaneClear = !blocked(destination.x, destination.y, player.radius) && isLaneClear(player, destination, player.radius);
-  const waypoint = player.aiPath[0] || (targetLaneClear ? destination : player);
+  while (player.aiPath.length && distance(player, player.aiPath[0]) < 18) {
+    const nextWaypoint = player.aiPath[1];
+    const gap = distance(player, player.aiPath[0]);
+    if (nextWaypoint && !isLaneClear(player, nextWaypoint, movementRadius) && gap > 1) break;
+    player.aiPath.shift();
+  }
+  const targetLaneClear = !blocked(destination.x, destination.y, movementRadius) && isLaneClear(player, destination, movementRadius);
+  const distanceToJev = distance(player, game.jev);
+  const directLaneGap = distanceToSegment(game.jev, player, destination);
+  const objectiveLaneSafe = distanceToJev < GHOST_PATH_CLEARANCE
+    ? distance(destination, game.jev) > distanceToJev && directLaneGap >= distanceToJev
+    : directLaneGap >= GHOST_PATH_CLEARANCE;
+  const safeEscapeLane = evading && escape && distance(escape, game.jev) > distanceToJev + 8 &&
+    !blocked(escape.x, escape.y, movementRadius) && isLaneClear(player, escape, movementRadius);
+  const fallbackWaypoint = safeEscapeLane ? escape : targetLaneClear && objectiveLaneSafe ? destination : player;
+  const waypoint = player.aiPath[0] || fallbackWaypoint;
   const dx = waypoint.x - player.x;
   const dy = waypoint.y - player.y;
   const length = Math.hypot(dx, dy);
-  // Steering must continue until the path waypoint's 18-unit arrival radius.
-  player.aiInput = length > 12 ? { x: dx / length, y: dy / length } : { x: 0, y: 0 };
+  player.aiInput = length > 1 ? { x: dx / length, y: dy / length } : { x: 0, y: 0 };
+  const terrain = environmentEffects(player);
+  const movementSpeed = player.speed * (player.snaredTimer > 0 ? 0.54 : 1) * terrain.speed;
+  if (player.dashTimer <= 0 && length > 0 && length <= movementSpeed * dt &&
+      isLaneClear(player, waypoint, movementRadius)) {
+    player.aiArrivalTarget = waypoint;
+  }
   if (Math.abs(player.aiInput.x) > 0.15) player.facing = Math.sign(player.aiInput.x);
 }
 
@@ -3511,7 +4334,18 @@ function checkContact() {
   if (["windup", "recover"].includes(jev.rendPhase) || gap > player.radius + jev.radius + 2 ||
       player.invulnerable > 0 || player.hurtTimer > 0 || jev.stunned > 0) return;
   const angle = Math.atan2(player.y - jev.y, player.x - jev.x);
-  damagePlayer("player_hit", Math.cos(angle), Math.sin(angle));
+  const target = { x: player.x, y: player.y };
+  const parried = player.guardTimer > 0;
+  const hit = damagePlayer("player_hit", Math.cos(angle), Math.sin(angle));
+  jev.contactStrike = {
+    at: game.elapsed,
+    x: jev.x,
+    y: jev.y,
+    angle,
+    targetX: target.x,
+    targetY: target.y,
+    outcome: parried ? "parried" : hit ? "hit" : "blocked",
+  };
 }
 
 function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, canParry = true) {
@@ -3532,7 +4366,8 @@ function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, 
     game.jev.vx = 0;
     game.jev.vy = 0;
     remember("lantern_parry");
-    emitParticles(player.x, player.y, "#bdf7df", 30, 200);
+    const parrySkin = skinForRole("runner");
+    emitParticles(player.x, player.y, parrySkin.accent, 30, 200, parrySkin);
     announce("PERFECT PARRY!", 900);
     screenShake = Math.max(screenShake, 7);
     queueJevDecision();
@@ -3554,7 +4389,9 @@ function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, 
         : event === "rift_rend_hit"
           ? player.health > 0 ? "Rift Rend struck" : "Rift Rend caught you"
       : player.health > 0 ? "Jev caught you" : "Jev caught you");
-  emitParticles(player.x, player.y, "#ff806d", 20, 170);
+  const brandedAttack = ["blast_hit", "salvo_hit"].includes(event);
+  const impactSkin = brandedAttack ? skinForRole("chaser") : null;
+  emitParticles(player.x, player.y, impactSkin?.accent || "#ff806d", 20, 170, impactSkin);
   screenShake = Math.max(screenShake, 8);
   if (player.health <= 0) finishGame("caught");
   return true;
@@ -3586,7 +4423,7 @@ function updateProjectiles(dt) {
         ? game.player.clones.find((clone) => distance(projectile, clone) <= projectile.radius + clone.radius)
         : null;
       if (anchor) {
-        hitAnchor(anchor);
+        hitAnchor(anchor, skinCatalog[projectile.skinId] || skinForRole("runner"));
         consumed = true;
       } else if (mirrorClone) {
         if (projectile.owner === "jev" && ["blast", "salvo"].includes(projectile.kind)) {
@@ -3604,7 +4441,7 @@ function updateProjectiles(dt) {
           if (parrying) {
             const reflectLength = distance(game.player, game.jev) || 1;
             game.projectiles.push({
-              owner: "player", kind: "reflected", x: game.player.x, y: game.player.y,
+              owner: "player", kind: "reflected", skinId: skinForRole("runner").id, x: game.player.x, y: game.player.y,
               vx: (game.jev.x - game.player.x) / reflectLength * PLAYER_SHOT_SPEED,
               vy: (game.jev.y - game.player.y) / reflectLength * PLAYER_SHOT_SPEED,
               radius: 9, life: 0.8, age: 0,
@@ -3616,14 +4453,16 @@ function updateProjectiles(dt) {
           if (parrying) remember(attackPrefix + "_guard_blocked");
           if (!damagePlayer(projectileOutcome, projectile.vx / knockback, projectile.vy / knockback) && !parrying) {
             remember(projectile.kind === "salvo" ? "salvo_dodged" : "blast_dodged");
-            emitParticles(projectile.x, projectile.y, "#bfe8ef", 12, 105);
+            const skin = skinCatalog[projectile.skinId] || skinForRole("chaser");
+            emitParticles(projectile.x, projectile.y, skin.accent, 12, 105, skin);
           }
         }
         consumed = true;
         } else if (blocked(projectile.x, projectile.y, projectile.radius)) {
           const attackPrefix = projectile.kind === "salvo" ? "salvo" : "blast";
           remember(projectile.owner === "player" ? "shot_blocked" : attackPrefix + "_cover_blocked");
-          emitParticles(projectile.x, projectile.y, projectile.owner === "player" ? "#9ff7e2" : "#e5ae72", 10, 80);
+          const skin = skinCatalog[projectile.skinId] || skinForRole(projectile.owner === "player" ? "runner" : "chaser");
+          emitParticles(projectile.x, projectile.y, skin.accent, 10, 80, skin);
           consumed = true;
         }
       }
@@ -3648,6 +4487,16 @@ function checkWin() {
   if (game.jev.health <= 0 && game.anchors.every((anchor) => anchor.health <= 0)) finishGame("fight");
 }
 
+function advanceSpriteTravel(entity, dt) {
+  const speed = Math.hypot(Number(entity.vx) || 0, Number(entity.vy) || 0);
+  if (speed > 35) {
+    entity.spriteTravel = (entity.spriteTravel || 0) + Math.min(speed, 330) * dt;
+    entity.spriteAnimationTime = (entity.spriteAnimationTime || 0) + dt;
+  } else {
+    entity.spriteAnimationTime = 0;
+  }
+}
+
 function update(dt) {
   game.elapsed += dt;
   game.remaining = Math.max(0, game.remaining - dt);
@@ -3666,6 +4515,9 @@ function update(dt) {
   }
   updateRiftMine(dt);
   updateJev(dt);
+  advanceSpriteTravel(game.player, dt);
+  advanceSpriteTravel(game.jev, dt);
+  for (const clone of game.player.clones) advanceSpriteTravel(clone, dt);
   updateEnvironmentHazards();
   updateProjectiles(dt);
   checkContact();
@@ -3698,13 +4550,14 @@ function frame(now) {
   animationFrame = requestAnimationFrame(frame);
 }
 
-function emitParticles(x, y, color, count, speed) {
+function emitParticles(x, y, color, count, speed, skin = null) {
   for (let index = 0; index < count; index += 1) {
     const angle = Math.random() * Math.PI * 2;
     const velocity = speed * (0.25 + Math.random() * 0.75);
     particles.push({
       x, y, vx: Math.cos(angle) * velocity, vy: Math.sin(angle) * velocity,
       life: 0.35 + Math.random() * 0.45, maxLife: 0.8, size: 1.5 + Math.random() * 3, color,
+      company: skin?.company || null,
     });
   }
 }
@@ -3735,8 +4588,33 @@ function drawWorld() {
   );
   const viewWidth = rect.width / zoom;
   const viewHeight = rect.height / zoom;
-  const cameraX = clamp(game.player.x - viewWidth / 2, 0, WORLD.width - viewWidth);
-  const cameraY = clamp(game.player.y - viewHeight / 2, 0, WORLD.height - viewHeight);
+  const targetCameraX = clamp(game.player.x - viewWidth / 2, 0, WORLD.width - viewWidth);
+  const targetCameraY = clamp(game.player.y - viewHeight / 2, 0, WORLD.height - viewHeight);
+  const now = performance.now();
+  if (!cameraState.ready) {
+    cameraState.x = targetCameraX;
+    cameraState.y = targetCameraY;
+    cameraState.updatedAt = now;
+    cameraState.ready = true;
+  } else {
+    const cameraDt = clamp((now - cameraState.updatedAt) / 1000, 0, 0.05);
+    const isTeleporting = game.player.hookTarget?.life > 0;
+    const response = isTeleporting ? 7.5 : 15;
+    const follow = 1 - Math.exp(-response * cameraDt);
+    cameraState.x = clamp(
+      cameraState.x + (targetCameraX - cameraState.x) * follow,
+      0,
+      WORLD.width - viewWidth,
+    );
+    cameraState.y = clamp(
+      cameraState.y + (targetCameraY - cameraState.y) * follow,
+      0,
+      WORLD.height - viewHeight,
+    );
+    cameraState.updatedAt = now;
+  }
+  const cameraX = cameraState.x;
+  const cameraY = cameraState.y;
   const shakeX = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
   const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
   ctx.setTransform(
@@ -3748,12 +4626,10 @@ function drawWorld() {
   drawHazards(ctx);
   drawWorldLighting(ctx);
   drawAnchors(ctx);
-  drawBlocks(ctx);
+  drawDepthSortedArena(ctx);
   drawParticles(ctx);
-  drawJev(ctx);
   drawWraithlings(ctx);
   drawMirrorEcho(ctx);
-  drawPlayer(ctx);
   drawProjectiles(ctx);
   drawTacticalEffects(ctx);
   drawSkillCallouts(ctx);
@@ -3765,15 +4641,17 @@ function drawWorld() {
 }
 
 function drawAnchors(ctx) {
+  const chaserSkin = skinForRole("chaser");
+  const accentTint = colorWithAlpha(chaserSkin.accent, 0.29);
   for (const anchor of game.anchors) {
     const broken = anchor.health <= 0;
     const ghostTarget = game.mode === "auto" && !broken && anchor.id === game.player.aiObjectiveAnchorId;
     const pulse = 0.5 + Math.sin(game.elapsed * 4.8 + anchor.id) * 0.13;
-    const color = broken ? "#71827e" : anchor.hitFlash > 0 ? "#ffffff" : "#9ff2d7";
+    const color = broken ? "#71827e" : anchor.hitFlash > 0 ? "#ffffff" : chaserSkin.accent;
     ctx.save();
     ctx.globalAlpha = broken ? 0.28 : 0.9;
     const glow = ctx.createRadialGradient(anchor.x, anchor.y, 5, anchor.x, anchor.y, 66);
-    glow.addColorStop(0, broken ? "rgb(121 153 143 / 20%)" : "rgb(108 238 201 / 29%)");
+    glow.addColorStop(0, broken ? "rgb(121 153 143 / 20%)" : accentTint);
     glow.addColorStop(1, "rgb(99 233 203 / 0%)");
     ctx.fillStyle = glow;
     ctx.beginPath();
@@ -3788,18 +4666,10 @@ function drawAnchors(ctx) {
     ctx.arc(anchor.x, anchor.y, broken ? 30 : 29 + pulse * 3, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(anchor.x, anchor.y - 24);
-    ctx.lineTo(anchor.x + 17, anchor.y);
-    ctx.lineTo(anchor.x, anchor.y + 24);
-    ctx.lineTo(anchor.x - 17, anchor.y);
-    ctx.closePath();
-    ctx.fillStyle = broken ? "rgb(118 150 141 / 30%)" : "rgb(129 246 211 / 26%)";
-    ctx.fill();
-    ctx.stroke();
+    drawAnimatedAnchorEmblem(ctx, anchor, chaserSkin, broken);
     if (!broken) {
       for (let pip = 0; pip < anchor.maxHealth; pip += 1) {
-        ctx.fillStyle = pip < anchor.health ? "#d8ffef" : "rgb(216 255 239 / 22%)";
+        ctx.fillStyle = pip < anchor.health ? "#fff3d8" : "rgb(216 255 239 / 22%)";
         ctx.beginPath();
         ctx.arc(anchor.x + (pip - 0.5) * 11, anchor.y + 38, 2.6, 0, Math.PI * 2);
         ctx.fill();
@@ -3833,49 +4703,206 @@ function drawAnchors(ctx) {
   }
 }
 
+function colorWithAlpha(hexColor, alpha) {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hexColor);
+  if (!match) return `rgba(159, 242, 215, ${alpha})`;
+  const [, red, green, blue] = match;
+  return `rgba(${Number.parseInt(red, 16)}, ${Number.parseInt(green, 16)}, ${Number.parseInt(blue, 16)}, ${alpha})`;
+}
+
+function buildAnchorBrandSpriteSheets() {
+  const framesPerRow = 4;
+  const frameCount = 8;
+  const cellSize = 72;
+  const brands = [
+    { company: "OpenAI", mark: "openai", accent: "#79e4cf", core: "#d7fff2", dark: "#173b36" },
+    { company: "Anthropic", mark: "anthropicMark", accent: "#f29a68", core: "#fff0d8", dark: "#55352c" },
+  ];
+  for (const brand of brands) {
+    const mark = artwork.brandMarks[brand.mark];
+    if (!mark?.complete || !mark.naturalWidth || artwork.anchorBrandSheets[brand.company]?.spriteVersion === 1) continue;
+    const sheet = document.createElement("canvas");
+    sheet.width = cellSize * framesPerRow;
+    sheet.height = cellSize * (frameCount / framesPerRow);
+    sheet.spriteVersion = 1;
+    const sheetContext = sheet.getContext("2d");
+    if (!sheetContext) continue;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const column = frame % framesPerRow;
+      const row = Math.floor(frame / framesPerRow);
+      const centerX = column * cellSize + cellSize / 2;
+      const centerY = row * cellSize + cellSize / 2;
+      const phase = frame / frameCount * Math.PI * 2;
+      const pulse = 0.94 + Math.sin(phase) * 0.06;
+      sheetContext.save();
+      sheetContext.translate(centerX, centerY);
+
+      const halo = sheetContext.createRadialGradient(0, 0, 7, 0, 0, 31 * pulse);
+      halo.addColorStop(0, colorWithAlpha(brand.accent, 0.3));
+      halo.addColorStop(1, colorWithAlpha(brand.accent, 0));
+      sheetContext.fillStyle = halo;
+      sheetContext.beginPath();
+      sheetContext.arc(0, 0, 31 * pulse, 0, Math.PI * 2);
+      sheetContext.fill();
+
+      sheetContext.strokeStyle = colorWithAlpha(brand.accent, 0.75);
+      sheetContext.lineWidth = 1.5;
+      sheetContext.beginPath();
+      sheetContext.arc(0, 0, 27, phase, phase + Math.PI * 1.48);
+      sheetContext.stroke();
+
+      sheetContext.fillStyle = brand.dark;
+      sheetContext.shadowColor = brand.accent;
+      sheetContext.shadowBlur = 8 + Math.sin(phase) * 3;
+      sheetContext.beginPath();
+      sheetContext.arc(0, 0, 19 * pulse, 0, Math.PI * 2);
+      sheetContext.fill();
+      sheetContext.shadowBlur = 0;
+      sheetContext.strokeStyle = colorWithAlpha(brand.accent, 0.9);
+      sheetContext.lineWidth = 2;
+      sheetContext.beginPath();
+      sheetContext.arc(0, 0, 19 * pulse, 0, Math.PI * 2);
+      sheetContext.stroke();
+
+      sheetContext.fillStyle = brand.core;
+      sheetContext.beginPath();
+      sheetContext.arc(0, 0, 14, 0, Math.PI * 2);
+      sheetContext.fill();
+      const markScale = Math.min(26 / mark.naturalWidth, 24 / mark.naturalHeight);
+      const markWidth = mark.naturalWidth * markScale;
+      const markHeight = mark.naturalHeight * markScale;
+      sheetContext.drawImage(mark, -markWidth / 2, -markHeight / 2, markWidth, markHeight);
+
+      for (let mote = 0; mote < 3; mote += 1) {
+        const angle = phase + mote * Math.PI * 2 / 3;
+        const distance = 27;
+        const moteX = Math.cos(angle) * distance;
+        const moteY = Math.sin(angle) * distance;
+        sheetContext.fillStyle = brand.core;
+        if (brand.company === "OpenAI") {
+          sheetContext.fillRect(moteX - 2, moteY - 2, 4, 4);
+        } else {
+          sheetContext.beginPath();
+          sheetContext.moveTo(moteX, moteY - 3);
+          sheetContext.lineTo(moteX + 2, moteY);
+          sheetContext.lineTo(moteX, moteY + 3);
+          sheetContext.lineTo(moteX - 2, moteY);
+          sheetContext.closePath();
+          sheetContext.fill();
+        }
+      }
+      sheetContext.restore();
+    }
+    artwork.anchorBrandSheets[brand.company] = sheet;
+  }
+}
+
+function drawAnimatedAnchorEmblem(ctx, anchor, chaserSkin, broken) {
+  const company = chaserSkin.company;
+  const sheet = artwork.anchorBrandSheets[company];
+  if (!sheet) {
+    drawCompanyMark(ctx, chaserSkin, anchor.x, anchor.y, 20);
+    return;
+  }
+  const frame = Math.floor(game.elapsed * 8 + anchor.id * 1.7) % 8;
+  const cellSize = 72;
+  ctx.save();
+  ctx.globalAlpha = broken ? 0.24 : 0.94;
+  ctx.drawImage(
+    sheet,
+    (frame % 4) * cellSize,
+    Math.floor(frame / 4) * cellSize,
+    cellSize,
+    cellSize,
+    anchor.x - 33,
+    anchor.y - 33,
+    66,
+    66,
+  );
+  ctx.restore();
+}
+
 function drawMirrorEcho(ctx) {
+  const runnerSkin = skinForRole("runner");
+  const companion = artwork.companions[runnerSkin.companion];
+  const runnerSprite = spriteForRole("runner");
   for (const clone of game.player.clones) {
     const alpha = clamp(clone.life / clone.maxLife, 0.22, 0.75);
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.shadowColor = "#91ffe1";
+    ctx.shadowColor = runnerSkin.accent;
     ctx.shadowBlur = 24;
-    ctx.strokeStyle = "#aaffea";
-    ctx.fillStyle = "rgb(151 255 225 / 15%)";
+    ctx.strokeStyle = runnerSkin.accent;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(clone.x, clone.y + 8, 29, 36, 0, 0, Math.PI * 2);
+    ctx.ellipse(clone.x, clone.y + 8, 37, 45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
-    if (artwork.ghost.complete && artwork.ghost.naturalWidth > 0) {
-      drawSpriteFrame(ctx, artwork.ghost, 0, clone.x, clone.y, 60, 68, clone.facing < 0);
+    const sprite = companion?.complete && companion.naturalWidth > 0 ? companion : runnerSprite;
+    if (sprite?.complete && sprite.naturalWidth > 0) {
+      const spriteId = companion?.complete ? runnerSkin.companion : runnerSkin.id;
+      const direction = spriteDirectionFor(clone);
+      const row = Math.hypot(clone.vx || 0, clone.vy || 0) > 35
+        ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.085) % 2
+        : 0;
+      drawSpriteFrame(ctx, sprite, spriteId, direction, row, clone.x, clone.y, 88, 96);
     }
     ctx.restore();
   }
 }
 
 function drawWraithlings(ctx) {
+  const skin = skinForRole("chaser");
+  const anthropic = skin.company === "Anthropic";
   for (const wraith of game.minions) {
     const pulse = 0.72 + Math.sin(game.elapsed * 11 + wraith.phase) * 0.13;
+    const rotation = game.elapsed * (anthropic ? -1.35 : 1.1) + wraith.phase;
     ctx.save();
     ctx.translate(wraith.x, wraith.y);
     ctx.globalAlpha = pulse;
-    ctx.shadowColor = "#cc86ff";
-    ctx.shadowBlur = 20;
-    ctx.fillStyle = "rgb(171 100 224 / 74%)";
-    ctx.strokeStyle = "#f0c6ff";
-    ctx.lineWidth = 1.5;
+    ctx.shadowColor = skin.accent;
+    ctx.shadowBlur = 17;
+    ctx.fillStyle = anthropic ? "#713c3a" : "#214d4a";
+    ctx.strokeStyle = skin.accent;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(0, 0, wraith.radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, wraith.radius * 0.84, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "#fff2d4";
+    if (anthropic) {
+      ctx.strokeStyle = "rgb(255 210 158 / 78%)";
+      ctx.lineWidth = 1.5;
+      for (let ray = 0; ray < 8; ray += 1) {
+        const angle = rotation + ray * Math.PI / 4;
+        const inner = wraith.radius * 0.9;
+        const outer = inner + (ray % 2 ? 3 : 7);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+        ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = "rgb(168 244 224 / 78%)";
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, wraith.radius * 1.22, wraith.radius * 0.72, rotation, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      for (let node = 0; node < 3; node += 1) {
+        const angle = rotation + node * Math.PI * 2 / 3;
+        ctx.fillStyle = "#b9ffed";
+        ctx.fillRect(Math.cos(angle) * wraith.radius - 1.5, Math.sin(angle) * wraith.radius - 1.5, 3, 3);
+      }
+    }
+    ctx.fillStyle = anthropic ? "#fff1d7" : "#e4fff6";
     ctx.beginPath();
-    ctx.arc(-4, -2, 1.8, 0, Math.PI * 2);
-    ctx.arc(4, -2, 1.8, 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(3, wraith.radius * 0.37), 0, Math.PI * 2);
     ctx.fill();
+    drawCompanyMark(ctx, skin, 0, 0, Math.min(10, wraith.radius * 0.6));
     ctx.restore();
   }
 }
@@ -3899,6 +4926,7 @@ function drawMapOverview() {
   }
   ctx.fillStyle = "rgb(7 6 15 / 42%)";
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  drawCompanyFloorBranding(ctx, game.level.biome, 0.42, game.level);
   for (const hazard of game.hazards) {
     const status = hazardState(hazard);
     const bounds = hazardBounds(hazard);
@@ -3916,23 +4944,24 @@ function drawMapOverview() {
     ctx.strokeRect(-block.w / 2, -block.h / 2, block.w, block.h);
     ctx.restore();
   }
+  const anchorBrandAccent = skinForRole("chaser").accent;
   for (const anchor of game.anchors) {
-    ctx.fillStyle = anchor.health > 0 ? "#9effdf" : "rgb(157 197 180 / 35%)";
+    ctx.fillStyle = anchor.health > 0 ? anchorBrandAccent : "rgb(157 197 180 / 35%)";
     ctx.beginPath();
     ctx.arc(anchor.x, anchor.y, anchor.health > 0 ? 32 : 22, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "#ff836f";
+  ctx.fillStyle = skinForRole("chaser").accent;
   ctx.beginPath();
   ctx.arc(game.jev.x, game.jev.y, 35, 0, Math.PI * 2);
   ctx.fill();
   for (const clone of game.player.clones) {
-    ctx.fillStyle = "#9ffff0";
+    ctx.fillStyle = skinForRole("runner").accent;
     ctx.beginPath();
     ctx.arc(clone.x, clone.y, 21, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "#fff0c7";
+  ctx.fillStyle = skinForRole("runner").accent;
   ctx.beginPath();
   ctx.arc(game.player.x, game.player.y, 27, 0, Math.PI * 2);
   ctx.fill();
@@ -3959,72 +4988,240 @@ function currentViewBounds() {
   return { x, y, width, height };
 }
 
+function floorPalette(biome) {
+  return {
+    office: { edge: "#293932", trim: "#c09a62", glass: "#4c8b83" },
+    cinder: { edge: "#252f35", trim: "#c8754c", glass: "#519f9b" },
+    archive: { edge: "#39372e", trim: "#c79c68", glass: "#66866b" },
+    garden: { edge: "#343a31", trim: "#ca8664", glass: "#7b9d68" },
+    vault: { edge: "#3b3933", trim: "#b99b70", glass: "#728d78" },
+    rift: { edge: "#30383a", trim: "#c27b57", glass: "#5c9e97" },
+  }[biome] || { edge: "#293932", trim: "#c09a62", glass: "#4c8b83" };
+}
+
+function drawPixelRoomFrame(ctx, biome) {
+  const palette = floorPalette(biome);
+  const wall = 22;
+  ctx.fillStyle = palette.edge;
+  ctx.fillRect(0, 0, WORLD.width, wall);
+  ctx.fillRect(0, WORLD.height - wall, WORLD.width, wall);
+  ctx.fillRect(0, wall, wall, WORLD.height - wall * 2);
+  ctx.fillRect(WORLD.width - wall, wall, wall, WORLD.height - wall * 2);
+  ctx.fillStyle = palette.trim;
+  ctx.fillRect(wall, wall - 5, WORLD.width - wall * 2, 5);
+  ctx.fillRect(wall, WORLD.height - wall, WORLD.width - wall * 2, 5);
+  ctx.fillRect(wall - 5, wall, 5, WORLD.height - wall * 2);
+  ctx.fillRect(WORLD.width - wall, wall, 5, WORLD.height - wall * 2);
+  ctx.fillStyle = palette.glass;
+  for (let x = 112; x < WORLD.width - 96; x += 192) {
+    ctx.fillRect(x, 5, 28, 7);
+    ctx.fillRect(x, WORLD.height - 12, 28, 7);
+  }
+  for (let y = 112; y < WORLD.height - 96; y += 192) {
+    ctx.fillRect(5, y, 7, 28);
+    ctx.fillRect(WORLD.width - 12, y, 7, 28);
+  }
+}
+
+function drawCompanyFloorPlaque(ctx, brand, x, y, opacity = 0.34) {
+  const openAI = brand === "openai";
+  const logo = artwork.brandMarks[openAI ? "openai" : "anthropic"];
+  if (!logo?.complete || !logo.naturalWidth) return;
+  const width = openAI ? 76 : 152;
+  const height = openAI ? 62 : 42;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  const plate = openAI ? "rgba(224, 226, 206, 0.68)" : "rgba(231, 216, 190, 0.7)";
+  const trim = openAI ? "rgba(48, 88, 78, 0.75)" : "rgba(123, 73, 49, 0.76)";
+  ctx.fillStyle = "rgba(19, 19, 17, 0.2)";
+  ctx.fillRect(x - width / 2, y - height / 2 + 4, width, height);
+  ctx.fillStyle = plate;
+  ctx.fillRect(x - width / 2, y - height / 2, width, height);
+  ctx.fillStyle = trim;
+  ctx.fillRect(x - width / 2, y - height / 2, width, 3);
+  ctx.fillRect(x - width / 2, y + height / 2 - 3, width, 3);
+  const logoWidth = openAI ? 38 : 128;
+  const logoHeight = logo.naturalHeight * logoWidth / logo.naturalWidth;
+  ctx.drawImage(logo, x - logoWidth / 2, y - logoHeight / 2, logoWidth, logoHeight);
+  ctx.restore();
+}
+
+const companyFloorPositionCache = new WeakMap();
+function companyFloorPositions(level) {
+  if (companyFloorPositionCache.has(level)) return companyFloorPositionCache.get(level);
+  const regions = [
+    { x: [360, 1080], y: [280, 720], target: [720, 470] },
+    { x: [1480, 2180], y: [280, 720], target: [1840, 470] },
+    { x: [360, 1080], y: [880, 1220], target: [720, 1080] },
+    { x: [1480, 2180], y: [880, 1220], target: [1840, 1080] },
+  ];
+  const obstacles = level.blocks || [];
+  const hazards = level.hazards || [];
+  const spawns = [level.playerStart, level.jevStart].filter(Boolean);
+  const anthropicMap = ["archive", "garden", "vault"].includes(level.biome);
+  const halfPlaqueWidth = anthropicMap ? 84 : 46;
+  const halfPlaqueHeight = anthropicMap ? 30 : 40;
+  const clear = (x, y) => {
+    const overlaps = (left, top, right, bottom) =>
+      x + halfPlaqueWidth > left - 16 && x - halfPlaqueWidth < right + 16
+      && y + halfPlaqueHeight > top - 16 && y - halfPlaqueHeight < bottom + 16;
+    if (obstacles.some((block) => {
+      const angle = block.angle || 0;
+      const width = Math.abs(block.w * Math.cos(angle)) + Math.abs(block.h * Math.sin(angle));
+      const height = Math.abs(block.w * Math.sin(angle)) + Math.abs(block.h * Math.cos(angle));
+      const centerX = block.x + block.w / 2;
+      const centerY = block.y + block.h / 2;
+      return overlaps(centerX - width / 2, centerY - height / 2, centerX + width / 2, centerY + height / 2);
+    })) return false;
+    if (hazards.some((hazard) => overlaps(hazard.x, hazard.y, hazard.x + hazard.w, hazard.y + hazard.h))) return false;
+    return spawns.every((spawn) => Math.hypot(x - spawn.x, y - spawn.y) >= 255);
+  };
+  const positions = regions.map((region) => {
+    const options = [];
+    for (let y = region.y[0]; y <= region.y[1]; y += 40) {
+      for (let x = region.x[0]; x <= region.x[1]; x += 40) {
+        if (clear(x, y)) options.push([x, y]);
+      }
+    }
+    options.sort((left, right) =>
+      Math.hypot(left[0] - region.target[0], left[1] - region.target[1]) -
+      Math.hypot(right[0] - region.target[0], right[1] - region.target[1])
+    );
+    return options[0] || null;
+  });
+  companyFloorPositionCache.set(level, positions);
+  return positions;
+}
+
+function drawCompanyFloorBranding(ctx, biome, opacity = 0.38, level = game?.level) {
+  if (!level) return;
+  const positions = companyFloorPositions(level);
+  const brand = biome === "office" || biome === "cinder" ? "openai"
+    : biome === "archive" || biome === "garden" || biome === "vault" ? "anthropic" : "shared";
+  positions.forEach((position, index) => {
+    if (!position) return;
+    const [x, y] = position;
+    const plaqueBrand = brand === "shared" ? ((index % 2) ? "anthropic" : "openai") : brand;
+    drawCompanyFloorPlaque(ctx, plaqueBrand, x, y, Math.min(0.56, opacity + 0.12));
+  });
+}
+
 function drawFloor(ctx) {
   const floor = artwork.floors[game.level.biome];
   if (floor?.complete && floor.naturalWidth > 0) {
-    ctx.drawImage(floor, 0, 0, WORLD.width, WORLD.height);
-    const centerX = WORLD.width / 2;
-    const centerY = WORLD.height / 2;
-    const vignette = ctx.createRadialGradient(centerX, centerY, 220, centerX, centerY, WORLD.width * 0.74);
-    vignette.addColorStop(0, "rgb(13 10 20 / 3%)");
-    vignette.addColorStop(1, "rgb(11 8 18 / 37%)");
-    ctx.fillStyle = vignette;
+    const baseColors = {
+      office: "#d3d0c3", cinder: "#1d292e", archive: "#cabda5",
+      garden: "#173631", vault: "#c9bda5", rift: "#273039",
+    };
+    const textureOpacity = {
+      office: 0.34, cinder: 0.78, archive: 0.43,
+      garden: 0.43, vault: 0.4, rift: 0.46,
+    };
+    ctx.fillStyle = baseColors[game.level.biome] || "#273039";
     ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-    return;
-  }
-  if (game.level.biome === "cinder") {
+    ctx.globalAlpha = textureOpacity[game.level.biome] ?? 0.46;
+    for (let y = 0; y < WORLD.height; y += floor.naturalHeight) {
+      for (let x = 0; x < WORLD.width; x += floor.naturalWidth) {
+        ctx.drawImage(floor, x, y);
+      }
+    }
+    ctx.globalAlpha = 1;
+    drawLabFloorDetails(ctx, game.level.biome);
+    ctx.fillStyle = "rgba(10, 16, 15, 0.06)";
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    drawPixelRoomFrame(ctx, game.level.biome);
+  } else if (game.level.biome === "cinder") {
     drawCinderFloor(ctx);
-    return;
-  }
-  if (game.level.biome === "archive") {
+  } else if (game.level.biome === "archive") {
     drawArchiveFloor(ctx);
-    return;
-  }
-  if (game.level.biome === "garden") {
+  } else if (game.level.biome === "garden") {
     drawGardenFloor(ctx);
-    return;
-  }
-  if (game.level.biome === "vault") {
+  } else if (game.level.biome === "vault") {
     drawVaultFloor(ctx);
-    return;
-  }
-  if (game.level.biome === "rift") {
+  } else if (game.level.biome === "rift") {
     drawRiftFloor(ctx);
-    return;
-  }
-  ctx.fillStyle = "#201a2c";
-  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-  const tile = 48;
-  for (let y = 22; y < WORLD.height - 22; y += tile) {
-    for (let x = 22; x < WORLD.width - 22; x += tile) {
-      const shade = ((x / tile + y / tile) % 2) === 0 ? "#241e30" : "#221c2e";
-      ctx.fillStyle = shade;
-      ctx.fillRect(x, y, tile - 1, tile - 1);
+  } else {
+    ctx.fillStyle = "#201a2c";
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    const tile = 48;
+    for (let y = 22; y < WORLD.height - 22; y += tile) {
+      for (let x = 22; x < WORLD.width - 22; x += tile) {
+        const shade = ((x / tile + y / tile) % 2) === 0 ? "#241e30" : "#221c2e";
+        ctx.fillStyle = shade;
+        ctx.fillRect(x, y, tile - 1, tile - 1);
+      }
+    }
+    ctx.strokeStyle = "rgb(199 167 204 / 8%)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(21.5, 21.5, WORLD.width - 43, WORLD.height - 43);
+    ctx.strokeStyle = "rgb(212 177 219 / 6%)";
+    ctx.setLineDash([3, 12]);
+    ctx.beginPath();
+    ctx.moveTo(30, WORLD.height / 2);
+    ctx.lineTo(WORLD.width - 30, WORLD.height / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const corners = [
+      [38, 38, 1, 1], [WORLD.width - 38, 38, -1, 1],
+      [38, WORLD.height - 38, 1, -1], [WORLD.width - 38, WORLD.height - 38, -1, -1],
+    ];
+    for (const [x, y, sx, sy] of corners) {
+      ctx.strokeStyle = "rgb(239 197 131 / 23%)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y + sy * 24);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + sx * 24, y);
+      ctx.stroke();
     }
   }
-  ctx.strokeStyle = "rgb(199 167 204 / 8%)";
+  if (!(floor?.complete && floor.naturalWidth > 0)) drawLabFloorDetails(ctx, game.level.biome);
+  drawCompanyFloorBranding(ctx, game.level.biome, 0.42);
+}
+
+function drawLabFloorDetails(ctx, biome) {
+  const anthropic = ["archive", "garden", "vault"].includes(biome);
+  const openAi = ["office", "cinder"].includes(biome);
+  const seam = anthropic ? "rgba(235, 207, 164, 0.1)" : "rgba(155, 220, 207, 0.1)";
+  const channel = anthropic ? "rgba(198, 143, 99, 0.11)" : "rgba(108, 212, 192, 0.12)";
+  ctx.save();
   ctx.lineWidth = 1;
-  ctx.strokeRect(21.5, 21.5, WORLD.width - 43, WORLD.height - 43);
-  ctx.strokeStyle = "rgb(212 177 219 / 6%)";
-  ctx.setLineDash([3, 12]);
-  ctx.beginPath();
-  ctx.moveTo(30, WORLD.height / 2);
-  ctx.lineTo(WORLD.width - 30, WORLD.height / 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  const corners = [
-    [38, 38, 1, 1], [WORLD.width - 38, 38, -1, 1],
-    [38, WORLD.height - 38, 1, -1], [WORLD.width - 38, WORLD.height - 38, -1, -1],
-  ];
-  for (const [x, y, sx, sy] of corners) {
-    ctx.strokeStyle = "rgb(239 197 131 / 23%)";
-    ctx.lineWidth = 2;
+  ctx.strokeStyle = seam;
+  for (let x = 128; x < WORLD.width; x += 256) {
     ctx.beginPath();
-    ctx.moveTo(x, y + sy * 24);
-    ctx.lineTo(x, y);
-    ctx.lineTo(x + sx * 24, y);
+    ctx.moveTo(x, 24);
+    ctx.lineTo(x, WORLD.height - 24);
     ctx.stroke();
   }
+  for (let y = 128; y < WORLD.height; y += 256) {
+    ctx.beginPath();
+    ctx.moveTo(24, y);
+    ctx.lineTo(WORLD.width - 24, y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = channel;
+  ctx.lineWidth = 4;
+  for (let x = 640; x < WORLD.width; x += 640) {
+    ctx.beginPath();
+    ctx.moveTo(x, 28);
+    ctx.lineTo(x, WORLD.height - 28);
+    ctx.stroke();
+  }
+  for (let y = 400; y < WORLD.height; y += 400) {
+    ctx.beginPath();
+    ctx.moveTo(28, y);
+    ctx.lineTo(WORLD.width - 28, y);
+    ctx.stroke();
+  }
+  const lightColor = openAi ? "119, 220, 194" : anthropic ? "242, 178, 115" : "197, 213, 200";
+  for (const [x, y] of [[320, 260], [960, 290], [1600, 1040], [2240, 1240]]) {
+    const light = ctx.createRadialGradient(x, y, 12, x, y, 300);
+    light.addColorStop(0, `rgba(${lightColor}, 0.1)`);
+    light.addColorStop(1, `rgba(${lightColor}, 0)`);
+    ctx.fillStyle = light;
+    ctx.fillRect(x - 300, y - 300, 600, 600);
+  }
+  ctx.restore();
 }
 
 function drawGardenFloor(ctx) {
@@ -4258,8 +5455,8 @@ function drawWorldLighting(ctx) {
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
   const movingLights = [
-    { x: game.player.x, y: game.player.y, color: [133, 235, 210], radius: 250, strength: 0.18 },
-    { x: game.jev.x, y: game.jev.y, color: [255, 101, 104], radius: 230, strength: 0.15 },
+    { x: game.player.x, y: game.player.y, color: skinForRole("runner").light, radius: 250, strength: 0.18 },
+    { x: game.jev.x, y: game.jev.y, color: skinForRole("chaser").light, radius: 230, strength: 0.15 },
   ];
   const hotspots = [
     ...movingLights,
@@ -4402,91 +5599,515 @@ function drawArchiveFloor(ctx) {
   ctx.restore();
 }
 
-function drawBlocks(ctx) {
-  for (const source of blocks) {
-    ctx.save();
-    ctx.shadowColor = "rgb(5 4 10 / 50%)";
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetY = 8;
-    let block = source;
-    if (source.angle) {
-      ctx.translate(source.x + source.w / 2, source.y + source.h / 2);
-      ctx.rotate(source.angle);
-      block = { ...source, x: -source.w / 2, y: -source.h / 2, angle: 0 };
-    }
-    if (block.shape === "circle" || block.shape === "ellipse") {
-      drawRoundObstacle(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (game.level.biome === "cinder") {
-      drawCinderObstacle(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (game.level.biome === "garden") {
-      drawGardenObstacle(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (game.level.biome === "vault") {
-      drawVaultObstacle(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (game.level.biome === "rift") {
-      drawRiftObstacle(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (game.level.biome === "archive") {
-      drawArchiveShelf(ctx, block);
-      ctx.restore();
-      continue;
-    }
-    if (block.kind === "pillar") {
-      ctx.fillStyle = "#493b55";
-      ctx.beginPath();
-      ctx.ellipse(block.x + block.w / 2, block.y + block.h / 2, block.w * 0.57, block.h * 0.54, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.strokeStyle = "#9b7e9d";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(block.x + block.w / 2, block.y + block.h / 2, block.w * 0.42, block.h * 0.41, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = "rgb(226 186 135 / 50%)";
-      ctx.beginPath();
-      ctx.arc(block.x + block.w / 2 - 8, block.y + block.h / 2 - 7, 2.2, 0, Math.PI * 2);
-      ctx.arc(block.x + block.w / 2 + 8, block.y + block.h / 2 + 7, 2.2, 0, Math.PI * 2);
-      ctx.fill();
+function pixelObstaclePalette(biome) {
+  return {
+    office: { edge: "#342b25", face: "#8d694d", highlight: "#c49a67", dark: "#293c3d", glass: "#3f716d", accent: "#d1aa6e", plant: "#58734e", warm: "#c87755" },
+    cinder: { edge: "#1d292f", face: "#35464a", highlight: "#5f7774", dark: "#182329", glass: "#2e6061", accent: "#d78050", plant: "#63774c", warm: "#db9560" },
+    archive: { edge: "#302d27", face: "#917451", highlight: "#c7a77a", dark: "#303b31", glass: "#58705b", accent: "#d5b17b", plant: "#60794f", warm: "#bf7452" },
+    garden: { edge: "#30352c", face: "#6d7650", highlight: "#a6ad75", dark: "#29332c", glass: "#52765e", accent: "#d08c68", plant: "#598457", warm: "#d3ac74" },
+    vault: { edge: "#36332c", face: "#9b8d74", highlight: "#d4c29d", dark: "#38413b", glass: "#608477", accent: "#bd9162", plant: "#657d60", warm: "#ca805e" },
+    rift: { edge: "#2a3133", face: "#58645f", highlight: "#8e9a83", dark: "#222e32", glass: "#467a79", accent: "#d09062", plant: "#637b59", warm: "#c67b58" },
+  }[biome] || { edge: "#342b25", face: "#8d694d", highlight: "#c49a67", dark: "#293c3d", glass: "#3f716d", accent: "#d1aa6e", plant: "#58734e", warm: "#c87755" };
+}
+
+function drawPixelEllipse(ctx, x, y, width, height, color, step = 10) {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const radiusX = width / 2;
+  const radiusY = height / 2;
+  ctx.fillStyle = color;
+  for (let offsetY = -radiusY; offsetY < radiusY; offsetY += step) {
+    const curve = Math.sqrt(Math.max(0, 1 - (offsetY / radiusY) ** 2));
+    const halfWidth = Math.floor((radiusX * curve) / step) * step;
+    ctx.fillRect(centerX - halfWidth, centerY + offsetY, Math.max(step, halfWidth * 2), step);
+  }
+}
+
+function drawPixelOfficeObstacle(ctx, block, biome) {
+  const { x, y, w, h, kind } = block;
+  const palette = pixelObstaclePalette(biome);
+  const unit = Math.max(3, Math.min(9, Math.floor(Math.min(w, h) / 8)));
+  const horizontal = w >= h;
+  const major = horizontal ? w : h;
+  const minor = horizontal ? h : w;
+  const longCoordinate = (index) => horizontal ? x + index : y + index;
+  const center = (along) => horizontal ? { x: along, y: y + h / 2 } : { x: x + w / 2, y: along };
+  const isAnthropic = biome === "archive" || biome === "garden" || biome === "vault";
+  const wood = isAnthropic ? "#79543e" : biome === "cinder" ? "#3c3739" : "#6d5039";
+  const woodLight = isAnthropic ? "#c69a68" : biome === "cinder" ? "#c78352" : "#c5a16c";
+  const screen = biome === "cinder" ? "#66d6c0" : "#7bd8c8";
+  const drawFrame = (left, top, width, height, face) => {
+    ctx.fillStyle = "rgba(8, 13, 14, 0.48)";
+    ctx.fillRect(left + unit, top + unit * 2, width, height);
+    ctx.fillStyle = palette.edge;
+    ctx.fillRect(left, top, width, height);
+    ctx.fillStyle = face;
+    ctx.fillRect(left + unit, top + unit, Math.max(unit, width - unit * 2), Math.max(unit, height - unit * 2));
+    ctx.fillStyle = palette.highlight;
+    ctx.fillRect(left + unit, top + unit, Math.max(unit, width - unit * 2), Math.max(2, unit / 2));
+  };
+  if (block.shape === "circle" || block.shape === "ellipse") {
+    const inset = unit * 1.2;
+    drawPixelEllipse(ctx, x + unit, y + unit * 1.8, w, h, palette.edge, unit * 2);
+    drawPixelEllipse(ctx, x, y, w, h, isAnthropic ? wood : palette.glass, unit * 2);
+    drawPixelEllipse(ctx, x + inset, y + inset, w - inset * 2, h - inset * 2, palette.dark, unit * 2);
+    if (kind === "reflecting_pool") {
+      drawPixelEllipse(ctx, x + inset * 1.5, y + inset * 1.5, w - inset * 3, h - inset * 3, "#397b7d", unit * 2);
+      ctx.fillStyle = "rgba(181, 240, 218, 0.55)";
+      for (let line = 0; line < 5; line += 1) {
+        const lineY = y + h * (0.28 + line * 0.1);
+        ctx.fillRect(x + w * 0.31, lineY, w * (0.25 + (line % 2) * 0.14), Math.max(2, unit / 2));
+      }
     } else {
-      const top = block.kind === "desk" ? "#77617a" : "#554760";
-      ctx.fillStyle = top;
-      ctx.beginPath();
-      ctx.roundRect(block.x, block.y, block.w, block.h, 9);
-      ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.strokeStyle = "#a4879f";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = "#342c3e";
-      ctx.beginPath();
-      ctx.roundRect(block.x + 9, block.y + 9, block.w - 18, block.h - 18, 5);
-      ctx.fill();
-      ctx.fillStyle = "rgb(238 193 137 / 68%)";
-      if (block.kind === "desk") {
-        ctx.fillRect(block.x + 26, block.y + 25, 34, 18);
-        ctx.fillRect(block.x + 76, block.y + 29, 45, 5);
-        ctx.fillRect(block.x + 76, block.y + 39, 31, 4);
-        ctx.beginPath();
-        ctx.arc(block.x + block.w - 30, block.y + block.h / 2, 5, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillRect(block.x + 21, block.y + block.h / 2 - 3, block.w - 42, 6);
+      drawPixelEllipse(ctx, x + inset * 1.55, y + inset * 1.55, w - inset * 3.1, h - inset * 3.1, wood, unit * 2);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      ctx.fillStyle = woodLight;
+      ctx.fillRect(cx - unit * 2, cy - unit * 2, unit * 4, unit * 4);
+      ctx.fillStyle = palette.plant;
+      ctx.fillRect(cx - unit, cy - unit, unit * 2, unit * 2);
+      for (let seat = 0; seat < 4; seat += 1) {
+        const angle = seat * Math.PI / 2;
+        const seatX = cx + Math.cos(angle) * w * 0.32;
+        const seatY = cy + Math.sin(angle) * h * 0.32;
+        ctx.fillStyle = palette.accent;
+        ctx.fillRect(seatX - unit * 2, seatY - unit, unit * 4, unit * 2);
       }
     }
-    ctx.restore();
+    return;
+  }
+
+  if (["hedge", "flowerbed"].includes(kind)) {
+    drawFrame(x, y, w, h, wood);
+    ctx.fillStyle = "#253d32";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    for (let py = y + unit * 2; py < y + h - unit * 2; py += unit * 2) {
+      for (let px = x + unit * 2; px < x + w - unit * 2; px += unit * 2) {
+        const cell = (Math.floor(px / (unit * 2)) + Math.floor(py / (unit * 2))) % 4;
+        ctx.fillStyle = cell === 0 ? "#8baa67" : cell === 1 ? "#517e55" : cell === 2 ? "#396e50" : "#c49e71";
+        ctx.fillRect(px, py, unit * 1.5, unit * 1.5);
+        if (cell === 0 || cell === 3) {
+          ctx.fillStyle = cell === 0 ? "#e8d38a" : "#d38b9d";
+          ctx.fillRect(px + unit / 2, py + unit / 2, Math.max(2, unit / 2), Math.max(2, unit / 2));
+        }
+      }
+    }
+    return;
+  }
+
+  if (kind === "trellis") {
+    drawFrame(x, y, w, h, wood);
+    ctx.fillStyle = "#314d40";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    const spacing = Math.max(unit * 3, 18);
+    for (let position = spacing; position < major - unit * 3; position += spacing) {
+      const along = longCoordinate(position);
+      const leaf = center(along);
+      ctx.fillStyle = "#b38a5d";
+      if (horizontal) ctx.fillRect(along, y + unit * 2, unit / 2, h - unit * 4);
+      else ctx.fillRect(x + unit * 2, along, w - unit * 4, unit / 2);
+      ctx.fillStyle = palette.plant;
+      ctx.fillRect(leaf.x - unit, leaf.y - unit, unit * 2, unit * 2);
+    }
+    return;
+  }
+
+  const isBookStorage = ["shelf", "vault_wall", "vault_rib"].includes(kind);
+  if (isBookStorage) {
+    drawFrame(x, y, w, h, wood);
+    ctx.fillStyle = isAnthropic ? "#34382f" : "#283338";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    const covers = ["#b67555", "#c7a16c", "#678c78", "#827091", "#d0bd91", "#4f7773"];
+    if (kind === "shelf" && horizontal) {
+      const inset = unit * 2.2;
+      const span = Math.max(1, w - inset * 2);
+      const count = Math.max(4, Math.floor(span / 19));
+      const bookWidth = span / count;
+      for (let index = 0; index < count; index += 1) {
+        const left = x + inset + index * bookWidth + 1;
+        const spineWidth = Math.max(4, bookWidth - 2);
+        const spineHeight = h - unit * (4 + index % 3);
+        ctx.fillStyle = covers[index % covers.length];
+        ctx.fillRect(left, y + (h - spineHeight) / 2, spineWidth, spineHeight);
+        ctx.fillStyle = "rgba(255, 238, 203, 0.7)";
+        ctx.fillRect(left + Math.max(2, spineWidth * 0.25), y + h * 0.42, Math.max(2, spineWidth * 0.5), Math.max(2, unit / 2));
+        ctx.fillStyle = "rgba(40, 34, 31, 0.4)";
+        ctx.fillRect(left + spineWidth - 2, y + unit * 2.1, 1.5, h - unit * 4.2);
+      }
+    } else if (kind === "shelf") {
+      const inset = unit * 2.2;
+      const span = Math.max(1, h - inset * 2);
+      const count = Math.max(4, Math.floor(span / 19));
+      const bookHeight = span / count;
+      for (let index = 0; index < count; index += 1) {
+        const top = y + inset + index * bookHeight + 1;
+        const spineHeight = Math.max(4, bookHeight - 2);
+        const spineWidth = w - unit * (4 + index % 3);
+        ctx.fillStyle = covers[index % covers.length];
+        ctx.fillRect(x + (w - spineWidth) / 2, top, spineWidth, spineHeight);
+        ctx.fillStyle = "rgba(255, 238, 203, 0.7)";
+        ctx.fillRect(x + w * 0.42, top + Math.max(2, spineHeight * 0.24), Math.max(2, unit / 2), Math.max(2, spineHeight * 0.52));
+      }
+    } else if (horizontal) {
+      let bookX = x + unit * 2;
+      let index = 0;
+      while (bookX < x + w - unit * 2) {
+        const bookWidth = unit + (index % 3) * 2;
+        const bookHeight = Math.max(unit * 2, h - unit * (3 + index % 2));
+        ctx.fillStyle = covers[index % covers.length];
+        ctx.fillRect(bookX, y + h - unit * 2 - bookHeight, bookWidth, bookHeight);
+        ctx.fillStyle = "rgba(249, 228, 184, 0.62)";
+        ctx.fillRect(bookX + 1, y + h - unit * 3, Math.max(1, bookWidth - 2), Math.max(1, unit / 2));
+        bookX += bookWidth + Math.max(2, unit / 2);
+        index += 1;
+      }
+    } else {
+      let bookY = y + unit * 2;
+      let index = 0;
+      while (bookY < y + h - unit * 2) {
+        const bookHeight = unit + (index % 3) * 2;
+        const bookWidth = Math.max(unit * 2, w - unit * (3 + index % 2));
+        ctx.fillStyle = covers[index % covers.length];
+        ctx.fillRect(x + w - unit * 2 - bookWidth, bookY, bookWidth, bookHeight);
+        ctx.fillStyle = "rgba(249, 228, 184, 0.62)";
+        ctx.fillRect(x + w - unit * 3, bookY + 1, Math.max(1, unit / 2), Math.max(1, bookHeight - 2));
+        bookY += bookHeight + Math.max(2, unit / 2);
+        index += 1;
+      }
+    }
+    ctx.fillStyle = woodLight;
+    if (horizontal) ctx.fillRect(x + unit, y + h - unit * 2, w - unit * 2, unit);
+    else ctx.fillRect(x + w - unit * 2, y + unit, unit, h - unit * 2);
+    if (kind === "shelf" && Math.min(w, h) >= 34) {
+      const mark = artwork.brandMarks[isAnthropic ? "anthropicMark" : "openai"];
+      if (mark?.complete && mark.naturalWidth) {
+        const markSize = Math.min(15, Math.min(w, h) * 0.34);
+        ctx.fillStyle = isAnthropic ? "#e9d7bb" : "#d9ece1";
+        ctx.fillRect(x + unit * 2.2, y + unit * 2.2, markSize + 3, markSize + 3);
+        ctx.drawImage(mark, x + unit * 2.2 + 1.5, y + unit * 2.2 + 1.5, markSize, markSize * mark.naturalHeight / mark.naturalWidth);
+      }
+    }
+    return;
+  }
+
+  const isCompute = ["vent", "furnace", "obelisk"].includes(kind);
+  if (isCompute) {
+    drawFrame(x, y, w, h, "#242d32");
+    ctx.fillStyle = "#121b21";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    const rackCount = Math.max(1, Math.floor((major - unit * 4) / Math.max(40, minor * 0.92)));
+    for (let rack = 0; rack < rackCount; rack += 1) {
+      const start = unit * 2 + rack * ((major - unit * 4) / rackCount);
+      const bay = (major - unit * 4) / rackCount - unit;
+      const left = horizontal ? x + start : x + unit * 2;
+      const top = horizontal ? y + unit * 2 : y + start;
+      const bayWidth = horizontal ? bay : w - unit * 4;
+      const bayHeight = horizontal ? h - unit * 4 : bay;
+      ctx.fillStyle = "#314048";
+      ctx.fillRect(left, top, bayWidth, bayHeight);
+      const rows = Math.max(2, Math.floor((horizontal ? bayHeight : bayWidth) / (unit * 1.6)));
+      for (let row = 0; row < rows; row += 1) {
+        ctx.fillStyle = row % 2 ? "#52666b" : "#202c33";
+        if (horizontal) ctx.fillRect(left + unit, top + unit + row * unit * 1.4, Math.max(2, bayWidth - unit * 2), Math.max(2, unit / 2));
+        else ctx.fillRect(left + unit + row * unit * 1.4, top + unit, Math.max(2, unit / 2), Math.max(2, bayHeight - unit * 2));
+      }
+      ctx.fillStyle = screen;
+      ctx.fillRect(left + unit, top + unit, Math.max(2, unit / 2), Math.max(2, unit / 2));
+      ctx.fillStyle = "#e2a06e";
+      ctx.fillRect(left + unit * 2, top + unit, Math.max(2, unit / 2), Math.max(2, unit / 2));
+    }
+    const mark = artwork.brandMarks[isAnthropic ? "anthropicMark" : "openai"];
+    if (mark?.complete && mark.naturalWidth && minor >= 48) {
+      const markSize = Math.min(13, minor * 0.22);
+      ctx.fillStyle = "#ecede2";
+      ctx.fillRect(x + w - markSize - unit * 2, y + unit * 2, markSize + 2, markSize + 2);
+      ctx.drawImage(mark, x + w - markSize - unit * 2 + 1, y + unit * 2 + 1, markSize, markSize * mark.naturalHeight / mark.naturalWidth);
+    }
+    return;
+  }
+
+  if (["pillar", "glass_pillar", "rift_pillar", "reliquary", "crystal"].includes(kind)) {
+    drawFrame(x, y, w, h, kind === "pillar" || kind === "glass_pillar" ? "#314b4b" : palette.dark);
+    ctx.fillStyle = "rgba(105, 190, 178, 0.42)";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    ctx.fillStyle = palette.highlight;
+    if (horizontal) {
+      ctx.fillRect(x + w / 2 - unit / 2, y + unit * 2, unit, h - unit * 4);
+      ctx.fillRect(x + unit * 2, y + h / 2 - unit / 2, w - unit * 4, unit);
+    } else {
+      ctx.fillRect(x + w / 2 - unit / 2, y + unit * 2, unit, h - unit * 4);
+      ctx.fillRect(x + unit * 2, y + h / 2 - unit / 2, w - unit * 4, unit);
+    }
+    const centerX = x + w / 2;
+    const centerY = y + h / 2;
+    ctx.fillStyle = palette.accent;
+    ctx.fillRect(centerX - unit, centerY - unit, unit * 2, unit * 2);
+    return;
+  }
+
+  if (kind === "bench") {
+    drawFrame(x, y, w, h, wood);
+    ctx.fillStyle = isAnthropic ? "#657265" : "#536c68";
+    ctx.beginPath();
+    ctx.roundRect(x + unit * 2, y + unit * 1.5, w - unit * 4, h - unit * 3, Math.max(4, unit));
+    ctx.fill();
+    const seats = Math.max(1, Math.min(7, Math.floor((major - unit * 8) / 64)));
+    for (let seat = 0; seat < seats; seat += 1) {
+      const along = unit * 4 + (major - unit * 8) * (seat + 0.5) / seats;
+      const point = center(longCoordinate(along));
+      const seatWidth = horizontal ? (major - unit * 10) / seats - unit * 1.5 : minor - unit * 6;
+      const seatHeight = horizontal ? minor - unit * 5 : (major - unit * 10) / seats - unit * 1.5;
+      const left = point.x - seatWidth / 2;
+      const top = point.y - seatHeight / 2;
+      ctx.fillStyle = seat % 2 ? "#b87557" : isAnthropic ? "#d7bf97" : "#c7b895";
+      ctx.beginPath();
+      ctx.roundRect(left, top, seatWidth, seatHeight, Math.max(3, unit));
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 242, 215, 0.52)";
+      ctx.beginPath();
+      ctx.roundRect(left + unit, top + unit, Math.max(2, seatWidth - unit * 2), Math.max(2, seatHeight * 0.24), Math.max(2, unit / 2));
+      ctx.fill();
+    }
+    const mark = artwork.brandMarks[isAnthropic ? "anthropicMark" : "openai"];
+    if (mark?.complete && mark.naturalWidth && minor >= 40) {
+      const markSize = Math.min(12, minor * 0.22);
+      ctx.fillStyle = isAnthropic ? "#ede0c9" : "#d9ece1";
+      ctx.fillRect(x + w - markSize - unit * 2, y + unit * 2, markSize + 2, markSize + 2);
+      ctx.drawImage(mark, x + w - markSize - unit * 2 + 1, y + unit * 2 + 1, markSize, markSize * mark.naturalHeight / mark.naturalWidth);
+    }
+    return;
+  }
+
+  if (["desk", "rift_wall", "vault_wall", "vault_rib"].includes(kind)) {
+    drawFrame(x, y, w, h, wood);
+    ctx.fillStyle = isAnthropic ? "#8d684b" : "#a37a51";
+    ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+    const stations = Math.max(1, Math.floor((major - unit * 4) / Math.max(64, minor * 1.55)));
+    for (let station = 0; station < stations; station += 1) {
+      const along = unit * 2 + (major - unit * 4) * (station + 0.5) / stations;
+      const point = center(longCoordinate(along));
+      const monitorWidth = horizontal ? Math.min(30, minor * 0.4) : Math.min(minor * 0.4, 30);
+      const monitorHeight = Math.min(18, minor * 0.35);
+      ctx.fillStyle = "#1f2c31";
+      ctx.fillRect(point.x - monitorWidth / 2, point.y - monitorHeight / 2 - unit, monitorWidth, monitorHeight);
+      ctx.fillStyle = screen;
+      ctx.fillRect(point.x - monitorWidth / 2 + unit, point.y - monitorHeight / 2, Math.max(2, monitorWidth - unit * 2), Math.max(2, monitorHeight / 2));
+      ctx.fillStyle = "#362f2a";
+      if (horizontal) ctx.fillRect(point.x - monitorWidth / 2, point.y + monitorHeight / 2 + unit, monitorWidth, Math.max(2, unit / 2));
+      else ctx.fillRect(point.x + monitorWidth / 2 + unit, point.y - monitorHeight / 2, Math.max(2, unit / 2), monitorHeight);
+      ctx.fillStyle = palette.highlight;
+      ctx.fillRect(point.x - unit / 2, point.y + monitorHeight / 2 + unit * 2, unit, unit);
+    }
+    const mark = artwork.brandMarks[isAnthropic ? "anthropicMark" : "openai"];
+    if (mark?.complete && mark.naturalWidth && minor >= 50) {
+      const markSize = Math.min(18, minor * 0.24);
+      ctx.globalAlpha *= 0.8;
+      ctx.drawImage(mark, x + w - markSize - unit * 2, y + h - markSize - unit * 2, markSize, markSize * mark.naturalHeight / mark.naturalWidth);
+      ctx.globalAlpha = opacityValue(ctx.globalAlpha);
+    }
+    return;
+  }
+
+  drawFrame(x, y, w, h, palette.face);
+  ctx.fillStyle = palette.dark;
+  ctx.fillRect(x + unit * 2, y + unit * 2, w - unit * 4, h - unit * 4);
+  const railCount = Math.max(2, Math.floor(major / 34));
+  for (let rail = 1; rail < railCount; rail += 1) {
+    const along = major * rail / railCount;
+    ctx.fillStyle = rail % 2 ? palette.glass : palette.accent;
+    if (horizontal) ctx.fillRect(x + along, y + unit * 2, unit / 2, h - unit * 4);
+    else ctx.fillRect(x + unit * 2, y + along, w - unit * 4, unit / 2);
+  }
+}
+
+function opacityValue(value) {
+  return Math.min(1, value);
+}
+
+const workplacePropFrames = {
+  openai: {
+    desk: [0, 4], bench: [6, 7], pillar: [2], glass_pillar: [1],
+    vent: [2], furnace: [2], obelisk: [2, 5], shelf: [3], trellis: [7],
+    hedge: [7], flowerbed: [7], vault_core: [5], vault_rib: [0, 4],
+    reliquary: [2], crystal: [2], vault_wall: [5], rift_wall: [0, 4, 7],
+    rift_pillar: [2], rift_crystal: [2],
+  },
+  anthropic: {
+    desk: [1, 4, 7], bench: [2, 5, 6], pillar: [3, 5], glass_pillar: [3],
+    vent: [6], furnace: [6], obelisk: [5, 0], shelf: [0], trellis: [7],
+    hedge: [3], flowerbed: [3], vault_core: [5], vault_rib: [1, 5],
+    reliquary: [0], crystal: [3], vault_wall: [5], rift_wall: [0, 4, 7],
+    rift_pillar: [3], rift_crystal: [3],
+  },
+  shared: {
+    desk: [0, 7], bench: [4, 5], pillar: [1, 5], glass_pillar: [1],
+    vent: [2], furnace: [2], obelisk: [2, 6], shelf: [3], trellis: [5],
+    hedge: [5], flowerbed: [5], vault_core: [1], vault_rib: [0, 7],
+    reliquary: [2], crystal: [2], vault_wall: [1], rift_wall: [0, 4, 7],
+    rift_pillar: [2], rift_crystal: [3],
+  },
+};
+
+const workplaceBarrierFrames = {
+  openai: {
+    desk: [3, 7], bench: [1, 5], pillar: [1, 5], glass_pillar: [0, 4],
+    vent: [1, 5], furnace: [1, 5], obelisk: [1, 5], shelf: [0, 4],
+    trellis: [6, 7], hedge: [6, 7], flowerbed: [6, 7], vault_core: [5],
+    vault_rib: [0, 4], reliquary: [2, 5], crystal: [0, 4], vault_wall: [0, 4],
+    rift_wall: [0, 4], rift_pillar: [1, 5], rift_crystal: [1, 5],
+  },
+  anthropic: {
+    desk: [1, 3, 7], bench: [2, 3, 7], pillar: [0, 4], glass_pillar: [6],
+    vent: [5], furnace: [5], obelisk: [2, 4], shelf: [0, 4],
+    trellis: [4, 6], hedge: [4, 6, 7], flowerbed: [4, 7], vault_core: [2],
+    vault_rib: [0, 4], reliquary: [2, 5], crystal: [6], vault_wall: [0, 4],
+    rift_wall: [0, 4, 6], rift_pillar: [0, 4], rift_crystal: [6],
+  },
+};
+
+function workplaceArtLab(biome) {
+  if (biome === "office" || biome === "cinder") return "openai";
+  if (["archive", "garden", "vault"].includes(biome)) return "anthropic";
+  return "shared";
+}
+
+function drawWorkplaceProp(ctx, block, biome) {
+  const lab = workplaceArtLab(biome);
+  const sheet = artwork.props[lab];
+  if (!sheet?.complete || !sheet.naturalWidth || !sheet.naturalHeight) return false;
+  if (block.kind === "reflecting_pool") return false;
+  const aspect = block.w / block.h;
+  const compact = aspect >= 0.58 && aspect <= 1.72 && Math.min(block.w, block.h) >= 88;
+  if (!compact) return false;
+  const alternatives = workplacePropFrames[lab][block.kind] || [0];
+  const choice = Math.abs(Math.floor((block.x * 7 + block.y * 11 + block.w * 3 + block.h) / 64)) % alternatives.length;
+  const frame = alternatives[choice];
+  const columns = 4;
+  const rows = 2;
+  const cellWidth = sheet.naturalWidth / columns;
+  const cellHeight = sheet.naturalHeight / rows;
+  const sourceX = (frame % columns) * cellWidth;
+  const sourceY = Math.floor(frame / columns) * cellHeight;
+  drawPixelOfficeObstacle(ctx, block, biome);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(block.x + 2, block.y + 2, block.w - 4, block.h - 4);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 0.98;
+  const targetSize = Math.min(block.w, block.h) - 8;
+  const targetX = block.x + (block.w - targetSize) / 2;
+  const targetY = block.y + (block.h - targetSize) / 2;
+  ctx.drawImage(sheet, sourceX, sourceY, cellWidth, cellHeight, targetX, targetY, targetSize, targetSize);
+  ctx.restore();
+  return true;
+}
+
+function drawWorkplaceBarrier(ctx, block, biome) {
+  const lab = workplaceArtLab(biome);
+  const sheet = artwork.barriers[lab];
+  const bounds = artwork.barrierBounds[lab];
+  if (!sheet?.complete || !sheet.naturalWidth || !bounds || block.kind === "reflecting_pool") return false;
+  const horizontal = block.w >= block.h;
+  const longSide = Math.max(block.w, block.h);
+  const shortSide = Math.min(block.w, block.h);
+  if (longSide / shortSide < 2.25 || shortSide < 34) return false;
+  const alternatives = workplaceBarrierFrames[lab]?.[block.kind] || [0, 3, 4, 7];
+  const choice = Math.abs(Math.floor((block.x * 7 + block.y * 11 + block.w * 3 + block.h) / 64)) % alternatives.length;
+  const columns = 4;
+  const cellWidth = sheet.naturalWidth / columns;
+  const cellHeight = sheet.naturalHeight / 2;
+  const targetLength = longSide - 8;
+  const targetThickness = shortSide - 8;
+  if (targetThickness <= 0) return true;
+  const tiles = [];
+  let runLength = 0;
+  while (runLength < targetLength && tiles.length < 20) {
+    const frameIndex = alternatives[(choice + tiles.length) % alternatives.length];
+    const frame = bounds[frameIndex];
+    if (!frame?.width || !frame?.height) break;
+    const tileLength = frame.width * targetThickness / frame.height;
+    if (tileLength <= 0) break;
+    tiles.push({ frameIndex, frame, tileLength });
+    runLength += tileLength;
+  }
+  if (!tiles.length) return true;
+  const mark = artwork.brandMarks[lab === "openai" ? "openai" : "anthropicMark"];
+
+  const palette = pixelObstaclePalette(biome);
+  const base = lab === "openai" ? "#25373c" : "#4c4036";
+  ctx.fillStyle = "rgba(5, 9, 12, 0.42)";
+  ctx.fillRect(block.x + 5, block.y + 6, block.w - 1, block.h - 1);
+  ctx.fillStyle = palette.edge;
+  ctx.fillRect(block.x, block.y, block.w, block.h);
+  ctx.fillStyle = base;
+  ctx.fillRect(block.x + 3, block.y + 3, block.w - 6, block.h - 6);
+  ctx.fillStyle = palette.highlight;
+  if (horizontal) ctx.fillRect(block.x + 5, block.y + 4, block.w - 10, 2);
+  else ctx.fillRect(block.x + 4, block.y + 5, 2, block.h - 10);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(block.x + 2, block.y + 2, block.w - 4, block.h - 4);
+  ctx.clip();
+  ctx.translate(block.x + block.w / 2, block.y + block.h / 2);
+  if (!horizontal) ctx.rotate(Math.PI / 2);
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 0.98;
+  let tileX = -targetLength / 2;
+  for (const { frameIndex, frame, tileLength } of tiles) {
+    const sourceX = (frameIndex % columns) * cellWidth + frame.x;
+    const sourceY = Math.floor(frameIndex / columns) * cellHeight + frame.y;
+    ctx.drawImage(
+      sheet,
+      sourceX, sourceY, frame.width, frame.height,
+      tileX, -targetThickness / 2, tileLength, targetThickness,
+    );
+    tileX += tileLength;
+  }
+  if (mark?.complete && mark.naturalWidth > 0) {
+    const markSize = Math.min(16, targetThickness * 0.24);
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(
+      mark,
+      -markSize / 2, -markSize / 2,
+      markSize, markSize * mark.naturalHeight / mark.naturalWidth,
+    );
+  }
+  ctx.restore();
+  return true;
+}
+
+function drawObstacle(ctx, source) {
+  ctx.save();
+  let block = source;
+  if (source.angle) {
+    ctx.translate(source.x + source.w / 2, source.y + source.h / 2);
+    ctx.rotate(source.angle);
+    block = { ...source, x: -source.w / 2, y: -source.h / 2, angle: 0 };
+  }
+  if (!drawWorkplaceProp(ctx, block, game.level.biome) && !drawWorkplaceBarrier(ctx, block, game.level.biome)) {
+    drawPixelOfficeObstacle(ctx, block, game.level.biome);
+  }
+  ctx.restore();
+}
+
+function drawDepthSortedArena(ctx) {
+  const renderables = blocks.map((block) => ({
+    depth: block.y + block.h,
+    draw: () => drawObstacle(ctx, block),
+  }));
+  renderables.push(
+    { depth: game.jev.y + 60, draw: () => drawJev(ctx) },
+    { depth: game.player.y + 66, draw: () => drawPlayer(ctx) },
+  );
+  renderables.sort((left, right) => left.depth - right.depth);
+  for (const renderable of renderables) renderable.draw();
+}
+
+function drawBlocks(ctx) {
+  for (const source of blocks) {
+    drawObstacle(ctx, source);
   }
 }
 
@@ -4792,55 +6413,279 @@ function drawArchiveShelf(ctx, block) {
   ctx.fillRect(x + 4, y + h - 8, w - 8, 4);
 }
 
+function drawCompanyMark(ctx, skin, x, y, size) {
+  const image = artwork.brandMarks[skin.company === "Anthropic" ? "anthropicMark" : "openai"];
+  if (!image?.complete || !image.naturalWidth || !image.naturalHeight) return;
+  const width = size;
+  const height = size * image.naturalHeight / image.naturalWidth;
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+  ctx.restore();
+}
+
 function drawParticles(ctx) {
   for (const particle of particles) {
     ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
     ctx.fillStyle = particle.color;
-    ctx.beginPath();
-    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-    ctx.fill();
+    if (particle.company === "OpenAI") {
+      const size = particle.size * 1.45;
+      ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
+      ctx.fillRect(particle.x + size * 0.8, particle.y - size * 0.2, size * 0.45, size * 0.45);
+    } else if (particle.company === "Anthropic") {
+      ctx.beginPath();
+      ctx.moveTo(particle.x, particle.y - particle.size * 1.7);
+      ctx.lineTo(particle.x + particle.size * 0.58, particle.y);
+      ctx.lineTo(particle.x, particle.y + particle.size * 1.7);
+      ctx.lineTo(particle.x - particle.size * 0.58, particle.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
 
+function drawLabProjectile(ctx, projectile, skin) {
+  const anthropic = skin.company === "Anthropic";
+  const scale = projectile.kind === "salvo" ? 0.76 : projectile.owner === "player" ? 0.72 : 1;
+  const radius = Math.max(7, projectile.radius * scale);
+  const accent = skin.accent;
+  const pale = anthropic ? "#fff1d7" : "#e4fff6";
+  const angle = Math.atan2(projectile.vy, projectile.vx);
+  const pulse = 0.94 + Math.sin(projectile.age * 24) * 0.06;
+  ctx.save();
+  ctx.translate(projectile.x, projectile.y);
+  ctx.rotate(angle);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = projectile.owner === "jev" ? 19 : 12;
+  ctx.lineCap = "round";
+  if (anthropic) {
+    ctx.strokeStyle = "rgb(242 154 104 / 76%)";
+    for (let ray = -1; ray <= 1; ray += 1) {
+      const offset = ray * radius * 0.48;
+      ctx.lineWidth = ray === 0 ? 4 : 2;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 3.3, offset * 0.42);
+      ctx.quadraticCurveTo(-radius * 1.5, offset * 0.6, -radius * 0.35, offset * 0.26);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgb(255 211 159 / 86%)";
+    ctx.lineWidth = 1.5;
+    for (let ray = 0; ray < 9; ray += 1) {
+      const rayAngle = ray * Math.PI * 2 / 9 + projectile.age * 1.8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(rayAngle) * radius * 0.72, Math.sin(rayAngle) * radius * 0.72);
+      ctx.lineTo(Math.cos(rayAngle) * radius * (ray % 3 === 0 ? 1.62 : 1.3), Math.sin(rayAngle) * radius * (ray % 3 === 0 ? 1.62 : 1.3));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgb(255 219 172 / 76%)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(-1, 0, radius * 1.18, radius * 0.72, projectile.age * -1.6, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "rgb(121 228 207 / 88%)";
+    for (let rail = -1; rail <= 1; rail += 1) {
+      const offset = rail * radius * 0.5;
+      ctx.lineWidth = rail === 0 ? 3.5 : 1.7;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 3.4, offset);
+      ctx.lineTo(-radius * 1.7, offset);
+      ctx.lineTo(-radius * 0.46, offset * 0.35);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgb(166 255 226 / 92%)";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.ellipse(-2, 0, radius * 1.18, radius * 0.76, projectile.age * 1.8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let node = 0; node < 4; node += 1) {
+      const nodeAngle = node * Math.PI / 2 + projectile.age * 2.2;
+      const nodeX = Math.cos(nodeAngle) * radius * 1.05 - 2;
+      const nodeY = Math.sin(nodeAngle) * radius * 0.7;
+      ctx.fillStyle = pale;
+      ctx.fillRect(nodeX - 1.7, nodeY - 1.7, 3.4, 3.4);
+    }
+  }
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = anthropic ? "#e58a5f" : "#6edac0";
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = pale;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.64, 0, Math.PI * 2);
+  ctx.fill();
+  drawCompanyMark(ctx, skin, 0, 0, Math.min(radius * 0.88, 13));
+  ctx.restore();
+}
+
+function drawCompanyShockwave(ctx, x, y, progress, skin, maxRadius = 128) {
+  const anthropic = skin.company === "Anthropic";
+  const radius = 20 + progress * maxRadius;
+  const alpha = 1 - progress;
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.9;
+  ctx.strokeStyle = skin.accent;
+  ctx.shadowColor = skin.accent;
+  ctx.shadowBlur = 15 * (1 - progress);
+  ctx.lineWidth = Math.max(1.3, 4 * (1 - progress));
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (anthropic) {
+    for (let ray = 0; ray < 12; ray += 1) {
+      const angle = ray * Math.PI / 6 + game.elapsed * 0.22;
+      const start = radius - (ray % 3 === 0 ? 4 : 1);
+      const end = radius + (ray % 3 === 0 ? 12 : 7);
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(angle) * start, y + Math.sin(angle) * start);
+      ctx.lineTo(x + Math.cos(angle) * end, y + Math.sin(angle) * end);
+      ctx.stroke();
+    }
+  } else {
+    for (let node = 0; node < 6; node += 1) {
+      const angle = node * Math.PI / 3 + game.elapsed * 0.38;
+      const nodeX = x + Math.cos(angle) * radius;
+      const nodeY = y + Math.sin(angle) * radius;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(angle) * (radius - 9), y + Math.sin(angle) * (radius - 9));
+      ctx.lineTo(nodeX, nodeY);
+      ctx.stroke();
+      ctx.fillStyle = "#dffff5";
+      ctx.fillRect(nodeX - 2.2, nodeY - 2.2, 4.4, 4.4);
+    }
+  }
+  ctx.restore();
+}
+
 function drawProjectiles(ctx) {
   for (const projectile of game.projectiles) {
-    const playerShot = projectile.owner === "player";
-    const salvo = projectile.kind === "salvo";
-    const core = playerShot ? "#caffeb" : salvo ? "#ffd0a8" : "#fff1b4";
-    const glowColor = playerShot ? "rgb(80 255 207 / 72%)" : salvo ? "rgb(255 109 94 / 74%)" : "rgb(255 153 76 / 66%)";
-    const angle = Math.atan2(projectile.vy, projectile.vx);
-    const pulse = 0.92 + Math.sin(projectile.age * 28) * 0.08;
-    ctx.save();
-    ctx.translate(projectile.x, projectile.y);
-    ctx.rotate(angle);
-    ctx.globalCompositeOperation = "lighter";
-    const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, playerShot ? 24 : 28);
-    glow.addColorStop(0, playerShot ? "rgb(220 255 245 / 88%)" : "rgb(255 247 197 / 82%)");
-    glow.addColorStop(0.34, glowColor);
-    glow.addColorStop(1, playerShot ? "rgb(49 244 187 / 0%)" : "rgb(255 118 80 / 0%)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, 28, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = playerShot ? "rgb(142 255 222 / 82%)" : "rgb(255 196 118 / 74%)";
-    ctx.lineWidth = playerShot ? 2 : 3;
-    ctx.beginPath();
-    ctx.moveTo(-36, 0);
-    ctx.lineTo(-9, 0);
-    ctx.stroke();
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, projectile.radius * pulse, projectile.radius * 0.78, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = playerShot ? "#f0fff8" : "#fff8d9";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
+    const role = projectile.owner === "player" ? "runner" : "chaser";
+    const skin = skinCatalog[projectile.skinId] || skinForRole(role);
+    drawLabProjectile(ctx, projectile, skin);
   }
 }
 
+function contactFacing(angle) {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? "left" : "right";
+  return dy < 0 ? "up" : "down";
+}
+
+function drawContactStrike(ctx) {
+  const strike = game.jev.contactStrike;
+  if (!strike) return;
+  const age = game.elapsed - strike.at;
+  const duration = 0.38;
+  if (age < 0 || age > duration) return;
+  const progress = clamp(age / duration, 0, 1);
+  const fade = 1 - progress;
+  const skin = skinForRole("chaser");
+  const accent = skin.accent;
+  ctx.save();
+  ctx.translate(strike.x, strike.y - 12);
+  ctx.rotate(strike.angle);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = fade * 0.92;
+  ctx.strokeStyle = accent;
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 14;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (skin.company === "Anthropic") {
+    ctx.lineWidth = 8 * fade + 1.8;
+    for (let claw = -1; claw <= 1; claw += 1) {
+      const offset = claw * 10;
+      ctx.beginPath();
+      ctx.moveTo(20, offset - 8);
+      ctx.quadraticCurveTo(47, offset - 28, 78, offset - 7);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#fff0df";
+    ctx.lineWidth = 4 * fade + 1.2;
+    ctx.beginPath();
+    ctx.moveTo(24, -5);
+    ctx.quadraticCurveTo(47, -22, 79, -3);
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(64, 0, 18 + progress * 15, -0.9, 0.9);
+    ctx.stroke();
+  } else {
+    ctx.lineWidth = 8 * fade + 1.8;
+    for (let claw = -1; claw <= 1; claw += 1) {
+      const offset = claw * 10;
+      ctx.beginPath();
+      ctx.moveTo(20, offset - 9);
+      ctx.lineTo(41, offset - 6);
+      ctx.lineTo(62 + progress * 16, offset + 8);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#e9fff8";
+    ctx.lineWidth = 4 * fade + 1.2;
+    ctx.beginPath();
+    ctx.moveTo(23, -5);
+    ctx.lineTo(44, -1);
+    ctx.lineTo(70 + progress * 12, 5);
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    for (let node = 0; node < 3; node += 1) {
+      const x = 70 + progress * 12 + node * 5;
+      const y = (node - 1) * 12;
+      ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+    }
+  }
+  ctx.restore();
+
+  const markX = strike.outcome === "parried" ? (strike.x + strike.targetX) / 2 : strike.targetX;
+  const markY = strike.outcome === "parried" ? (strike.y + strike.targetY) / 2 : strike.targetY;
+  const markColor = strike.outcome === "parried" ? skinForRole("runner").accent : accent;
+  ctx.save();
+  ctx.globalAlpha = fade * 0.86;
+  ctx.strokeStyle = markColor;
+  ctx.fillStyle = strike.outcome === "parried" ? "rgba(244, 255, 247, 0.22)" : "rgba(255, 246, 227, 0.28)";
+  ctx.shadowColor = markColor;
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = strike.outcome === "parried" ? 3 : 2.5;
+  const radius = 20 + progress * 22;
+  ctx.beginPath();
+  ctx.arc(markX, markY, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  if (strike.outcome === "parried") {
+    ctx.beginPath();
+    ctx.moveTo(markX - radius * 0.6, markY - radius * 0.6);
+    ctx.lineTo(markX + radius * 0.6, markY + radius * 0.6);
+    ctx.moveTo(markX + radius * 0.6, markY - radius * 0.6);
+    ctx.lineTo(markX - radius * 0.6, markY + radius * 0.6);
+    ctx.stroke();
+  } else {
+    for (let ray = 0; ray < 4; ray += 1) {
+      const angle = strike.angle + ray * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(markX + Math.cos(angle) * (radius + 3), markY + Math.sin(angle) * (radius + 3));
+      ctx.lineTo(markX + Math.cos(angle) * (radius + 9), markY + Math.sin(angle) * (radius + 9));
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 function drawTacticalEffects(ctx) {
+  drawContactStrike(ctx);
   const jev = game.jev;
   if (game.player.hookTarget) {
     const hook = game.player.hookTarget;
@@ -4912,37 +6757,65 @@ function drawTacticalEffects(ctx) {
   }
   if (jev.riftRushPhase === "windup" && jev.riftRushTarget) {
     const pulse = 0.36 + Math.sin(game.elapsed * 30) * 0.12;
+    const skin = skinForRole("chaser");
+    const anthropic = skin.company === "Anthropic";
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = "#dfa7ff";
-    ctx.fillStyle = "rgb(196 122 255 / 10%)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([5, 8]);
+    ctx.strokeStyle = anthropic ? "#f29a68" : "#79e4cf";
+    ctx.fillStyle = anthropic ? "rgb(242 154 104 / 10%)" : "rgb(121 228 207 / 10%)";
+    ctx.lineWidth = 2.5;
+    const rushDx = jev.riftRushTarget.x - jev.x;
+    const rushDy = jev.riftRushTarget.y - jev.y;
+    const rushLength = Math.hypot(rushDx, rushDy) || 1;
+    const normalX = -rushDy / rushLength;
+    const normalY = rushDx / rushLength;
+    for (const rail of anthropic ? [-0.07, 0, 0.07] : [-0.045, 0, 0.045]) {
+      const endX = jev.riftRushTarget.x + normalX * rushLength * rail;
+      const endY = jev.riftRushTarget.y + normalY * rushLength * rail;
+      ctx.beginPath();
+      ctx.moveTo(jev.x, jev.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
     ctx.beginPath();
-    ctx.moveTo(jev.x, jev.y);
-    ctx.lineTo(jev.riftRushTarget.x, jev.riftRushTarget.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 32, 0, Math.PI * 2);
+    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 28, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.fillStyle = anthropic ? "#fff0d9" : "#e4fff6";
+    ctx.beginPath();
+    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    drawCompanyMark(ctx, skin, jev.riftRushTarget.x, jev.riftRushTarget.y, 12);
     ctx.restore();
   } else if (jev.riftRushPhase === "charge") {
+    const skin = skinForRole("chaser");
+    const anthropic = skin.company === "Anthropic";
+    const trailStartX = jev.x - jev.riftRushVx * 0.34;
+    const trailStartY = jev.y - jev.riftRushVy * 0.34;
+    const rushSpeed = Math.hypot(jev.riftRushVx, jev.riftRushVy) || 1;
+    const normalX = -jev.riftRushVy / rushSpeed;
+    const normalY = jev.riftRushVx / rushSpeed;
     ctx.save();
-    ctx.globalAlpha = 0.78;
-    ctx.strokeStyle = "#ffad82";
-    ctx.shadowColor = "#ff765f";
-    ctx.shadowBlur = 24;
-    ctx.lineWidth = 24;
+    ctx.globalAlpha = 0.68;
+    ctx.strokeStyle = skin.accent;
+    ctx.shadowColor = skin.accent;
+    ctx.shadowBlur = 19;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 13;
     ctx.beginPath();
-    ctx.moveTo(jev.x - jev.riftRushVx * 0.34, jev.y - jev.riftRushVy * 0.34);
+    ctx.moveTo(trailStartX, trailStartY);
     ctx.lineTo(jev.x, jev.y);
     ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255, 235, 214, .9)";
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    for (const offset of anthropic ? [-10, 0, 10] : [-8, 0, 8]) {
+      ctx.globalAlpha = offset === 0 ? 0.92 : 0.62;
+      ctx.strokeStyle = anthropic ? (offset === 0 ? "#fff0d9" : "#f29a68") : (offset === 0 ? "#e4fff6" : "#79e4cf");
+      ctx.lineWidth = offset === 0 ? 2.5 : 1.6;
+      ctx.beginPath();
+      ctx.moveTo(trailStartX + normalX * offset, trailStartY + normalY * offset);
+      ctx.lineTo(jev.x + normalX * offset * 0.38, jev.y + normalY * offset * 0.38);
+      ctx.stroke();
+    }
     ctx.restore();
   }
   if (jev.rendPhase === "windup") {
@@ -4996,52 +6869,72 @@ function drawTacticalEffects(ctx) {
   }
   if (jev.blastPhase === "windup" && jev.blastTarget) {
     const pulse = 0.66 + Math.sin(game.elapsed * 28) * 0.2;
+    const skin = skinForRole("chaser");
+    const anthropic = skin.company === "Anthropic";
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.setLineDash([9, 6]);
-    ctx.lineWidth = 12;
-    ctx.strokeStyle = "rgb(255 153 76 / 38%)";
+    ctx.strokeStyle = skin.accent;
+    ctx.shadowColor = skin.accent;
+    ctx.shadowBlur = 12;
+    ctx.lineCap = "round";
+    ctx.lineWidth = anthropic ? 6 : 4;
     ctx.beginPath();
     ctx.moveTo(jev.x, jev.y - 5);
     ctx.lineTo(jev.blastTarget.x, jev.blastTarget.y);
     ctx.stroke();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#ffe6aa";
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "rgb(255 190 104 / 18%)";
-    ctx.strokeStyle = "#ffe6aa";
-    ctx.lineWidth = 3;
+    ctx.shadowBlur = 0;
+    const targetRadius = 25 + Math.sin(game.elapsed * 28) * 3;
+    ctx.fillStyle = anthropic ? "rgb(242 154 104 / 17%)" : "rgb(121 228 207 / 17%)";
+    ctx.strokeStyle = anthropic ? "#ffd29e" : "#c8fff0";
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(jev.blastTarget.x, jev.blastTarget.y, 27 + Math.sin(game.elapsed * 28) * 3, 0, Math.PI * 2);
+    ctx.arc(jev.blastTarget.x, jev.blastTarget.y, targetRadius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(jev.blastTarget.x - 10, jev.blastTarget.y);
-    ctx.lineTo(jev.blastTarget.x + 10, jev.blastTarget.y);
-    ctx.moveTo(jev.blastTarget.x, jev.blastTarget.y - 10);
-    ctx.lineTo(jev.blastTarget.x, jev.blastTarget.y + 10);
-    ctx.stroke();
+    if (anthropic) {
+      for (let ray = 0; ray < 9; ray += 1) {
+        const angle = ray * Math.PI * 2 / 9 + game.elapsed * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(jev.blastTarget.x + Math.cos(angle) * targetRadius, jev.blastTarget.y + Math.sin(angle) * targetRadius);
+        ctx.lineTo(jev.blastTarget.x + Math.cos(angle) * (targetRadius + (ray % 3 === 0 ? 10 : 5)), jev.blastTarget.y + Math.sin(angle) * (targetRadius + (ray % 3 === 0 ? 10 : 5)));
+        ctx.stroke();
+      }
+    } else {
+      for (let node = 0; node < 4; node += 1) {
+        const angle = node * Math.PI / 2 + game.elapsed * 0.55;
+        const nodeX = jev.blastTarget.x + Math.cos(angle) * targetRadius;
+        const nodeY = jev.blastTarget.y + Math.sin(angle) * targetRadius;
+        ctx.fillStyle = "#e4fff6";
+        ctx.fillRect(nodeX - 2.5, nodeY - 2.5, 5, 5);
+      }
+    }
     ctx.restore();
   }
   if (jev.salvoPhase === "windup" && jev.salvoTarget) {
     const pulse = 0.56 + Math.sin(game.elapsed * 24) * 0.16;
     const centerAngle = Math.atan2(jev.salvoTarget.y - jev.y, jev.salvoTarget.x - jev.x);
+    const skin = skinForRole("chaser");
+    const anthropic = skin.company === "Anthropic";
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = "#ffbd8e";
-    ctx.shadowColor = "#ff835f";
+    ctx.strokeStyle = skin.accent;
+    ctx.shadowColor = skin.accent;
     ctx.shadowBlur = 12;
-    ctx.setLineDash([9, 8]);
-    ctx.lineWidth = 3;
-    for (const offset of [-0.24, 0, 0.24]) {
+    ctx.lineCap = "round";
+    ctx.lineWidth = 2.5;
+    for (const offset of anthropic ? [-0.27, 0, 0.27] : [-0.21, 0, 0.21]) {
       const angle = centerAngle + offset;
       ctx.beginPath();
       ctx.moveTo(jev.x, jev.y - 5);
       ctx.lineTo(jev.x + Math.cos(angle) * 760, jev.y + Math.sin(angle) * 760);
       ctx.stroke();
     }
-    ctx.setLineDash([]);
+    for (const angle of [centerAngle - 0.21, centerAngle, centerAngle + 0.21]) {
+      ctx.fillStyle = anthropic ? "#fff0d9" : "#e4fff6";
+      ctx.beginPath();
+      ctx.arc(jev.x + Math.cos(angle) * 30, jev.y + Math.sin(angle) * 30 - 5, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
   const mine = game.activeMine;
@@ -5066,21 +6959,79 @@ function drawTacticalEffects(ctx) {
   }
 }
 
-function drawSpriteFrame(ctx, sheet, frame, x, y, width, height, flipX = false) {
-  const columns = 4;
-  const rows = 3;
+function spriteDirectionFor(entity) {
+  const vx = Number(entity.vx) || 0;
+  const vy = Number(entity.vy) || 0;
+  if (Math.hypot(vx, vy) > 35) {
+    entity.spriteDirection = Math.abs(vx) >= Math.abs(vy)
+      ? vx < 0 ? "left" : "right"
+      : vy < 0 ? "up" : "down";
+  }
+  if (!entity.spriteDirection) entity.spriteDirection = entity.facing < 0 ? "left" : "right";
+  return entity.spriteDirection;
+}
+
+function drawSpriteFrame(ctx, sheet, skinId, direction, row, x, y, width, height) {
+  const layout = companionSpriteCatalog[skinId] || skinCatalog[skinId];
+  const columns = layout?.columns ?? 4;
+  const rows = layout?.rows ?? layout?.spriteRows ?? 3;
   const frameWidth = sheet.naturalWidth / columns;
   const frameHeight = sheet.naturalHeight / rows;
-  const safeFrame = ((frame % (columns * rows)) + columns * rows) % (columns * rows);
-  const sourceX = (safeFrame % columns) * frameWidth;
-  const sourceY = Math.floor(safeFrame / columns) * frameHeight;
+  const directionColumns = { down: 0, left: 1, right: 2, up: 3 };
+  const companion = Object.hasOwn(companionSpriteCatalog, skinId);
+  const mirrorLeftProfile = layout?.mirrorLeftProfile && direction === "left";
+  const flipMascot = companion && direction === "left";
+  // The mascot profile cells read like cropped art at gameplay scale; keep their full face visible.
+  const horizontalMascot = companion && (direction === "left" || direction === "right");
+  const sourceColumn = horizontalMascot
+    ? layout.horizontalFrameColumn
+    : mirrorLeftProfile ? directionColumns.right : directionColumns[direction] ?? directionColumns.down;
+  const sourceRow = clamp(Math.floor(row), 0, rows - 1);
+  const sourceX = sourceColumn * frameWidth;
+  const sourceY = sourceRow * frameHeight;
+  const skin = skinCatalog[skinId];
+  const autoContent = skin?.normalizeSpriteFrames ? artwork.spriteBounds[skinId]?.[sourceRow]?.[sourceColumn] : null;
+  const manualContent = skin?.spriteFrameBounds?.[sourceRow]?.[sourceColumn];
+  const content = manualContent ?? (autoContent ? [autoContent.x, autoContent.y, autoContent.width, autoContent.height] : null);
+  const padding = autoContent ? 0 : content ? 2 : 0;
+  const cropX = content ? Math.max(0, content[0] - padding) : 0;
+  const cropY = content ? Math.max(0, content[1] - padding) : 0;
+  const cropWidth = content ? Math.min(frameWidth - cropX, content[2] + padding * 2) : frameWidth;
+  const cropHeight = content ? Math.min(frameHeight - cropY, content[3] + padding * 2) : frameHeight;
+  const visualScale = skinCatalog[skinId]?.spriteVisualScale ?? 1;
+  if (autoContent) {
+    const contentScale = skin.frameSizeScale ?? 1;
+    const fitScale = Math.min(
+      height * visualScale * contentScale / cropHeight,
+      width * visualScale * contentScale / cropWidth,
+    );
+    const drawWidth = cropWidth * fitScale;
+    const drawHeight = cropHeight * fitScale;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(mirrorLeftProfile || flipMascot ? -1 : 1, 1);
+    ctx.drawImage(
+      sheet,
+      sourceX + cropX, sourceY + cropY, cropWidth, cropHeight,
+      -drawWidth / 2, height / 2 - drawHeight, drawWidth, drawHeight,
+    );
+    ctx.restore();
+    return;
+  }
+  const scaledCellWidth = width * visualScale;
+  const scaledCellHeight = height * visualScale;
+  const cellLeft = -scaledCellWidth / 2;
+  const cellTop = height / 2 - scaledCellHeight;
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(flipX ? -1 : 1, 1);
+  ctx.scale(mirrorLeftProfile || flipMascot ? -1 : 1, 1);
   ctx.drawImage(
     sheet,
-    sourceX, sourceY, frameWidth, frameHeight,
-    -width / 2, -height / 2, width, height,
+    sourceX + cropX, sourceY + cropY, cropWidth, cropHeight,
+    cellLeft + scaledCellWidth * (cropX / frameWidth),
+    cellTop + scaledCellHeight * (cropY / frameHeight),
+    scaledCellWidth * (cropWidth / frameWidth),
+    scaledCellHeight * (cropHeight / frameHeight),
   );
   ctx.restore();
 }
@@ -5088,6 +7039,12 @@ function drawSpriteFrame(ctx, sheet, frame, x, y, width, height, flipX = false) 
 function drawJev(ctx) {
   const jev = game.jev;
   if (jev.health <= 0) return;
+  const chaserSkin = skinForRole("chaser");
+  const chaserSprite = spriteForRole("chaser");
+  const contactAge = jev.contactStrike ? game.elapsed - jev.contactStrike.at : Infinity;
+  const contactActive = contactAge >= 0 && contactAge < 0.3;
+  const contactLunge = contactActive ? Math.sin(Math.PI * contactAge / 0.3) * 16 : 0;
+  const drawX = contactActive ? jev.x + Math.cos(jev.contactStrike.angle) * contactLunge : jev.x;
   const bob = jev.stunned > 0 ? Math.sin(game.elapsed * 35) * 3 : Math.sin(game.elapsed * 12) * 1.5;
   if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
     const pulse = 0.72 + Math.sin(game.elapsed * 18) * 0.12;
@@ -5112,35 +7069,33 @@ function drawJev(ctx) {
     }
     ctx.restore();
   }
-  if (artwork.jev.complete && artwork.jev.naturalWidth > 0) {
+  if (chaserSprite?.complete && chaserSprite.naturalWidth > 0) {
     const modeColors = {
       pursue: "#f27d68", intercept: "#f4c774", flank: "#d69df0", ambush: "#a9dec8",
       rift_rend: "#ff7768", power_blast: "#ffc977", rift_mine: "#d69df0", rift_rush: "#dfa7ff",
       shadow_dodge: "#8fead3", soul_salvo: "#ff9c73", rift_aegis: "#9ceaf0",
     };
-    const frame = jev.hurtTimer > 0 ? 11
-      : jev.salvoPhase || jev.blastPhase ? 4
-        : jev.rendPhase === "windup" ? 6
-          : jev.rendPhase === "recover" ? 7
-              : jev.mode === "rift_mine" ? 8
-                : jev.mode === "rift_rush" ? 9
-                  : jev.mode === "shadow_dodge" ? 10
-                    : Math.hypot(jev.vx, jev.vy) > 35 ? 1 + Math.floor(game.elapsed * 8) % 3 : 0;
+    const direction = contactActive ? contactFacing(jev.contactStrike.angle) : spriteDirectionFor(jev);
+    const speed = Math.hypot(jev.vx, jev.vy);
+    const runningProfile = !contactActive && speed > 35
+      && Boolean(artwork.runFrames[chaserSkin.id]?.frames[direction]?.length);
+    const runPose = profileRunPose(jev, chaserSkin.id, direction);
+    const row = !contactActive && speed > 35 ? 1 + Math.floor((jev.spriteAnimationTime || 0) / 0.085) % 3 : 0;
     ctx.save();
-    ctx.translate(jev.x, jev.y + 10);
-    const groundShadow = ctx.createRadialGradient(0, 23, 2, 0, 23, 31);
+    ctx.translate(drawX, jev.y + 10);
+    const groundShadow = ctx.createRadialGradient(0, 23, 2, 0, 23, 37);
     groundShadow.addColorStop(0, "rgba(5, 4, 12, 0.6)");
     groundShadow.addColorStop(0.58, "rgba(5, 4, 12, 0.32)");
     groundShadow.addColorStop(1, "rgba(5, 4, 12, 0)");
     ctx.fillStyle = groundShadow;
     ctx.beginPath();
-    ctx.ellipse(0, 23, 24, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 23, 30, 12, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = jev.stunned > 0 ? "#ffe08a" : jev.hurtTimer > 0 ? "#e3fff6" : modeColors[jev.mode] || modeColors.pursue;
     ctx.lineWidth = jev.stunned > 0 ? 3 : 2;
     ctx.globalAlpha = jev.stunned > 0 || jev.hurtTimer > 0 ? 0.95 : 0.66;
     ctx.beginPath();
-    ctx.ellipse(0, 9, 34, 21, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 9, 43, 27, 0, 0, Math.PI * 2);
     ctx.stroke();
     if (game.anchors.some((anchor) => anchor.health > 0)) {
       ctx.globalAlpha = 0.36 + Math.sin(game.elapsed * 7) * 0.08;
@@ -5153,7 +7108,12 @@ function drawJev(ctx) {
       ctx.setLineDash([]);
     }
     ctx.restore();
-    drawSpriteFrame(ctx, artwork.jev, frame, jev.x, jev.y + bob, 78, 84, jev.facing > 0);
+    const nativeSideRun = runningProfile && chaserSkin.nativeSideRunMotion
+      && (direction === "left" || direction === "right");
+    const spriteY = jev.y + (nativeSideRun ? 0 : runningProfile && runPose === 2 ? -2 : bob);
+    if (!runningProfile || !drawProfileRunFrame(ctx, chaserSkin.id, direction, runPose, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT)) {
+      drawSpriteFrame(ctx, chaserSprite, chaserSkin.id, direction, row, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT);
+    }
     if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
       ctx.save();
       ctx.globalAlpha = 0.84 + Math.sin(game.elapsed * 16) * 0.1;
@@ -5178,7 +7138,7 @@ function drawJev(ctx) {
     return;
   }
   ctx.save();
-  ctx.translate(jev.x, jev.y + bob);
+  ctx.translate(drawX, jev.y + bob);
   ctx.scale(jev.facing || -1, 1);
   ctx.fillStyle = "rgb(7 5 12 / 42%)";
   ctx.beginPath();
@@ -5228,17 +7188,20 @@ function drawJev(ctx) {
 
 function drawPlayer(ctx) {
   const player = game.player;
+  const runnerSkin = skinForRole("runner");
+  const runnerSprite = spriteForRole("runner");
+  const direction = spriteDirectionFor(player);
   const heading = Math.atan2(player.vy, player.vx || 1);
   const dash = player.dashTimer > 0;
   if (player.afterimageTimer > 0) {
     ctx.save();
     ctx.globalAlpha = 0.22 + Math.sin(game.elapsed * 18) * 0.06;
-    ctx.strokeStyle = "#92f3e2";
-    ctx.shadowColor = "#72eed9";
+    ctx.strokeStyle = runnerSkin.accent;
+    ctx.shadowColor = runnerSkin.accent;
     ctx.shadowBlur = 23;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(player.x, player.y + 5, 23, 30, 0, 0, Math.PI * 2);
+    ctx.ellipse(player.x, player.y + 5, 31, 39, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -5257,35 +7220,36 @@ function drawPlayer(ctx) {
   if (dash) {
     ctx.save();
     ctx.globalAlpha = 0.3;
-    ctx.fillStyle = "#c7e7e6";
+    ctx.fillStyle = runnerSkin.accent;
     ctx.beginPath();
-    ctx.ellipse(player.x - player.dashVx * 27, player.y - player.dashVy * 27, 13, 24, heading + Math.PI / 2, 0, Math.PI * 2);
+    ctx.ellipse(player.x - player.dashVx * 27, player.y - player.dashVy * 27, 17, 30, heading + Math.PI / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
   if (player.hurtTimer > 0 && Math.floor(game.elapsed * 18) % 2 === 0) return;
-  if (artwork.ghost.complete && artwork.ghost.naturalWidth > 0) {
+  if (runnerSprite?.complete && runnerSprite.naturalWidth > 0) {
     const speed = Math.hypot(player.vx, player.vy);
-    const frame = player.hurtTimer > 0 ? 11 : dash ? 4 : player.pulseTimer > 0 ? 6 : player.guardTimer > 0 ? 8
-      : player.fireHeld || keys.has("z") ? 5
-      : player.hookTarget ? 9 : speed > 35 ? 1 + Math.floor(game.elapsed * 10) % 3 : 0;
+      const runningProfile = speed > 35
+        && Boolean(artwork.runFrames[runnerSkin.id]?.frames[direction]?.length);
+      const runPose = profileRunPose(player, runnerSkin.id, direction);
+      const row = speed > 35 ? 1 + Math.floor((player.spriteAnimationTime || 0) / 0.085) % 3 : 0;
     if (player.afterimageTimer > 0) {
       ctx.save();
       ctx.globalAlpha = 0.32 * clamp(player.afterimageTimer / PHASE_AFTERIMAGE_DURATION, 0, 1);
-      ctx.shadowColor = "#72eed9";
+      ctx.shadowColor = runnerSkin.accent;
       ctx.shadowBlur = 15;
-      drawSpriteFrame(ctx, artwork.ghost, 0, player.lastKnown.x, player.lastKnown.y, 64, 70, player.facing < 0);
+      drawSpriteFrame(ctx, runnerSprite, runnerSkin.id, direction, 0, player.lastKnown.x, player.lastKnown.y, 92, 102);
       ctx.restore();
     }
     ctx.save();
     ctx.translate(player.x, player.y + 11);
-    const groundShadow = ctx.createRadialGradient(0, 21, 2, 0, 21, 27);
+    const groundShadow = ctx.createRadialGradient(0, 21, 2, 0, 21, 33);
     groundShadow.addColorStop(0, "rgba(4, 5, 12, 0.62)");
     groundShadow.addColorStop(0.58, "rgba(4, 5, 12, 0.3)");
     groundShadow.addColorStop(1, "rgba(4, 5, 12, 0)");
     ctx.fillStyle = groundShadow;
     ctx.beginPath();
-    ctx.ellipse(0, 21, 19, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 21, 26, 10, 0, 0, Math.PI * 2);
     ctx.fill();
     if (player.snaredTimer > 0) {
       ctx.strokeStyle = "rgb(217 158 243 / 88%)";
@@ -5298,15 +7262,16 @@ function drawPlayer(ctx) {
     const stretch = dash ? 1.08 : 1;
     ctx.save();
     ctx.globalAlpha = 1;
-    drawSpriteFrame(ctx, artwork.ghost, frame, player.x, player.y + Math.sin(game.elapsed * 9) * 1.5, 70 * stretch, 76 / stretch, player.facing < 0);
+    const nativeSideRun = runningProfile && runnerSkin.nativeSideRunMotion
+      && (direction === "left" || direction === "right");
+    const spriteY = player.y + (nativeSideRun ? 0 : runningProfile && runPose === 2 ? -2 : Math.sin(game.elapsed * 9) * 1.5);
+    if (!runningProfile || !drawProfileRunFrame(ctx, runnerSkin.id, direction, runPose, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch)) {
+      drawSpriteFrame(ctx, runnerSprite, runnerSkin.id, direction, row, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch);
+    }
     ctx.restore();
     if (player.pulseTimer > 0) {
       const progress = 1 - player.pulseTimer / 0.42;
-      ctx.strokeStyle = "rgba(226, 179, 255, " + (1 - progress) + ")";
-      ctx.lineWidth = 4 * (1 - progress) + 1;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, 20 + progress * 128, 0, Math.PI * 2);
-      ctx.stroke();
+      drawCompanyShockwave(ctx, player.x, player.y, progress, runnerSkin);
     }
     return;
   }
@@ -5336,9 +7301,66 @@ function drawPlayer(ctx) {
   ctx.beginPath(); ctx.arc(-3.5, -5.5, 0.6, 0, Math.PI * 2); ctx.arc(5.5, -5.5, 0.6, 0, Math.PI * 2); ctx.fill();
   if (player.pulseTimer > 0) {
     const progress = 1 - player.pulseTimer / 0.42;
-    ctx.strokeStyle = "rgba(226, 179, 255, " + (1 - progress) + ")";
-    ctx.lineWidth = 4 * (1 - progress) + 1;
-    ctx.beginPath(); ctx.arc(0, 0, 20 + progress * 128, 0, Math.PI * 2); ctx.stroke();
+    drawCompanyShockwave(ctx, 0, -Math.sin(game.elapsed * 9) * 1.5, progress, runnerSkin);
+  }
+  ctx.restore();
+}
+
+function drawCompanySkillSignature(ctx, actor, skin, progress, cell) {
+  const phase = clamp(progress / 0.62, 0, 1);
+  const alpha = (1 - phase) * 0.64;
+  if (alpha <= 0) return;
+  const radius = 44 + phase * 24;
+  const seed = cell[0] + cell[1] * 4;
+  ctx.save();
+  ctx.translate(actor.x, actor.y);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = skin.accent;
+  ctx.fillStyle = skin.accent;
+  ctx.shadowColor = skin.accent;
+  ctx.shadowBlur = 14;
+  ctx.lineWidth = 2.2;
+  if (skin.company === "OpenAI") {
+    ctx.rotate(phase * 0.8 + seed * 0.12);
+    ctx.setLineDash([4, 7]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let node = 0; node < 4; node += 1) {
+      const angle = node * Math.PI / 2 + Math.PI / 4;
+      const inner = radius - 9;
+      const outer = radius + 4;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.stroke();
+      ctx.fillRect(Math.cos(angle) * outer - 2.5, Math.sin(angle) * outer - 2.5, 5, 5);
+    }
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.54, 0);
+    ctx.lineTo(-radius * 0.27, -radius * 0.27);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(radius * 0.27, radius * 0.27);
+    ctx.lineTo(radius * 0.54, 0);
+    ctx.stroke();
+  } else {
+    ctx.rotate(-phase * 0.58 + seed * 0.09);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - 5, -Math.PI * 0.82, Math.PI * 0.82);
+    ctx.stroke();
+    for (let ray = 0; ray < 9; ray += 1) {
+      const angle = ray * Math.PI * 2 / 9;
+      const inner = radius - 2;
+      const outer = radius + (ray % 3 === 0 ? 9 : 4);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * outer, Math.sin(angle) * outer, ray % 3 === 0 ? 2.5 : 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -5350,40 +7372,41 @@ function drawSkillCallouts(ctx) {
     const actor = entry.owner === "jev" ? game.jev : game.player;
     const skill = skillManual[entry.owner].find((item) => item.id === entry.abilityId);
     const cell = skillIconCells[entry.abilityId];
-    const customIcon = artwork.skillExtras?.[entry.abilityId];
-    if (!skill || (!cell && !customIcon)) continue;
+    if (!skill || !cell) continue;
+    const actorSkin = skinCatalog[entry.skinId] || skinForRole(entry.owner === "ghost" ? "runner" : "chaser");
     const progress = clamp((game.elapsed - entry.at) / entry.duration, 0, 1);
     const alpha = Math.min(1, (1 - progress) * 4.2);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.font = "700 12px Inter, ui-sans-serif, system-ui, sans-serif";
-    const textWidth = ctx.measureText(skill.name).width;
+    const skillName = entry.skillName || brandedSkillName(skill, actorSkin);
+    const textWidth = ctx.measureText(skillName).width;
     const boxWidth = textWidth + 45;
     const opponent = entry.owner === "jev" ? game.player : game.jev;
     const relativeX = opponent.x - actor.x;
     const side = Math.abs(relativeX) < 145 ? -Math.sign(relativeX || (entry.owner === "jev" ? -1 : 1)) : 1;
     const x = clamp(actor.x + side * 28 - (side < 0 ? boxWidth : 0), 24, WORLD.width - boxWidth - 24);
     const y = actor.y - 48 - progress * 12;
+    drawCompanySkillSignature(ctx, actor, actorSkin, progress, cell);
     ctx.fillStyle = "rgba(17, 14, 25, 0.9)";
-    ctx.strokeStyle = entry.owner === "ghost" ? "rgba(145, 235, 213, 0.78)" : "rgba(255, 148, 112, 0.78)";
+    ctx.strokeStyle = actorSkin.accent;
     ctx.lineWidth = 1.5;
-    ctx.shadowColor = entry.owner === "ghost" ? "#79e6cd" : "#f07160";
+    ctx.shadowColor = actorSkin.accent;
     ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.roundRect(x, y - 17, boxWidth, 32, 10);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.stroke();
-    if (cell && artwork.skills.complete && artwork.skills.naturalWidth > 0) {
-      const cellWidth = artwork.skills.naturalWidth / 4;
-      const cellHeight = artwork.skills.naturalHeight / 4;
-      ctx.drawImage(artwork.skills, cell[0] * cellWidth, cell[1] * cellHeight, cellWidth, cellHeight, x + 4, y - 14, 26, 26);
-    } else if (customIcon?.complete && customIcon.naturalWidth > 0) {
-      ctx.drawImage(customIcon, x + 4, y - 14, 26, 26);
+    const iconSheet = artwork.skillIcons[actorSkin.id];
+    if (cell && iconSheet?.complete && iconSheet.naturalWidth > 0) {
+      const cellWidth = iconSheet.naturalWidth / 4;
+      const cellHeight = iconSheet.naturalHeight / 4;
+      ctx.drawImage(iconSheet, cell[0] * cellWidth, cell[1] * cellHeight, cellWidth, cellHeight, x + 4, y - 14, 26, 26);
     }
     ctx.fillStyle = "#fff5e8";
     ctx.textBaseline = "middle";
-    ctx.fillText(skill.name, x + 34, y - 1, boxWidth - 39);
+    ctx.fillText(skillName, x + 34, y - 1, boxWidth - 39);
     ctx.restore();
   }
 }
@@ -5520,6 +7543,71 @@ function setGhostTactic(tactic) {
   return tactic;
 }
 
+const tacticalGridCache = new WeakMap();
+function buildTacticalGrid() {
+  const level = game.level;
+  const cellSize = 64;
+  const columns = Math.ceil(WORLD.width / cellSize);
+  const rows = Math.ceil(WORLD.height / cellSize);
+  let terrain = tacticalGridCache.get(level);
+  if (!terrain) {
+    const cells = Array.from({ length: rows }, () => Array(columns).fill("."));
+    const offsets = [-cellSize / 2 + 8, 0, cellSize / 2 - 8];
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const centerX = column * cellSize + cellSize / 2;
+        const centerY = row * cellSize + cellSize / 2;
+        const covered = level.blocks.some((block) => offsets.some((offsetY) => offsets.some((offsetX) =>
+          obstacleContains(centerX + offsetX, centerY + offsetY, block, game.player.radius * 0.45)
+        )));
+        if (covered) cells[row][column] = "#";
+      }
+    }
+    for (const crossing of level.chokepoints) {
+      const column = Math.floor(crossing.x / cellSize);
+      const row = Math.floor(crossing.y / cellSize);
+      if (cells[row]?.[column] === ".") cells[row][column] = "+";
+    }
+    terrain = cells.map((row) => row.join(""));
+    tacticalGridCache.set(level, terrain);
+  }
+
+  const cells = terrain.map((row) => [...row]);
+  const hazardSymbols = {
+    lava: "L", quicksand: "Q", swarm: "S", spores: "s", current: "~", steam: "!", arc_sparks: "^",
+  };
+  for (const hazard of game.hazards) {
+    const symbol = hazardSymbols[hazard.kind];
+    if (!symbol) continue;
+    const bounds = hazardBounds(hazard);
+    const left = clamp(Math.floor(bounds.x / cellSize), 0, columns - 1);
+    const right = clamp(Math.floor((bounds.x + bounds.w) / cellSize), 0, columns - 1);
+    const top = clamp(Math.floor(bounds.y / cellSize), 0, rows - 1);
+    const bottom = clamp(Math.floor((bounds.y + bounds.h) / cellSize), 0, rows - 1);
+    for (let row = top; row <= bottom; row += 1) {
+      for (let column = left; column <= right; column += 1) {
+        if (cells[row][column] !== "#") cells[row][column] = symbol;
+      }
+    }
+  }
+
+  const putActor = (x, y, symbol) => {
+    const column = clamp(Math.floor(x / cellSize), 0, columns - 1);
+    const row = clamp(Math.floor(y / cellSize), 0, rows - 1);
+    cells[row][column] = symbol;
+  };
+  for (const anchor of game.anchors) putActor(anchor.x, anchor.y, anchor.health > 0 ? String.fromCharCode(65 + anchor.id) : String.fromCharCode(97 + anchor.id));
+  putActor(game.jev.x, game.jev.y, "J");
+  putActor(game.player.x, game.player.y, "G");
+  return {
+    cell_size: cellSize,
+    columns,
+    rows,
+    legend: "Rows run north to south; columns west to east. G runner, J chaser, A-C live anchors, a-c broken anchors, # obstacle, + chokepoint, L lava, Q quicksand, S swarm, s spores, ~ current, ! steam, ^ arc hazard, . open floor.",
+    cells: cells.map((row) => row.join("")),
+  };
+}
+
 function getJevState() {
   updatePlanProgress();
   const player = game.player;
@@ -5594,6 +7682,13 @@ function getJevState() {
           : game.routeProfile.reversals >= 4 && game.routeProfile.turns >= 8 ? "erratic"
             : "open",
       slowed: player.snaredTimer > 0 || environmentEffects(player).speed < 0.98,
+      under_attack: isJevAttackThreateningPlayer(),
+      stuck_seconds: Math.round(player.stuckTimer * 10) / 10,
+      recovery_active: Boolean(player.recoveryTarget),
+      distance_to_objective: Math.round(distance(player, objectiveTarget)),
+      objective_lane_clear: isLaneClear(player, objectiveTarget, 8),
+      burst_target_in_range: distance(player, objectiveTarget) < 145 ||
+        game.minions.some((wraith) => distance(player, wraith) < 145),
     },
     jev: {
       x: Math.round(jev.x), y: Math.round(jev.y),
@@ -5634,6 +7729,7 @@ function getJevState() {
         radius: game.activeMine.radius,
       } : null,
       rift_rush_ready: jev.riftRushCooldown <= 0,
+      rift_rush_lane_clear: Boolean(riftRushDestination()),
       rift_rush_phase: jev.riftRushPhase || "ready",
       rift_aegis_ready: game.anchors.every((anchor) => anchor.health <= 0) &&
         jev.riftAegisCooldown <= 0 && jev.riftAegisTimer <= 0 && jev.riftAegisCharges <= 0,
@@ -5654,15 +7750,16 @@ function getJevState() {
         x: Math.round(meteor.x), y: Math.round(meteor.y), radius: meteor.radius, seconds_to_impact: Math.round(meteor.delay * 10) / 10,
       })),
       stuck_seconds: Math.round(jev.stuckTimer * 10) / 10,
+      recovery_active: Boolean(jev.recoveryTarget),
       shot_threatened: isPlayerShotThreateningJev(),
     },
     recent_events: game.history.slice(-8),
     arena: {
       width: WORLD.width,
       height: WORLD.height,
+      tactical_grid: buildTacticalGrid(),
       topology: game.level.topology,
       chokepoints: game.level.chokepoints.map((point) => ({ ...point })),
-      cover: [],
       hazards: game.hazards.map((hazard) => ({
         x: hazard.x, y: hazard.y, width: hazard.w, height: hazard.h, kind: hazard.kind,
         ...hazardState(hazard), flow_x: hazard.flowX || 0, flow_y: hazard.flowY || 0,
@@ -5771,11 +7868,13 @@ function finishGame(outcome) {
   ui.footer.hidden = false;
   ui.result.hidden = false;
   const foughtBack = outcome === "fight";
-  ui.resultKicker.textContent = foughtBack ? "ANCHORS BROKEN · JEV DEFEATED" : "RIFT HUNT ENDED";
-  ui.resultTitle.textContent = foughtBack ? "The hunt is yours." : "Jev got you.";
+  const winner = skinForRole(foughtBack ? "runner" : "chaser");
+  const loser = skinForRole(foughtBack ? "chaser" : "runner");
+  ui.resultKicker.textContent = "MATCH WINNER";
+  ui.resultTitle.textContent = winner.victoryHeadline || `${winner.company} won`;
   ui.resultCopy.textContent = foughtBack
-    ? "You shattered all three anchors, broke Jev's ward, and ended the hunt."
-    : "Use the anchors to pull Jev across the arena. Dash through the telegraphs; guard can turn a blast back on him.";
+    ? `${winner.name} broke the anchors and defeated ${loser.name}.`
+    : `${winner.name} caught ${loser.name}.`;
   ui.nextLevel.hidden = !foughtBack || selectedLevelIndex >= levels.length - 1;
   if (foughtBack) {
     emitParticles(game.jev.x, game.jev.y, "#ffd07b", 60, 260);
@@ -5882,6 +7981,12 @@ ui.settingsMusic.addEventListener("change", () => {
 });
 ui.settingsVolume.addEventListener("input", () => setMusicVolume(ui.settingsVolume.value));
 ui.settingsDifficulty.addEventListener("change", () => setDifficulty(ui.settingsDifficulty.value));
+document.querySelectorAll(".skin-choice-input").forEach((control) => {
+  control.addEventListener("change", () => {
+    if (control.checked) setSelectedSkin(control.dataset.role, control.value);
+  });
+});
+ui.skinSwap.addEventListener("click", swapSkinRoles);
 ui.modeHuman.addEventListener("click", () => setSelectedMode("human"));
 ui.modeAuto.addEventListener("click", () => setSelectedMode("auto"));
 ui.decisionToggle.addEventListener("click", () => {
@@ -5949,6 +8054,109 @@ ui.canvas.addEventListener("pointerdown", (event) => {
 ui.canvas.addEventListener("pointerup", endPlayerFire);
 ui.canvas.addEventListener("pointercancel", endPlayerFire);
 
+if (new URLSearchParams(window.location.search).get("qa") === "1") {
+  window.__FRONTIER_QA__ = Object.freeze({
+    snapshot: () => {
+      if (!game) return null;
+      const player = game.player;
+      const jev = game.jev;
+      const playerMovementRadius = player.clearanceRadius ?? player.radius;
+      const jevMovementRadius = jev.clearanceRadius ?? jev.radius;
+      return {
+        map: game.level.id,
+        mode: game.mode,
+        skinLoadout: { runner: skinForRole("runner").id, chaser: skinForRole("chaser").id },
+        elapsed: Math.round(game.elapsed * 100) / 100,
+        remaining: Math.round(game.remaining * 100) / 100,
+        camera: { x: cameraState.x, y: cameraState.y },
+        running: game.running,
+        paused: game.paused,
+        result: { visible: !ui.result.hidden, title: ui.resultTitle.textContent },
+        anchors: game.anchors.map(({ id, x, y, health }) => ({ id, x, y, health })),
+        player: {
+          x: player.x, y: player.y, vx: player.vx, vy: player.vy, health: player.health,
+          radius: player.radius, clearanceRadius: playerMovementRadius,
+          currentBlocked: blocked(player.x, player.y, playerMovementRadius),
+          movedFromSpawn: Math.round(distance(player, game.level.playerStart)),
+          hookActive: Boolean(player.hookTarget),
+          tactic: player.aiTactic, input: { ...player.aiInput }, target: player.aiTarget, objective: player.aiObjectiveAnchorId,
+          stuck: player.stuckTimer, recoveryAttempts: player.recoveryAttempts,
+          recoveryTarget: player.recoveryTarget, pathLength: player.aiPath.length,
+          targetBlocked: player.aiTarget ? blocked(player.aiTarget.x, player.aiTarget.y, playerMovementRadius) : null,
+          targetLaneClear: player.aiTarget ? isLaneClear(player, player.aiTarget, playerMovementRadius) : null,
+          dashCooldown: player.dashCooldown, hookCooldown: player.hookCooldown,
+          guardCooldown: player.guardCooldown, echoCooldown: player.echoCooldown,
+          shots: player.shotsFired, hits: player.hitsLanded,
+        },
+        jev: {
+          x: jev.x, y: jev.y, vx: jev.vx, vy: jev.vy, health: jev.health,
+          radius: jev.radius, clearanceRadius: jevMovementRadius,
+          currentBlocked: blocked(jev.x, jev.y, jevMovementRadius),
+          mode: jev.mode, plan: jev.plan, stuck: jev.stuckTimer,
+          recoveryAttempts: jev.recoveryAttempts, recoveryTarget: jev.recoveryTarget,
+          pathLength: jev.path.length, rendPhase: jev.rendPhase, blastPhase: jev.blastPhase,
+          target: jevTarget(), targetBlocked: blocked(jevTarget().x, jevTarget().y, jevMovementRadius),
+          targetLaneClear: isLaneClear(jev, jevTarget(), jevMovementRadius),
+          salvoPhase: jev.salvoPhase, rushPhase: jev.riftRushPhase, aegisCharges: jev.riftAegisCharges,
+          parryRecoveryUntil: jev.parryRecoveryUntil,
+          actionHistory: jev.actionHistory.map((action) => ({ ...action })),
+        },
+        events: game.actionTimeline.map((entry) => ({ ...entry })),
+        history: [...game.history],
+      artwork: Object.fromEntries(Object.entries(artwork.props).map(([lab, image]) => [lab, {
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      }])),
+      barrierArt: Object.fromEntries(Object.entries(artwork.barriers).map(([lab, image]) => [lab, {
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        frames: artwork.barrierBounds[lab]?.length ?? 0,
+      }])),
+      runSprites: Object.fromEntries(Object.entries(artwork.runFrames).map(([skinId, animation]) => [skinId, {
+        right: animation.frames.right.length,
+        left: animation.frames.left.length,
+        frameSizes: Object.fromEntries(Object.entries(animation.frames).map(([direction, frames]) => [
+          direction,
+          frames.map((frame) => ({ width: frame.width, height: frame.height })),
+        ])),
+        frameBounds: animation.bounds,
+      }])),
+      runSideSprites: Object.fromEntries(Object.entries(artwork.runSides).map(([skinId, image]) => [skinId, {
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      }])),
+      floorBrandPositions: companyFloorPositions(game.level),
+        brandMarks: Object.fromEntries(Object.entries(artwork.brandMarks).map(([brand, image]) => [brand, {
+          loaded: image.complete && image.naturalWidth > 0,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        }])),
+        companions: Object.fromEntries(Object.entries(artwork.companions).map(([mascot, image]) => [mascot, {
+          loaded: image.complete && image.naturalWidth > 0,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        }])),
+        anchorBrandSheets: Object.fromEntries(Object.entries(artwork.anchorBrandSheets).map(([company, sheet]) => [company, {
+          loaded: Boolean(sheet?.width && sheet?.height),
+          width: sheet?.width ?? 0,
+          height: sheet?.height ?? 0,
+          frame: Math.floor(game.elapsed * 8) % 8,
+        }])),
+        decisions: {
+          jev: lastDecision.jev ? { ...lastDecision.jev } : null,
+          ghost: lastDecision.ghost ? { ...lastDecision.ghost } : null,
+        },
+        tacticalGrid: buildTacticalGrid(),
+      };
+    },
+  });
+}
+
+syncSkinSelector("runner");
+syncSkinSelector("chaser");
 renderLevelSelection();
 renderSkillCatalog();
 renderMusicButton();

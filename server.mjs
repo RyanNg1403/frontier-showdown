@@ -55,32 +55,32 @@ const playerTactics = {
 };
 const arenas = {
   crossing: {
-    name: "The Last Crossing",
+    name: "OpenAI Glass Atrium",
     landscape: "afterlife customs office",
     topology: "Four connected districts surround a guarded central cross. The arrival hall, ledger gallery, gloam arcade, and rift registry have different obstacle patterns; narrow gate openings link the long outer loops.",
   },
   cinder: {
-    name: "Cinderworks",
+    name: "OpenAI Compute Studio",
     landscape: "molten forge with cracked basalt and glowing vents",
     topology: "Four forge districts link through staggered gates: furnace islands divide the slag lanes, while broken spines and vent fields create several risky cut-throughs.",
   },
   drowned: {
-    name: "Drowned Archive",
+    name: "Anthropic Reading Room",
     landscape: "flooded teal library of submerged shelves and reflective pools",
     topology: "Four flooded library districts connect through narrow shelf gaps. Offset stacks create serpentine routes, diagonal shortcuts, long sightlines, and directional currents.",
   },
   glassgarden: {
-    name: "Verdant Glasshouse",
+    name: "Anthropic Living Studio",
     landscape: "moonlit botanical conservatory",
     topology: "Four glasshouse districts combine hedge loops, reflecting pools, trellis bridges, and spore pockets. Cross-gates connect broad outer lanes to tight garden cuts.",
   },
   meridian: {
-    name: "Meridian Vault",
+    name: "Anthropic Quiet Commons",
     landscape: "radial reliquary with prismatic cores",
     topology: "Four vault districts mix radial ribs, reliquaries, and broken circular walls. Rotated cuts and gated loops connect the outer chambers to the central heart.",
   },
   fractured: {
-    name: "The Fractured Span",
+    name: "Frontier Collaboration Hall",
     landscape: "rift bridge above a starless chasm",
     topology: "Four fractured districts form winding island bridges around an unstable center. Narrow crossings connect broad flanks, diagonal shortcuts, and the long return loop.",
   },
@@ -437,6 +437,27 @@ const mimeTypes = {
 };
 const publicFiles = new Set([
   "index.html", "game.js", "styles.css", "favicon.svg",
+  "assets/frontier-sam-run-8.png", "assets/frontier-dario-run-8.png",
+  "assets/frontier-sam-run-16.png", "assets/frontier-dario-run-16.png",
+  "assets/frontier-sam-run-4dir-v1.png", "assets/frontier-dario-run-4dir-v1.png",
+  "assets/frontier-sam-pixel-v3.png", "assets/frontier-dario-pixel-v3.png",
+  "assets/frontier-dario-pixel-v4.png", "assets/frontier-dario-run-16-v4.png",
+  "assets/frontier-dario-pixel-v5.png", "assets/frontier-dario-run-16-v5.png",
+  "assets/frontier-dario-run-side-v2.png",
+  "assets/frontier-dario-run-side-v3.png",
+  "assets/frontier-sam-pixel.png", "assets/frontier-dario-pixel.png",
+  "assets/frontier-codex-pixel.png", "assets/frontier-claude-pixel.png",
+  "assets/frontier-claude-pixel-v2.png", "assets/frontier-claude-pixel-v7.png",
+  "assets/frontier-codex-pixel-v3.png",
+  "assets/frontier-skill-icons-pixel.png", "assets/frontier-showdown-hero-pixel.png",
+  "assets/frontier-skill-icons-openai-pixel.png", "assets/frontier-skill-icons-anthropic-pixel.png",
+  "assets/frontier-floor-openai-atrium.png", "assets/frontier-floor-openai-compute.png",
+  "assets/frontier-floor-anthropic-library.png", "assets/frontier-floor-anthropic-living.png",
+  "assets/frontier-floor-anthropic-quiet.png", "assets/frontier-floor-frontier-common.png",
+  "assets/frontier-props-openai.png", "assets/frontier-props-anthropic.png", "assets/frontier-props-shared.png",
+  "assets/frontier-props-openai-pixel-v2.png", "assets/frontier-props-anthropic-pixel-v2.png",
+  "assets/frontier-barriers-openai-pixel-v2.png", "assets/frontier-barriers-anthropic-pixel-v2.png",
+  "assets/brand-openai-blossom.svg", "assets/brand-anthropic-mark.svg", "assets/brand-anthropic-wordmark.svg",
   "assets/afterlife-floor.jpg", "assets/ghost-sheet-v2.png", "assets/jev-sheet-v2.png",
   "assets/cinder-floor.png", "assets/archive-floor.png", "assets/last-crossing-hero.png",
   "assets/ghost-combat-sheet.png", "assets/jev-combat-sheet.png",
@@ -494,5 +515,5 @@ createServer((request, response) => {
   }
   sendJson(response, 405, { error: "Method not allowed." });
 }).listen(port, host, () => {
-  process.stdout.write(`JEVil is ready at http://${host}:${port}\n`);
+  process.stdout.write(`Frontier Showdown is ready at http://${host}:${port}\n`);
 });

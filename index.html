@@ -4,18 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#171321" />
-    <meta name="description" content="Break Jev's rift anchors, expose the demon, and fight your way through six expanding afterlife arenas." />
+    <meta name="description" content="Choose your rival, break three rift anchors, and fight across six research-lab-inspired arenas in Frontier Showdown." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>JEVil — Rift Hunt</title>
+    <title>Frontier Showdown</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/game.js?v=rift-hunt-skill-hazards-20261002" type="module"></script>
+    <script src="/game.js?v=frontier-camera-follow-1" type="module"></script>
   </head>
   <body>
     <div class="site-shell">
       <header class="topbar">
         <a class="brand" href="/" aria-label="JEVil home">
-          <span class="brand-mark" aria-hidden="true">J</span>
-          <span class="brand-word">JEV<span>il</span></span>
+          <span class="brand-mark" aria-hidden="true">F</span>
+          <span class="brand-word">FRONTIER <span>SHOWDOWN</span></span>
         </a>
         <div class="connection-status" id="connection-status" role="status" aria-label="Jev connection">
           <span class="status-dot" aria-hidden="true"></span>
@@ -26,19 +26,68 @@
       <main>
         <section class="landing" id="landing-screen" aria-labelledby="landing-title">
           <div class="landing-copy">
-            <h1 id="landing-title">Break<br />the<br /><em>hunt.</em></h1>
-            <p class="landing-description" id="landing-description">Shatter three rift anchors to expose Jev. Then take the fight to the demon.</p>
+            <h1 id="landing-title">Break the<br /><em>frontier.</em></h1>
+            <p class="landing-description" id="landing-description">Break three rift anchors, then take the fight to your rival.</p>
 
-            <div class="mode-picker" role="group" aria-label="Choose who controls the ghost">
-              <button class="mode-option is-selected" id="mode-human" type="button" data-mode="human" aria-pressed="true">You vs Jev</button>
-              <button class="mode-option" id="mode-auto" type="button" data-mode="auto" aria-pressed="false">Jev vs Jev</button>
+            <div class="mode-picker" role="group" aria-label="Choose game mode">
+              <button class="mode-option is-selected" id="mode-human" type="button" data-mode="human" aria-pressed="true">Manual</button>
+              <button class="mode-option" id="mode-auto" type="button" data-mode="auto" aria-pressed="false">Auto Mode</button>
+            </div>
+
+            <div class="skin-picker" role="group" aria-label="Choose the runner and chaser">
+              <section class="skin-option" id="runner-skin-card" data-role="runner" data-skin="sam" aria-labelledby="runner-role-label">
+                <div class="skin-option-head">
+                  <span class="skin-role" id="runner-role-label">Runner</span>
+                  <span class="skin-company" id="runner-company">OpenAI</span>
+                </div>
+                <div class="skin-choices" role="radiogroup" aria-labelledby="runner-role-label">
+                  <label class="skin-choice" title="Sam Altman">
+                    <input class="skin-choice-input" type="radio" name="runner-skin" data-role="runner" value="sam" aria-label="Sam Altman as runner" checked />
+                    <span class="skin-choice-avatar" data-skin="sam" aria-hidden="true"></span>
+                    <span class="skin-choice-name skin-choice-name-full" aria-hidden="true">Sam Altman</span>
+                    <span class="skin-choice-name skin-choice-name-short" aria-hidden="true">Sam</span>
+                  </label>
+                  <label class="skin-choice" title="Dario Amodei">
+                    <input class="skin-choice-input" type="radio" name="runner-skin" data-role="runner" value="dario" aria-label="Dario Amodei as runner" />
+                    <span class="skin-choice-avatar" data-skin="dario" aria-hidden="true"></span>
+                    <span class="skin-choice-name skin-choice-name-full" aria-hidden="true">Dario Amodei</span>
+                    <span class="skin-choice-name skin-choice-name-short" aria-hidden="true">Dario</span>
+                  </label>
+                </div>
+              </section>
+              <button class="skin-swap" id="skin-swap-button" type="button" aria-label="Swap runner and chaser" title="Swap roles">
+                <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                  <path d="M4 6h11l-2.5-2.5M16 14H5l2.5 2.5" />
+                  <path d="M15 3.5 17.5 6 15 8.5M5 11.5 2.5 14 5 16.5" />
+                </svg>
+              </button>
+              <section class="skin-option" id="chaser-skin-card" data-role="chaser" data-skin="dario" aria-labelledby="chaser-role-label">
+                <div class="skin-option-head">
+                  <span class="skin-role" id="chaser-role-label">Chaser</span>
+                  <span class="skin-company" id="chaser-company">Anthropic</span>
+                </div>
+                <div class="skin-choices" role="radiogroup" aria-labelledby="chaser-role-label">
+                  <label class="skin-choice" title="Sam Altman">
+                    <input class="skin-choice-input" type="radio" name="chaser-skin" data-role="chaser" value="sam" aria-label="Sam Altman as chaser" />
+                    <span class="skin-choice-avatar" data-skin="sam" aria-hidden="true"></span>
+                    <span class="skin-choice-name skin-choice-name-full" aria-hidden="true">Sam Altman</span>
+                    <span class="skin-choice-name skin-choice-name-short" aria-hidden="true">Sam</span>
+                  </label>
+                  <label class="skin-choice" title="Dario Amodei">
+                    <input class="skin-choice-input" type="radio" name="chaser-skin" data-role="chaser" value="dario" aria-label="Dario Amodei as chaser" checked />
+                    <span class="skin-choice-avatar" data-skin="dario" aria-hidden="true"></span>
+                    <span class="skin-choice-name skin-choice-name-full" aria-hidden="true">Dario Amodei</span>
+                    <span class="skin-choice-name skin-choice-name-short" aria-hidden="true">Dario</span>
+                  </label>
+                </div>
+              </section>
             </div>
 
             <div class="level-picker" id="level-picker" data-biome="office" aria-label="Choose an arena">
               <button class="level-arrow" id="level-prev" type="button" aria-label="Previous arena" disabled>←</button>
               <div class="level-selection" aria-live="polite">
                 <span class="level-number" id="level-number">01 / 06</span>
-                <span class="level-name" id="level-name">The Last Crossing</span>
+                <span class="level-name" id="level-name">OpenAI Glass Atrium</span>
               </div>
               <button class="level-arrow" id="level-next" type="button" aria-label="Next arena">→</button>
             </div>
@@ -48,16 +97,13 @@
               <span>Enter the rift</span><span class="button-arrow" aria-hidden="true">↗</span>
             </button>
             <div class="landing-controls" aria-label="Controls">
-              <span><kbd>W A S D</kbd> move</span>
-              <span><kbd>L-CLICK / Z</kbd> fire</span>
-              <span><kbd>SPACE</kbd> dash</span>
-              <span><kbd>R-CLICK / SHIFT</kbd> parry</span>
-              <span><kbd>Q</kbd> mirror · <kbd>E</kbd> hook · <kbd>F</kbd> burst</span>
+              <span><kbd>W A S D</kbd> move · click to fire · <kbd>SPACE</kbd> dash</span>
+              <span><kbd>SHIFT</kbd> parry · <kbd>Q</kbd> mirror · <kbd>E</kbd> hook · <kbd>F</kbd> burst</span>
             </div>
           </div>
 
           <div class="hero-art">
-            <img src="/assets/last-crossing-hero.png" alt="A lantern-carrying ghost faces Jev in a glowing afterlife arena" />
+            <img src="/assets/frontier-showdown-hero-pixel.png" alt="Pixel art of Sam Altman and Dario Amodei facing off in a bright research office, with the blue Codex and orange Claude mascots" />
           </div>
         </section>
 
@@ -65,7 +111,7 @@
           <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat Jev. Move with WASD or arrow keys, aim and fire with left-click or Z, Phase Dash with Space, parry with right-click or Shift, use F for Soul Burst, Q for Mirror Echo, and E for Rift Hook." ></canvas>
 
           <div class="arena-topline">
-            <h2 id="arena-name">THE LAST CROSSING</h2>
+            <h2 id="arena-name">OPENAI GLASS ATRIUM</h2>
             <div class="arena-tools">
               <button class="music-toggle" id="music-toggle" type="button" aria-label="Mute music" aria-pressed="true" data-muted="false">♫</button>
               <button class="decision-toggle" id="decision-toggle" type="button" aria-label="Hide decision panels" aria-pressed="true">◉</button>
@@ -99,13 +145,13 @@
 
           <div class="decision-panels" id="decision-panels" aria-label="Jev decision data">
             <article class="decision-card demon-decision" id="jev-decision-card" aria-label="Jev decision">
-              <span class="decision-owner">JEV</span>
+              <span class="decision-owner">CHASER</span>
               <strong class="decision-action" id="jev-decision-action">Reading the arena</strong>
               <div class="decision-options" id="jev-decision-options"></div>
               <button class="decision-expand" id="jev-decision-expand" type="button" aria-expanded="false">View all tactics</button>
             </article>
             <article class="decision-card ghost-decision" id="player-decision-card" aria-label="Ghost decision" hidden>
-              <span class="decision-owner">GHOST</span>
+              <span class="decision-owner">RUNNER</span>
               <strong class="decision-action" id="player-decision-action">Choosing a route</strong>
               <div class="decision-options" id="player-decision-options"></div>
               <button class="decision-expand" id="player-decision-expand" type="button" aria-expanded="false">View all tactics</button>
@@ -171,7 +217,7 @@
           </div>
         </section>
       </main>
-      <footer class="site-footer"><span>JEVIL · RIFT HUNT</span></footer>
+      <footer class="site-footer"><span>FRONTIER SHOWDOWN</span></footer>
     </div>
   </body>
 </html>

@@ -68,9 +68,9 @@ async function runSimulation() {
   });
 
   // ----------------------------------------------------
-  // TEST 1: AUTO MODE ("Jev vs Jev")
+  // TEST 1: AUTO MODE
   // ----------------------------------------------------
-  console.log('>>> 1. STARTING AUTO MODE ("Jev vs Jev") TEST...');
+  console.log('>>> 1. STARTING AUTO MODE TEST...');
   currentMode = 'auto';
   await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
 
@@ -107,9 +107,9 @@ async function runSimulation() {
   });
 
   // ----------------------------------------------------
-  // TEST 2: HUMAN MODE ("You vs Jev") WITH ERGONOMIC KEYSTROKES
+  // TEST 2: MANUAL MODE WITH ERGONOMIC KEYSTROKES
   // ----------------------------------------------------
-  console.log('\n>>> 2. STARTING HUMAN MODE ("You vs Jev") TEST...');
+  console.log('\n>>> 2. STARTING MANUAL MODE TEST...');
   currentMode = 'human';
   await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
 
@@ -119,7 +119,7 @@ async function runSimulation() {
 
   // Click Start
   await page.click('#start-button');
-  console.log('    Game started in Human Mode. Simulating player controls & combat...');
+  console.log('    Game started in Manual Mode. Simulating player controls & combat...');
 
   // Focus canvas
   await page.focus('#game-canvas');
@@ -184,8 +184,8 @@ async function runSimulation() {
   await page.screenshot({ path: humanShot3 });
   console.log(`    [Screenshot 6 saved]: ${humanShot3}`);
 
-  console.log(`    Human Mode completed. Captured ${humanDecisions.length} Jev reactive decisions.`);
-  console.log('    Recent Human Mode Jev Decisions:');
+  console.log(`    Manual Mode completed. Captured ${humanDecisions.length} Jev reactive decisions.`);
+  console.log('    Recent Manual Mode Jev Decisions:');
   humanDecisions.slice(-5).forEach((d, idx) => {
     console.log(`      #${idx + 1}: Jev -> [${d.mode}] (${(d.confidence * 100).toFixed(0)}%) | Plan: ${d.plan || 'steady_pressure'}`);
   });

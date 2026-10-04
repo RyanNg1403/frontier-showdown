@@ -1,0 +1,82 @@
+{
+  "cell": 256,
+  "ground": 246,
+  "pivotX": 128,
+  "columns": 8,
+  "rows": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "idleRowOffset": 4,
+  "counts": {
+    "down": 8,
+    "up": 8,
+    "left": 8,
+    "right": 8
+  },
+  "headTarget": 84,
+  "source": {
+    "down": {
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "head": 86.0,
+      "scale": 0.9767,
+      "pool": 8
+    },
+    "up": {
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "head": 88.0,
+      "scale": 0.9767,
+      "pool": 8
+    },
+    "left": {
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "head": 100.0,
+      "scale": 0.9767,
+      "pool": 8
+    },
+    "right": {
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "head": 98.0,
+      "scale": 0.9767,
+      "pool": 8
+    }
+  }
+}
