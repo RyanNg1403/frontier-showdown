@@ -1,9 +1,9 @@
 const WORLD = { width: 2560, height: 1600, cell: 40 };
 const DISTRICT = { width: 1280, height: 800 };
 const LEGACY_EXPANSION = DISTRICT.width / 960;
-const POWER_BLAST_SPEED = 640;
+const POWER_BLAST_SPEED = 880;
 const POWER_BLAST_WINDUP = 0.32;
-const SOUL_SALVO_SPEED = 540;
+const SOUL_SALVO_SPEED = 760;
 const SOUL_SALVO_WINDUP = 0.36;
 const SOUL_SALVO_FAN_ANGLE = 0.1;
 const RIFT_REND_RANGE = 184;
@@ -52,16 +52,8 @@ function writePreference(key, value) {
 const storedDifficulty = readPreference("jevil.difficulty", "standard");
 let selectedDifficulty = Object.hasOwn(DIFFICULTY_SETTINGS, storedDifficulty) ? storedDifficulty : "standard";
 const storedMusicVolume = Number(readPreference("jevil.musicVolume", "55"));
-const musicThemes = {
-  office: { root: 110, tempo: 108, notes: [0, 3, 7, 10, 7, 3, 5, 10, 12, 10, 7, 3, 5, 7, 3, 0] },
-  cinder: { root: 82.41, tempo: 116, notes: [0, 3, 5, 10, 7, 5, 3, 12, 10, 7, 5, 3, 7, 10, 5, 0] },
-  archive: { root: 98, tempo: 100, notes: [0, 5, 7, 12, 10, 7, 5, 3, 7, 10, 12, 7, 5, 3, 5, 0] },
-  garden: { root: 123.47, tempo: 104, notes: [0, 3, 7, 12, 10, 7, 5, 3, 7, 10, 12, 15, 12, 10, 7, 3] },
-  vault: { root: 92.5, tempo: 112, notes: [0, 7, 10, 12, 7, 3, 10, 15, 12, 10, 7, 3, 5, 10, 7, 0] },
-  rift: { root: 87.31, tempo: 120, notes: [0, 3, 10, 7, 5, 12, 10, 3, 7, 15, 12, 10, 5, 7, 3, 0] },
-};
 const music = {
-  context: null, output: null, timer: 0, nextTime: 0, step: 0, theme: "office", intensity: 0,
+  audio: null,
   enabled: readPreference("jevil.musicEnabled", "true") !== "false",
   volume: Number.isFinite(storedMusicVolume) ? clamp(storedMusicVolume, 0, 100) / 100 : 0.55,
 };
@@ -70,6 +62,10 @@ const baseLevels = [
     id: "crossing",
     name: "OpenAI Glass Atrium",
     biome: "office",
+    fieldGuide: {
+      setting: "An open campus atrium uses pale-stone walks, oak work islands, and planted perimeter courts.",
+      review: "Crossing paths offer quick rotations; paired columns and a central desk create two flank routes.",
+    },
     topology: "Open hall with paired pillars, a broad central desk, and two lower benches.",
     chokepoints: [{ x: 640, y: 332, name: "desk approach" }, { x: 640, y: 491, name: "lower passage" }],
     playerStart: { x: 73, y: 83 },
@@ -86,6 +82,10 @@ const baseLevels = [
     id: "cinder",
     name: "OpenAI Compute Studio",
     biome: "cinder",
+    fieldGuide: {
+      setting: "A compute hall of server grates, cooling channels, and amber-lit service bays.",
+      review: "A broken center spine forces a choice between short furnace cuts and safer outer aisles.",
+    },
     topology: "A broken central spine creates a narrow crossing, while furnace islands split the outer lanes.",
     chokepoints: [{ x: 480, y: 300, name: "broken spine" }, { x: 590, y: 285, name: "furnace cut-through" }],
     playerStart: { x: 72, y: 520 },
@@ -105,6 +105,10 @@ const baseLevels = [
     id: "drowned",
     name: "Anthropic Reading Room",
     biome: "archive",
+    fieldGuide: {
+      setting: "A warm timber reading room with living walls and shallow reflective channels.",
+      review: "Shelf rows form a weaving maze; cross-currents make the long side aisles risky to linger in.",
+    },
     topology: "Offset rows of flooded shelves form a weaving maze with several tight turns and long sightlines.",
     chokepoints: [{ x: 480, y: 180, name: "upper shelf gap" }, { x: 480, y: 300, name: "central aisle" }],
     playerStart: { x: 884, y: 520 },
@@ -158,6 +162,10 @@ const authoredLevels = [
     id: "glassgarden",
     name: "Anthropic Living Studio",
     biome: "garden",
+    fieldGuide: {
+      setting: "A top-down conservatory garden of curved stone walks, planted beds, and a reflecting pool.",
+      review: "Three hedge loops offer cover, while moving swarms can close the gaps between them.",
+    },
     topology: "Three hedge loops wrap a broad reflecting pool, with offset trellises, flowerbeds, and cross-cut passages between long outer lanes.",
     chokepoints: [{ x: 640, y: 226, name: "pool crossing" }, { x: 640, y: 537, name: "south garden opening" }],
     playerStart: { x: 76, y: 728 },
@@ -185,8 +193,12 @@ const authoredLevels = [
   },
   {
     id: "meridian",
-    name: "Anthropic Quiet Commons",
+    name: "Paris AI Action Hall",
     biome: "vault",
+    fieldGuide: {
+      setting: "A Grand Palais-inspired AI Action Summit hall with limestone, bronze ironwork, and plum carpet lanes.",
+      review: "Radial walls split the room into chambers; watch the arc-spark lanes before cutting through center.",
+    },
     topology: "A circular heart and broken radial walls split the vault into five chambers; rotated ribs create diagonal cut-throughs and looping bypass routes.",
     chokepoints: [{ x: 378, y: 400, name: "western breach" }, { x: 905, y: 400, name: "eastern breach" }],
     playerStart: { x: 74, y: 400 },
@@ -215,8 +227,12 @@ const authoredLevels = [
   },
   {
     id: "fractured",
-    name: "Frontier Collaboration Hall",
+    name: "AI Impact Expo Pavilion",
     biome: "rift",
+    fieldGuide: {
+      setting: "An expo court inspired by Bharat Mandapam and the 2026 India AI Impact Summit.",
+      review: "Three bridges cross the volatile core; wide outer flanks give both fighters room to rotate.",
+    },
     topology: "Offset island walls form three winding bridges across a volatile center, with broad upper and lower flanks that reconnect behind the player.",
     chokepoints: [{ x: 640, y: 239, name: "upper bridge" }, { x: 514, y: 427, name: "western bridge" }, { x: 780, y: 431, name: "eastern bridge" }],
     playerStart: { x: 1190, y: 718 },
@@ -375,6 +391,7 @@ function expandLevel(level) {
 const levels = authoredLevels.map(expandLevel);
 let selectedLevelIndex = 0;
 let selectedLevel = levels[selectedLevelIndex];
+let mapFeatureRevealed = false;
 let blocks = selectedLevel.blocks;
 function biomeAccent(biome) {
   return {
@@ -413,9 +430,9 @@ const planLabels = {
 };
 const planStepDescriptions = {
   approach: "move to a reachable angle, crossing, or threatened objective",
-  set_up: "shape the ghost's route or prepare a safe attack lane",
+  set_up: "shape the runner's route or prepare a safe attack lane",
   capitalize: "use a ready skill to exploit the setup",
-  assess: "read the outcome and the ghost's response before repeating",
+  assess: "read the outcome and the runner's response before repeating",
 };
 const commitmentTactics = new Set(["rift_rend", "power_blast", "rift_mine", "soul_salvo", "shadow_dodge", "summon_wraiths", "meteor_storm", "rift_aegis"]);
 const planBreakEvents = new Set([
@@ -488,7 +505,7 @@ const skinCatalog = Object.freeze({
     company: "OpenAI",
     victoryHeadline: "OpenAI won, GPT is AGI",
     skillIconSheet: "frontier-skill-icons-openai-pixel.png",
-    sprite: "frontier-sam-pixel-v3.png",
+    sprite: "frontier-sam-character.png",
     // Normalized run atlas built by tools/build_run_atlas.py (one scale + pivot for every frame).
     runAtlas: "frontier-sam-run-atlas.png",
     // World pixels travelled per full run cycle; frames advance with distance so feet do not skate.
@@ -513,7 +530,7 @@ const skinCatalog = Object.freeze({
     company: "Anthropic",
     victoryHeadline: "Anthropic won, Claude is AGI",
     skillIconSheet: "frontier-skill-icons-anthropic-pixel.png",
-    sprite: "frontier-dario-pixel-v5.png",
+    sprite: "frontier-dario-character.png",
     runAtlas: "frontier-dario-run-atlas.png",
     runStrideDistance: Object.freeze({ side: 150, vertical: 132 }),
     companion: "claude",
@@ -527,8 +544,20 @@ const skinCatalog = Object.freeze({
   }),
 });
 const companionSpriteCatalog = Object.freeze({
-  codex: Object.freeze({ columns: 4, rows: 3, horizontalFrameColumn: 0 }),
-  claude: Object.freeze({ columns: 4, rows: 3, horizontalFrameColumn: 0 }),
+  codex: Object.freeze({
+    asset: "frontier-codex-mascot-sheet.png",
+    company: "OpenAI",
+    columns: 4,
+    rows: 3,
+    horizontalFrameColumn: 0,
+  }),
+  claude: Object.freeze({
+    asset: "frontier-claude-mascot-sheet.png",
+    company: "Anthropic",
+    columns: 4,
+    rows: 3,
+    horizontalFrameColumn: 0,
+  }),
 });
 const storedRunnerSkin = readPreference("frontier.runnerSkin", "sam");
 const storedChaserSkin = readPreference("frontier.chaserSkin", "dario");
@@ -538,7 +567,23 @@ if (selectedRunnerSkin === selectedChaserSkin) {
   selectedChaserSkin = selectedRunnerSkin === "sam" ? "dario" : "sam";
   writePreference("frontier.chaserSkin", selectedChaserSkin);
 }
-const artwork = { floors: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, propBounds: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
+const artwork = { floors: {}, mapBackdrops: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, propBounds: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
+for (const [mapId, file] of Object.entries({
+  crossing: "frontier-map-floor-crossing.png",
+  cinder: "frontier-map-floor-cinder.png",
+  drowned: "frontier-map-floor-drowned.png",
+  glassgarden: "frontier-map-floor-glassgarden.png",
+  meridian: "frontier-map-floor-meridian.png",
+  fractured: "frontier-map-floor-fractured.png",
+})) {
+  const backdrop = new Image();
+  backdrop.addEventListener("load", () => {
+    renderLevelThumbnails();
+    if (mapFeatureRevealed) renderMapFeature();
+  }, { once: true });
+  backdrop.src = "/assets/" + file;
+  artwork.mapBackdrops[mapId] = backdrop;
+}
 for (const [biome, file] of Object.entries({
   office: "frontier-floor-openai-atrium.png",
   cinder: "frontier-floor-openai-compute.png",
@@ -568,16 +613,13 @@ for (const skin of Object.values(skinCatalog)) {
   skillIcons.src = "/assets/" + skin.skillIconSheet;
   artwork.skillIcons[skin.id] = skillIcons;
 }
-for (const [companion, file] of Object.entries({
-  codex: "frontier-codex-pixel-v3.png",
-  claude: "frontier-claude-pixel-v7.png",
-})) {
+for (const [companion, config] of Object.entries(companionSpriteCatalog)) {
   artwork.companions[companion] = new Image();
-  artwork.companions[companion].src = "/assets/" + file;
+  artwork.companions[companion].src = "/assets/" + config.asset;
 }
 for (const [lab, file] of Object.entries({
-  openai: "frontier-props-openai-pixel-v2.png",
-  anthropic: "frontier-props-anthropic-pixel-v2.png",
+  openai: "frontier-workplace-props-openai.png",
+  anthropic: "frontier-workplace-props-anthropic.png",
   shared: "frontier-props-shared.png",
 })) {
   artwork.props[lab] = new Image();
@@ -587,8 +629,8 @@ for (const [lab, file] of Object.entries({
   artwork.props[lab].src = "/assets/" + file;
 }
 for (const [lab, file] of Object.entries({
-  openai: "frontier-barriers-openai-pixel-v2.png",
-  anthropic: "frontier-barriers-anthropic-pixel-v2.png",
+  openai: "frontier-workplace-barriers-openai.png",
+  anthropic: "frontier-workplace-barriers-anthropic.png",
 })) {
   artwork.barriers[lab] = new Image();
   artwork.barriers[lab].addEventListener("load", () => {
@@ -615,20 +657,20 @@ const skillIconCells = {
   shadow_dodge: [0, 3], rift_aegis: [1, 3],
 };
 const skillManual = {
-  ghost: [
+  runner: [
     { id: "phase_dash", name: "Phase Dash", key: "Space", description: "Burst through danger; leave a decoy afterimage." },
     { id: "mirror_echo", name: "Mirror Echo", key: "Q", description: "Create three decoys to draw attacks away." },
-    { id: "lantern_guard", name: "Lantern Guard", key: "Shift / C / right click", description: "Timed parry reflects attacks and staggers Jev. Use against Rift Rend when escape skills are recharging." },
+    { id: "lantern_guard", name: "Lantern Guard", key: "Shift / C / right click", description: "Timed parry reflects attacks and staggers the chaser. Use against Rift Rend when escape skills are recharging." },
     { id: "rift_hook", name: "Rift Hook", key: "E", description: "Grapple across a clear route to a safe landing." },
-    { id: "soul_burst", name: "Soul Burst", key: "F / X", description: "Short-range shockwave that interrupts Jev and cracks anchors." },
+    { id: "soul_burst", name: "Soul Burst", key: "F / X", description: "Short-range shockwave that interrupts the chaser and cracks anchors." },
   ],
   jev: [
     { id: "rift_rend", name: "Rift Rend", description: "A wide close-range slash. Dodge its warning arc or parry it with Lantern Guard." },
     { id: "power_blast", name: "Power Blast", description: "Charged, aimed projectile with a clear wind-up." },
     { id: "soul_salvo", name: "Soul Salvo", description: "Three-shot spread against a moving target." },
-    { id: "meteor_storm", name: "Meteor Storm", description: "Marked impacts pressure the ghost out of cover." },
+    { id: "meteor_storm", name: "Meteor Storm", description: "Marked impacts pressure the runner out of cover." },
     { id: "rift_mine", name: "Rift Mine", description: "Delayed trap placed to close a route." },
-    { id: "summon_wraiths", name: "Summon Wraiths", description: "Send tracking wraithlings to flush the ghost." },
+    { id: "summon_wraiths", name: "Summon Wraiths", description: "Send tracking wraithlings to flush the runner." },
     { id: "rift_rush", name: "Rift Rush", description: "Wind up, then charge through a clear lane." },
     { id: "shadow_dodge", name: "Shadow Dodge", description: "Sidestep an incoming burst or shot." },
     { id: "rift_aegis", name: "Rift Aegis", description: "After the anchors fall, block two hits during a brief shield window." },
@@ -651,9 +693,15 @@ let selectedMode = "human";
 
 const ui = {
   landing: document.querySelector("#landing-screen"),
+  landingHero: document.querySelector(".hero-art"),
+  landingHeroImage: document.querySelector("#landing-hero-image"),
+  mapFeature: document.querySelector("#map-feature"),
+  mapFeatureCanvas: document.querySelector("#map-feature-canvas"),
+  mapFeatureName: document.querySelector("#map-feature-name"),
+  mapFeatureSetting: document.querySelector("#map-feature-setting"),
+  mapFeatureReview: document.querySelector("#map-feature-review"),
   arena: document.querySelector("#arena-screen"),
   start: document.querySelector("#start-button"),
-  landingDescription: document.querySelector("#landing-description"),
   runnerSkinChoices: [...document.querySelectorAll('input[name="runner-skin"]')],
   runnerSkinCard: document.querySelector("#runner-skin-card"),
   runnerCompany: document.querySelector("#runner-company"),
@@ -675,9 +723,9 @@ const ui = {
   objectiveCallout: document.querySelector("#objective-callout"),
   touchControls: document.querySelector("#touch-controls"),
   health: document.querySelector("#health-pips"),
-  jevHealth: document.querySelector("#jev-health-pips"),
+  chaserHealth: document.querySelector("#chaser-health-pips"),
   timer: document.querySelector("#timer"),
-  intent: document.querySelector("#jev-intent"),
+  intent: document.querySelector("#chaser-intent"),
   musicToggle: document.querySelector("#music-toggle"),
   settingsToggle: document.querySelector("#settings-toggle"),
   settingsOverlay: document.querySelector("#settings-overlay"),
@@ -688,7 +736,7 @@ const ui = {
   settingsVolume: document.querySelector("#settings-volume"),
   settingsVolumeValue: document.querySelector("#settings-volume-value"),
   settingsDifficulty: document.querySelector("#settings-difficulty"),
-  modeLabel: document.querySelector("#jev-mode-label"),
+  modeLabel: document.querySelector("#chaser-mode-label"),
   callout: document.querySelector("#game-callout"),
   result: document.querySelector("#result-overlay"),
   resultKicker: document.querySelector("#result-kicker"),
@@ -707,11 +755,11 @@ const ui = {
   modeAuto: document.querySelector("#mode-auto"),
   decisionToggle: document.querySelector("#decision-toggle"),
   decisionPanels: document.querySelector("#decision-panels"),
-  jevDecisionCard: document.querySelector("#jev-decision-card"),
+  chaserDecisionCard: document.querySelector("#chaser-decision-card"),
   playerDecisionCard: document.querySelector("#player-decision-card"),
-  jevDecisionAction: document.querySelector("#jev-decision-action"),
-  jevDecisionOptions: document.querySelector("#jev-decision-options"),
-  jevDecisionExpand: document.querySelector("#jev-decision-expand"),
+  chaserDecisionAction: document.querySelector("#chaser-decision-action"),
+  chaserDecisionOptions: document.querySelector("#chaser-decision-options"),
+  chaserDecisionExpand: document.querySelector("#chaser-decision-expand"),
   playerDecisionAction: document.querySelector("#player-decision-action"),
   playerDecisionOptions: document.querySelector("#player-decision-options"),
   playerDecisionExpand: document.querySelector("#player-decision-expand"),
@@ -728,6 +776,11 @@ function skinForRole(role) {
   const selected = game?.skinLoadout?.[role]
     ?? (role === "runner" ? selectedRunnerSkin : selectedChaserSkin);
   return Object.hasOwn(skinCatalog, selected) ? skinCatalog[selected] : skinCatalog.sam;
+}
+
+function companionForRole(role) {
+  const companion = skinForRole(role).companion;
+  return Object.hasOwn(companionSpriteCatalog, companion) ? companion : null;
 }
 
 function spriteForRole(role) {
@@ -1127,7 +1180,7 @@ function syncSkinSelector(role) {
 }
 
 function skinForLoadoutRole(role) {
-  return skinCatalog[role === "ghost" ? selectedRunnerSkin : selectedChaserSkin];
+  return skinCatalog[role === "runner" ? selectedRunnerSkin : selectedChaserSkin];
 }
 
 function brandedSkillName(skill, skin) {
@@ -1194,94 +1247,19 @@ function swapSkinRoles() {
   renderSkillCatalog();
 }
 
-function ensureMusic() {
-  if (music.context) return true;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return false;
-  music.context = new AudioContext();
-  music.output = music.context.createGain();
-  music.output.gain.value = 0;
-  music.output.connect(music.context.destination);
-  return true;
-}
-
-function scheduleMusicTone(frequency, at, duration, volume, waveform = "triangle") {
-  const context = music.context;
-  const oscillator = context.createOscillator();
-  const envelope = context.createGain();
-  oscillator.type = waveform;
-  oscillator.frequency.setValueAtTime(frequency, at);
-  envelope.gain.setValueAtTime(0.0001, at);
-  envelope.gain.exponentialRampToValueAtTime(volume, at + 0.012);
-  envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration);
-  oscillator.connect(envelope);
-  envelope.connect(music.output);
-  oscillator.start(at);
-  oscillator.stop(at + duration + 0.025);
-}
-
-function scheduleMusicStep(at, step) {
-  const theme = musicThemes[music.theme] || musicThemes.office;
-  const heat = music.intensity;
-  const note = theme.notes[step % theme.notes.length];
-  const pitch = theme.root * 2 ** (note / 12);
-  if (step % 2 === 0) scheduleMusicTone(pitch * 2, at, 0.18, 0.018 + heat * 0.009, "triangle");
-  if (step % 4 === 0) {
-    scheduleMusicTone(theme.root * (heat > 0.48 ? 0.75 : 0.5), at, 0.31, 0.045, "sine");
-    const context = music.context;
-    const kick = context.createOscillator();
-    const envelope = context.createGain();
-    kick.type = "sine";
-    kick.frequency.setValueAtTime(118, at);
-    kick.frequency.exponentialRampToValueAtTime(42, at + 0.16);
-    envelope.gain.setValueAtTime(0.0001, at);
-    envelope.gain.exponentialRampToValueAtTime(0.047, at + 0.008);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, at + 0.19);
-    kick.connect(envelope);
-    envelope.connect(music.output);
-    kick.start(at);
-    kick.stop(at + 0.21);
+function startMusic() {
+  if (!music.enabled) return;
+  if (!music.audio) {
+    music.audio = new Audio("/assets/frontier-soundtrack.mp3");
+    music.audio.loop = true;
+    music.audio.preload = "auto";
   }
-  if (step % 8 === 0) {
-    scheduleMusicTone(theme.root, at, 1.55, 0.012 + heat * 0.008, "sine");
-    scheduleMusicTone(theme.root * 1.5, at + 0.015, 1.35, 0.007 + heat * 0.005, "sine");
-  }
-  if (step % 4 === 2) scheduleMusicTone(theme.root * (heat > 0.42 ? 30 : 24), at, 0.035, 0.003 + heat * 0.003, "sine");
-  if (heat > 0.34 && step % 2 === 1) scheduleMusicTone(pitch, at, 0.09, heat * 0.012, "sawtooth");
-}
-
-function tickMusic() {
-  if (!music.enabled || music.context?.state !== "running") return;
-  const theme = musicThemes[music.theme] || musicThemes.office;
-  const stepDuration = 60 / (theme.tempo + music.intensity * 18) / 2;
-  while (music.nextTime < music.context.currentTime + 0.22) {
-    scheduleMusicStep(music.nextTime, music.step);
-    music.nextTime += stepDuration;
-    music.step = (music.step + 1) % 16;
-  }
-}
-
-function startMusic(biome) {
-  music.theme = musicThemes[biome] ? biome : "office";
-  music.intensity = 0;
-  if (!music.enabled || !ensureMusic()) return;
-  void music.context.resume();
-  const now = music.context.currentTime;
-  music.output.gain.cancelScheduledValues(now);
-  music.output.gain.setTargetAtTime(0.13 * music.volume, now, 0.25);
-  if (!music.timer) {
-    music.nextTime = now + 0.06;
-    music.timer = window.setInterval(tickMusic, 45);
-  }
+  music.audio.volume = music.volume;
+  void music.audio.play().catch(() => {});
 }
 
 function stopMusic() {
-  if (music.timer) window.clearInterval(music.timer);
-  music.timer = 0;
-  if (!music.context || !music.output) return;
-  const now = music.context.currentTime;
-  music.output.gain.cancelScheduledValues(now);
-  music.output.gain.setTargetAtTime(0, now, 0.18);
+  music.audio?.pause();
 }
 
 function renderMusicButton() {
@@ -1295,7 +1273,7 @@ function toggleMusic() {
   writePreference("jevil.musicEnabled", String(music.enabled));
   renderMusicButton();
   ui.settingsMusic.checked = music.enabled;
-  if (music.enabled && game?.running) startMusic(game.level.biome);
+  if (music.enabled && game?.running) startMusic();
   else stopMusic();
 }
 
@@ -1304,9 +1282,7 @@ function setMusicVolume(value) {
   writePreference("jevil.musicVolume", String(Math.round(music.volume * 100)));
   ui.settingsVolume.value = String(Math.round(music.volume * 100));
   ui.settingsVolumeValue.value = Math.round(music.volume * 100) + "%";
-  if (music.context && music.output && music.enabled && game?.running) {
-    music.output.gain.setTargetAtTime(0.13 * music.volume, music.context.currentTime, 0.08);
-  }
+  if (music.audio) music.audio.volume = music.volume;
 }
 
 function setDifficulty(value) {
@@ -1368,8 +1344,8 @@ let urgentJevDecisionTimer = 0;
 let particles = [];
 let screenShake = 0;
 let decisionsVisible = true;
-const decisionExpanded = { jev: false, ghost: false };
-const lastDecision = { jev: null, ghost: null };
+const decisionExpanded = { jev: false, runner: false };
+const lastDecision = { jev: null, runner: null };
 let lastMapDrawAt = 0;
 let decisionPanelCorner = "";
 let lastDecisionPanelPlacementAt = -1;
@@ -1491,7 +1467,7 @@ function resizeCanvas() {
 
 function setConnection(ready) {
   ui.connection.dataset.ready = String(ready);
-  ui.connectionLabel.textContent = ready ? "Jev connected" : "Jev running locally";
+  ui.connectionLabel.textContent = ready ? "Opponent connected" : "Opponent running locally";
 }
 
 function renderLevelSelection() {
@@ -1499,13 +1475,28 @@ function renderLevelSelection() {
   blocks = selectedLevel.blocks;
   ui.levelNumber.textContent = String(selectedLevelIndex + 1).padStart(2, "0") + " / " + String(levels.length).padStart(2, "0");
   ui.levelName.textContent = selectedLevel.name;
-  ui.landingDescription.textContent = "Break three rift anchors, then defeat your rival.";
   ui.start.firstElementChild.textContent = "Enter the arena";
   ui.levelPicker.dataset.biome = selectedLevel.biome;
   ui.levelPicker.setAttribute("aria-label", "Choose an arena. " + selectedLevel.topology);
   ui.levelPrev.disabled = selectedLevelIndex === 0;
   ui.levelNext.disabled = selectedLevelIndex === levels.length - 1;
   renderLevelThumbnails();
+  renderMapFeature();
+}
+
+function renderMapFeature() {
+  const level = levels[selectedLevelIndex];
+  if (!level?.fieldGuide || !ui.mapFeature) return;
+  ui.mapFeature.hidden = !mapFeatureRevealed;
+  ui.landingHeroImage.hidden = mapFeatureRevealed;
+  ui.landingHero.classList.toggle("is-map-feature", mapFeatureRevealed);
+  if (!mapFeatureRevealed) return;
+  ui.mapFeatureName.textContent = level.name;
+  ui.mapFeatureSetting.textContent = level.fieldGuide.setting;
+  ui.mapFeatureReview.textContent = level.fieldGuide.review;
+  ui.landingHero.style.setProperty("--map-feature-accent", biomeAccent(level.biome));
+  ui.mapFeatureCanvas.setAttribute("aria-label", level.name + " layout with obstacles, hazards, and route markers");
+  drawLevelThumbnail(ui.mapFeatureCanvas, level);
 }
 
 function renderLevelThumbnails() {
@@ -1520,6 +1511,7 @@ function renderLevelThumbnails() {
       button.title = level.name;
       button.addEventListener("click", () => {
         selectedLevelIndex = index;
+        mapFeatureRevealed = true;
         renderLevelSelection();
       });
       const canvas = document.createElement("canvas");
@@ -1547,8 +1539,12 @@ function drawLevelThumbnail(canvas, level) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#111719";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const backdrop = artwork.mapBackdrops[level.id];
+  const hasBackdrop = backdrop?.complete && backdrop.naturalWidth > 0;
   const floor = artwork.floors[level.biome];
-  if (floor?.complete && floor.naturalWidth > 0) {
+  if (hasBackdrop) {
+    ctx.drawImage(backdrop, 0, 0, canvas.width, canvas.height);
+  } else if (floor?.complete && floor.naturalWidth > 0) {
     for (let y = 0; y < canvas.height; y += floor.naturalHeight * scaleY) {
       for (let x = 0; x < canvas.width; x += floor.naturalWidth * scaleX) {
         ctx.drawImage(floor, x, y, floor.naturalWidth * scaleX, floor.naturalHeight * scaleY);
@@ -1557,6 +1553,11 @@ function drawLevelThumbnail(canvas, level) {
   }
   ctx.save();
   ctx.scale(scaleX, scaleY);
+  if (!hasBackdrop) {
+    drawLabFloorDetails(ctx, level.biome);
+    drawLevelScenery(ctx, level);
+  }
+  drawPixelRoomFrame(ctx, level.biome);
   ctx.fillStyle = "rgba(10, 16, 15, .12)";
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
   drawCompanyFloorBranding(ctx, level.biome, 0.74, level);
@@ -1584,6 +1585,31 @@ function drawLevelThumbnail(canvas, level) {
     ctx.arc(point.x, point.y, 12, 0, Math.PI * 2);
     ctx.fill();
   }
+  if (canvas.width >= 500) {
+    drawPreviewSpawn(ctx, level.playerStart, "#85e7d0", "R");
+    drawPreviewSpawn(ctx, level.jevStart, "#f49b70", "C");
+  }
+  ctx.restore();
+}
+
+function drawPreviewSpawn(ctx, point, color, glyph) {
+  const radius = 46;
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = "rgba(14, 18, 22, .86)";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#f8f0df";
+  ctx.font = "800 44px Inter, system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(glyph, point.x, point.y + 1);
   ctx.restore();
 }
 
@@ -1599,7 +1625,7 @@ function renderSkillCatalog() {
     }
     return;
   }
-  for (const [owner, title] of [["ghost", "Runner"], ["jev", "Chaser"]]) {
+  for (const [owner, title] of [["runner", "Runner"], ["jev", "Chaser"]]) {
     const group = document.createElement("section");
     group.className = "skill-group " + owner + "-skill-group";
     const heading = document.createElement("h3");
@@ -1630,7 +1656,7 @@ function renderSkillCatalog() {
       copy.append(name, description);
       const key = document.createElement("kbd");
       key.className = "skill-key";
-      key.textContent = skill.key || "Jev AI";
+      key.textContent = skill.key || "AI";
       item.append(icon, copy, key);
       list.append(item);
     }
@@ -1643,7 +1669,7 @@ function renderSkillCatalog() {
 function syncSkillCatalogIcons(root = document.querySelector("#skill-catalog")) {
   if (!root) return;
   for (const icon of root.querySelectorAll(".skill-icon[data-owner]")) {
-    const role = icon.dataset.owner === "ghost" ? "runner" : "chaser";
+    const role = icon.dataset.owner === "runner" ? "runner" : "chaser";
     const skin = skinForRole(role);
     icon.style.backgroundImage = `url("/assets/${skin.skillIconSheet}")`;
     icon.style.setProperty("--skill-accent", skin.accent);
@@ -1660,6 +1686,7 @@ function setSelectedMode(mode) {
 
 function changeSelectedLevel(step) {
   selectedLevelIndex = clamp(selectedLevelIndex + step, 0, levels.length - 1);
+  mapFeatureRevealed = true;
   renderLevelSelection();
 }
 
@@ -1691,7 +1718,7 @@ function startGame() {
   lastDecisionPanelPlacementAt = -1;
   decisionPanelX = -1;
   decisionPanelY = -1;
-  startMusic(game.level.biome);
+  startMusic();
   particles = [];
   screenShake = 0;
   keys.clear();
@@ -1717,7 +1744,7 @@ function startGame() {
   setPlan("steady_pressure", 0, true);
   game.jev.planUntil = game.elapsed;
   renderHealth();
-  renderJevHealth();
+  renderChaserHealth();
   renderHud(true);
   resizeCanvas();
   ui.canvas.focus({ preventScroll: true });
@@ -1799,7 +1826,7 @@ function setMode(mode, confidence, source = "system_one") {
   if (game.jev.actionHistory.length > 6) game.jev.actionHistory.shift();
   if (mode === "rift_aegis") startRiftAegis();
   ui.intent.dataset.mode = mode;
-  renderJevIntent();
+  renderChaserIntent();
   if (mode === "rift_rend") startRiftRend();
   if (mode === "power_blast") startPowerBlast();
   if (mode === "rift_mine") startRiftMine();
@@ -1827,7 +1854,7 @@ function setPlan(plan, confidence, force = false) {
     game.jev.planStep = "approach";
     game.jev.planStepStartedAt = game.elapsed;
   }
-  renderJevIntent();
+  renderChaserIntent();
 }
 
 function queuePlan(plan, confidence) {
@@ -1949,13 +1976,13 @@ function positionDecisionPanels() {
   }
 }
 
-function renderJevIntent() {
+function renderChaserIntent() {
   if (!game) return;
   const planText = planLabels[game.jev.plan] || "PRESSING";
   const tacticText = modeLabels[game.jev.mode] || "HUNT";
   const activeSkill = ["rift_rend", "power_blast", "rift_mine", "rift_rush", "shadow_dodge", "soul_salvo", "summon_wraiths", "meteor_storm", "rift_aegis"].includes(game.jev.mode);
   ui.modeLabel.textContent = activeSkill ? tacticText : planText;
-  ui.intent.setAttribute("aria-label", "Jev is " + planText.toLowerCase() + "; current tactic: " + tacticText.toLowerCase());
+  ui.intent.setAttribute("aria-label", "Chaser is " + planText.toLowerCase() + "; current tactic: " + tacticText.toLowerCase());
 }
 
 function renderHealth() {
@@ -1973,17 +2000,17 @@ function renderHealth() {
   ui.health.setAttribute("aria-label", game.player.health + " of " + maxHealth + " lives remaining");
 }
 
-function renderJevHealth() {
-  ui.jevHealth.replaceChildren();
+function renderChaserHealth() {
+  ui.chaserHealth.replaceChildren();
   for (let index = 0; index < 6; index += 1) {
     const pip = document.createElement("span");
     const fill = clamp(game.jev.health - index, 0, 1) * 100;
-    pip.className = "jev-pip" + (fill === 0 ? " is-lost" : "");
+    pip.className = "chaser-pip" + (fill === 0 ? " is-lost" : "");
     pip.style.setProperty("--pip-fill", fill + "%");
     pip.setAttribute("aria-hidden", "true");
-    ui.jevHealth.append(pip);
+    ui.chaserHealth.append(pip);
   }
-  ui.jevHealth.setAttribute("aria-label", "Jev: " + game.jev.health + " health remaining");
+  ui.chaserHealth.setAttribute("aria-label", "Chaser: " + game.jev.health + " health remaining");
 }
 
 function renderHud(force) {
@@ -1995,11 +2022,11 @@ function renderHud(force) {
   if (game.mode === "auto") {
     const target = aiObjectiveTarget();
     ui.objectiveLabel.textContent = target === game.jev
-      ? "Ghost target · Jev"
-      : "Ghost target · Anchor " + (target.id + 1);
+      ? "Runner target · Chaser"
+      : "Runner target · Anchor " + (target.id + 1);
   } else {
     ui.objectiveLabel.textContent = game.anchors.every((anchor) => anchor.health <= 0)
-      ? "Jev exposed · defeat the demon"
+      ? "Chaser exposed · defeat the rival"
       : "Break the rift anchors";
   }
   ui.anchorProgress.querySelectorAll(".anchor-pip").forEach((pip, index) => {
@@ -2027,11 +2054,11 @@ function announce(message, duration = 1450) {
 function showSkillCallout(owner, abilityId) {
   if (!game?.running || !skillIconCells[abilityId]) return;
   game.skillCallouts = game.skillCallouts.filter((entry) => entry.owner !== owner && game.elapsed - entry.at < 1.2);
-  const role = owner === "ghost" ? "runner" : "chaser";
+  const role = owner === "runner" ? "runner" : "chaser";
   const skin = skinForRole(role);
   const skill = skillManual[owner].find((item) => item.id === abilityId);
   game.skillCallouts.push({
-    owner, abilityId, skinId: skin.id,
+    owner, abilityId, skinId: skin.id, actorName: skin.name.split(" ")[0],
     skillName: skill ? brandedSkillName(skill, skin) : abilityId,
     at: game.elapsed, duration: 1.05,
   });
@@ -2213,7 +2240,7 @@ function usePhaseDash() {
   game.player.dashCooldown = PHASE_DASH_COOLDOWN;
   game.player.invulnerable = Math.max(game.player.invulnerable, 0.27);
   remember("phase_dash");
-  showSkillCallout("ghost", "phase_dash");
+  showSkillCallout("runner", "phase_dash");
   emitParticles(game.player.x, game.player.y, "#8ef3df", 15, 135);
   queueJevDecision();
 }
@@ -2224,7 +2251,7 @@ function useSoulBurst() {
   game.player.pulseCooldown = 3.6;
   game.player.pulseTimer = 0.42;
   remember("soul_burst");
-  showSkillCallout("ghost", "soul_burst");
+  showSkillCallout("runner", "soul_burst");
   const player = game.player;
   const jev = game.jev;
   const gap = distance(player, jev);
@@ -2260,10 +2287,10 @@ function useSoulBurst() {
     const angle = Math.atan2(jev.y - player.y, jev.x - player.x);
     moveEntity(jev, Math.cos(angle) * 58, Math.sin(angle) * 58, jev.radius);
     remember("burst_hit");
-    renderJevHealth();
+    renderChaserHealth();
     announce(game.anchors.some((anchor) => anchor.health > 0)
-      ? "Jev staggered · ward holds"
-      : jev.health > 0 ? "Jev staggered" : "Jev defeated");
+      ? "Chaser staggered · ward holds"
+      : jev.health > 0 ? "Chaser staggered" : "Chaser defeated");
     emitParticles(jev.x, jev.y, "#f8cb77", 24, 170);
     screenShake = Math.max(screenShake, 5);
     checkWin();
@@ -2288,6 +2315,7 @@ function useMirrorEcho() {
     };
     if (!blocked(point.x, point.y, 15)) clones.push({
       ...point, angle, direction: index % 2 ? -1 : 1, orbit: radius,
+      companion: companionForRole("runner"),
       life: MIRROR_CLONE_DURATION, maxLife: MIRROR_CLONE_DURATION, radius: 14,
     });
   }
@@ -2296,7 +2324,7 @@ function useMirrorEcho() {
   player.echo = clones[0];
   player.echoCooldown = 10.5;
   remember("mirror_echo");
-  showSkillCallout("ghost", "mirror_echo");
+  showSkillCallout("runner", "mirror_echo");
   emitParticles(player.x, player.y, "#a8f3df", 26, 145);
   queueJevDecision();
 }
@@ -2344,7 +2372,7 @@ function useRiftHook(target = null) {
   player.invulnerable = Math.max(player.invulnerable, 0.22);
   player.hookCooldown = 6.2;
   remember("rift_hook");
-  showSkillCallout("ghost", "rift_hook");
+  showSkillCallout("runner", "rift_hook");
   emitParticles(player.x, player.y, "#c7a0ff", 17, 135);
   queueJevDecision();
   return true;
@@ -2356,7 +2384,7 @@ function useLanternGuard() {
   player.guardTimer = 0.8;
   player.guardCooldown = 4.2;
   remember("lantern_guard");
-  showSkillCallout("ghost", "lantern_guard");
+  showSkillCallout("runner", "lantern_guard");
   emitParticles(player.x, player.y, "#b9f4e0", 16, 110);
 }
 
@@ -2470,11 +2498,11 @@ function hitJev(projectile) {
   const speed = Math.hypot(projectile.vx, projectile.vy) || 1;
   moveEntity(jev, projectile.vx / speed * 9, projectile.vy / speed * 9, jev.radius);
   remember("shot_hit");
-  renderJevHealth();
+  renderChaserHealth();
   emitParticles(projectile.x, projectile.y, skin.accent, 15, 125, skin);
   screenShake = Math.max(screenShake, 2.2);
   if (jev.health <= 0) {
-    announce("Jev defeated");
+    announce("Chaser defeated");
     finishGame("fight");
   } else {
     queueJevDecision();
@@ -2492,7 +2520,7 @@ function hitAnchor(anchor, skin = skinForRole("runner")) {
   renderHud(true);
   if (anchor.health === 0) {
     const wardBroken = game.anchors.every((item) => item.health <= 0);
-    announce(wardBroken ? "Ward broken · Jev exposed" : "Rift anchor shattered");
+    announce(wardBroken ? "Ward broken · Chaser exposed" : "Rift anchor shattered");
     if (wardBroken && game.jev.health > 0 && game.jev.riftAegisCooldown <= 0 &&
         game.jev.riftAegisTimer <= 0 && game.jev.riftAegisCharges <= 0) startRiftAegis();
     queueJevDecision();
@@ -2580,7 +2608,7 @@ function updateEnvironmentHazards() {
         actor.health = Math.max(0, Number((actor.health - 0.75).toFixed(2)));
         actor.hurtTimer = Math.max(actor.hurtTimer || 0, 0.22);
         remember("lava_hit");
-        renderJevHealth();
+        renderChaserHealth();
         emitParticles(actor.x, actor.y, "#ff8150", 12, 105);
         if (actor.health <= 0 && game.anchors.every((anchor) => anchor.health <= 0)) finishGame("fight");
       }
@@ -2868,7 +2896,7 @@ function startRiftRend() {
   jev.path = [];
   remember("rift_rend_windup");
   showSkillCallout("jev", "rift_rend");
-  announce("Jev winds up a Rift Rend!");
+  announce("Chaser winds up a Rift Rend!");
   emitParticles(jev.x, jev.y, "#fb686f", 14, 105);
 }
 
@@ -3334,14 +3362,14 @@ function tacticTarget() {
   const jev = game.jev;
   const gap = distance(player, jev);
   if (game.elapsed < jev.parryRecoveryUntil && ["pursue", "intercept", "flank", "ambush"].includes(jev.mode)) {
-    const ghost = game.player;
-    const ghostGap = Math.max(distance(jev, ghost), 1);
-    const awayX = (jev.x - ghost.x) / ghostGap;
-    const awayY = (jev.y - ghost.y) / ghostGap;
+    const runner = game.player;
+    const runnerGap = Math.max(distance(jev, runner), 1);
+    const awayX = (jev.x - runner.x) / runnerGap;
+    const awayY = (jev.y - runner.y) / runnerGap;
     const side = jev.flankSide;
     return {
-      x: clamp(ghost.x + awayX * 278 - awayY * 154 * side, 38, WORLD.width - 38),
-      y: clamp(ghost.y + awayY * 278 + awayX * 154 * side, 38, WORLD.height - 38),
+      x: clamp(runner.x + awayX * 278 - awayY * 154 * side, 38, WORLD.width - 38),
+      y: clamp(runner.y + awayY * 278 + awayX * 154 * side, 38, WORLD.height - 38),
     };
   }
   if (jev.mode === "ambush") return strategicTarget();
@@ -4242,7 +4270,7 @@ function recordGhostActionOverride(tactic) {
   player.aiTactic = tactic;
   player.aiHistory.push({ tactic, at: game.elapsed });
   if (player.aiHistory.length > 6) player.aiHistory.shift();
-  renderDecisionCard("ghost", tactic, lastDecision.ghost?.probabilities, selected);
+  renderDecisionCard("runner", tactic, lastDecision.runner?.probabilities, selected);
 }
 
 function updateAIPlayer(dt) {
@@ -4454,14 +4482,14 @@ function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, 
   remember(event);
   renderHealth();
   if (!quiet) announce(event === "mine_hit"
-    ? player.health > 0 ? "Rift mine detonated" : "Jev caught you"
+    ? player.health > 0 ? "Rift mine detonated" : "The chaser caught you"
     : event === "salvo_hit"
-      ? player.health > 0 ? "Soul salvo hit" : "Jev caught you"
+      ? player.health > 0 ? "Soul salvo hit" : "The chaser caught you"
       : event === "blast_hit"
-        ? player.health > 0 ? "Blast hit" : "Jev caught you"
+        ? player.health > 0 ? "Blast hit" : "The chaser caught you"
         : event === "rift_rend_hit"
           ? player.health > 0 ? "Rift Rend struck" : "Rift Rend caught you"
-      : player.health > 0 ? "Jev caught you" : "Jev caught you");
+      : player.health > 0 ? "The chaser caught you" : "The chaser caught you");
   const brandedAttack = ["blast_hit", "salvo_hit"].includes(event);
   const impactSkin = brandedAttack ? skinForRole("chaser") : null;
   emitParticles(player.x, player.y, impactSkin?.accent || "#ff806d", 20, 170, impactSkin);
@@ -4580,7 +4608,7 @@ function update(dt) {
   }
   if (game.remaining <= 0 && !game.enraged) {
     game.enraged = true;
-    announce("The rift surges. Jev grows faster.", 2100);
+    announce("The rift surges. The chaser moves faster.", 2100);
   }
   updatePlayer(dt);
   updateMeteors(dt);
@@ -4600,10 +4628,6 @@ function update(dt) {
   updateProjectiles(dt);
   checkContact();
   checkWin();
-  const threat = clamp(1 - (distance(game.player, game.jev) - 92) / 500, 0, 1);
-  const danger = 1 - game.player.health / 4;
-  const intensity = Math.max(threat * 0.76, danger * 0.92);
-  music.intensity += (intensity - music.intensity) * Math.min(1, dt * 1.45);
   renderHud(false);
   updateParticles(dt);
   for (const anchor of game.anchors) anchor.hitFlash = Math.max(0, anchor.hitFlash - dt);
@@ -4902,9 +4926,11 @@ function drawAnimatedAnchorEmblem(ctx, anchor, chaserSkin, broken) {
 
 function drawMirrorEcho(ctx) {
   const runnerSkin = skinForRole("runner");
-  const companion = artwork.companions[runnerSkin.companion];
+  const runnerCompanion = companionForRole("runner");
   const runnerSprite = spriteForRole("runner");
   for (const clone of game.player.clones) {
+    const companionId = clone.companion || runnerCompanion;
+    const companion = artwork.companions[companionId];
     const alpha = clamp(clone.life / clone.maxLife, 0.22, 0.75);
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -4920,13 +4946,17 @@ function drawMirrorEcho(ctx) {
     ctx.shadowBlur = 0;
     const sprite = companion?.complete && companion.naturalWidth > 0 ? companion : runnerSprite;
     if (sprite?.complete && sprite.naturalWidth > 0) {
-      const spriteId = companion?.complete ? runnerSkin.companion : runnerSkin.id;
       const direction = spriteDirectionFor(clone);
       const isRunning = Math.hypot(clone.vx || 0, clone.vy || 0) > 25;
-      const clonePose = profileRunPose(clone, runnerSkin.id, direction);
-      if (!drawProfileRunFrame(ctx, runnerSkin.id, direction, clonePose, clone.x, clone.y, 88, 96, isRunning)) {
-        const row = isRunning ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.085) % 2 : 0;
-        drawSpriteFrame(ctx, sprite, spriteId, direction, row, clone.x, clone.y, 88, 96);
+      if (companion?.complete && companion.naturalWidth > 0) {
+        const mascotRow = isRunning ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.13) % 2 : 0;
+        drawSpriteFrame(ctx, companion, companionId, direction, mascotRow, clone.x, clone.y, 88, 96);
+      } else {
+        const clonePose = profileRunPose(clone, runnerSkin.id, direction);
+        if (!drawProfileRunFrame(ctx, runnerSkin.id, direction, clonePose, clone.x, clone.y, 88, 96, isRunning)) {
+          const row = isRunning ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.085) % 2 : 0;
+          drawSpriteFrame(ctx, sprite, runnerSkin.id, direction, row, clone.x, clone.y, 88, 96);
+        }
       }
     }
     ctx.restore();
@@ -5004,6 +5034,7 @@ function drawMapOverview() {
     ctx.drawImage(floor, 0, 0, WORLD.width, WORLD.height);
     ctx.globalAlpha = 1;
   }
+  drawLevelScenery(ctx, game.level);
   ctx.fillStyle = "rgb(7 6 15 / 42%)";
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
   drawCompanyFloorBranding(ctx, game.level.biome, 0.42, game.level);
@@ -5188,8 +5219,18 @@ function drawCompanyFloorBranding(ctx, biome, opacity = 0.38, level = game?.leve
 }
 
 function drawFloor(ctx) {
+  const backdrop = artwork.mapBackdrops[game.level.id];
+  const hasBackdrop = backdrop?.complete && backdrop.naturalWidth > 0;
   const floor = artwork.floors[game.level.biome];
-  if (floor?.complete && floor.naturalWidth > 0) {
+  if (hasBackdrop) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(backdrop, 0, 0, WORLD.width, WORLD.height);
+    ctx.restore();
+    ctx.fillStyle = "rgba(14, 17, 21, .09)";
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    drawPixelRoomFrame(ctx, game.level.biome);
+  } else if (floor?.complete && floor.naturalWidth > 0) {
     const baseColors = {
       office: "#d3d0c3", cinder: "#1d292e", archive: "#cabda5",
       garden: "#173631", vault: "#c9bda5", rift: "#273039",
@@ -5256,7 +5297,10 @@ function drawFloor(ctx) {
       ctx.stroke();
     }
   }
-  if (!(floor?.complete && floor.naturalWidth > 0)) drawLabFloorDetails(ctx, game.level.biome);
+  if (!hasBackdrop) {
+    if (!(floor?.complete && floor.naturalWidth > 0)) drawLabFloorDetails(ctx, game.level.biome);
+    drawLevelScenery(ctx, game.level);
+  }
   drawCompanyFloorBranding(ctx, game.level.biome, 0.42);
 }
 
@@ -5301,6 +5345,160 @@ function drawLabFloorDetails(ctx, biome) {
     light.addColorStop(1, `rgba(${lightColor}, 0)`);
     ctx.fillStyle = light;
     ctx.fillRect(x - 300, y - 300, 600, 600);
+  }
+  ctx.restore();
+}
+
+function drawLevelScenery(ctx, level) {
+  ctx.save();
+  if (level.id === "crossing") {
+    // Top-down courtyard paving and planted borders; nothing here represents a wall or window.
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = "#b8d8c8";
+    ctx.lineWidth = 6;
+    ctx.setLineDash([28, 30]);
+    for (const [fromX, fromY, toX, toY] of [
+      [80, 190, 2480, 1410], [2480, 190, 80, 1410],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.quadraticCurveTo(WORLD.width / 2, WORLD.height / 2, toX, toY);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.1;
+    ctx.strokeStyle = "#d3b589";
+    ctx.lineWidth = 3;
+    for (const [x, y] of [[350, 230], [WORLD.width - 350, 230], [350, WORLD.height - 230], [WORLD.width - 350, WORLD.height - 230]]) {
+      ctx.beginPath();
+      ctx.arc(x, y, 66, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, 48, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else if (level.id === "cinder") {
+    // Cooling rails and compute-bay power traces, laid into the floor plane.
+    ctx.globalAlpha = 0.14;
+    for (let y = 128; y < WORLD.height - 100; y += 224) {
+      ctx.fillStyle = "#40c8bb";
+      ctx.fillRect(78, y, WORLD.width - 156, 5);
+      ctx.fillStyle = "#ed9b61";
+      for (let x = 128; x < WORLD.width - 130; x += 192) {
+        ctx.fillRect(x, y - 7, 8, 19);
+      }
+    }
+    ctx.globalAlpha = 0.09;
+    ctx.strokeStyle = "#7fddd0";
+    ctx.lineWidth = 2;
+    for (let x = 180; x < WORLD.width; x += 320) {
+      ctx.beginPath();
+      ctx.moveTo(x, 34);
+      ctx.lineTo(x, WORLD.height - 34);
+      ctx.stroke();
+    }
+  } else if (level.id === "drowned") {
+    const channels = [
+      [250, 470, 210, 72, -0.18], [1130, 990, 240, 86, 0.12],
+      [2040, 420, 220, 74, -0.1], [1830, 1360, 270, 92, 0.16],
+    ];
+    for (const [x, y, radiusX, radiusY, rotation] of channels) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.fillStyle = "rgba(68, 164, 160, .09)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(166, 228, 208, .22)";
+      ctx.lineWidth = 3;
+      for (let ripple = 0; ripple < 3; ripple += 1) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radiusX * (0.48 + ripple * 0.17), radiusY * (0.42 + ripple * 0.19), 0, 0.24, Math.PI * 1.84);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  } else if (level.id === "glassgarden") {
+    // A conservatory reads from above as curving walkways and soft sunlight pools.
+    ctx.globalAlpha = 0.13;
+    ctx.strokeStyle = "#d6d3a5";
+    ctx.lineWidth = 18;
+    ctx.lineCap = "round";
+    const paths = [
+      [[100, 1060], [420, 880], [690, 680], [940, 555]],
+      [[WORLD.width - 120, 420], [2070, 590], [1820, 800], [1590, 1020]],
+      [[410, 90], [640, 250], [820, 360], [1010, 440]],
+    ];
+    for (const [[startX, startY], [controlOneX, controlOneY], [controlTwoX, controlTwoY], [endX, endY]] of paths) {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.bezierCurveTo(controlOneX, controlOneY, controlTwoX, controlTwoY, endX, endY);
+      ctx.stroke();
+    }
+    ctx.lineCap = "butt";
+    ctx.globalAlpha = 0.11;
+    ctx.fillStyle = "#d6d3a5";
+    for (const [x, y, radius] of [[310, 520, 124], [WORLD.width - 420, 1060, 152], [1180, 250, 98]]) {
+      const pool = ctx.createRadialGradient(x, y, 8, x, y, radius);
+      pool.addColorStop(0, "rgba(232, 229, 178, .55)");
+      pool.addColorStop(1, "rgba(232, 229, 178, 0)");
+      ctx.fillStyle = pool;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (level.id === "meridian") {
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = "#d3b893";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([8, 24]);
+    for (let ring = 0; ring < 6; ring += 1) {
+      const radius = 190 + ring * 142;
+      ctx.beginPath();
+      ctx.ellipse(WORLD.width / 2, WORLD.height / 2, radius, radius * 0.64, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = "#eacb98";
+    for (const [x, y] of [[390, 340], [WORLD.width - 390, 340], [390, WORLD.height - 340], [WORLD.width - 390, WORLD.height - 340]]) {
+      ctx.beginPath();
+      ctx.arc(x, y, 82, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#739383";
+      ctx.beginPath();
+      ctx.arc(x, y, 57, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#eacb98";
+    }
+  } else if (level.id === "fractured") {
+    // Exhibition floor courts use overhead rings, wayfinding and booth inlays.
+    ctx.globalAlpha = 0.12;
+    ctx.strokeStyle = "#d6c3a0";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([18, 14]);
+    for (const [x, y] of [[WORLD.width / 2, 210], [WORLD.width / 2, WORLD.height - 210]]) {
+      ctx.beginPath();
+      ctx.arc(x, y, 178, Math.PI * 0.1, Math.PI * 0.9);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.1;
+    const exhibitCourts = [
+      [430, 400, "#79e4cf"], [WORLD.width - 430, 400, "#f29a68"],
+      [430, WORLD.height - 400, "#f29a68"], [WORLD.width - 430, WORLD.height - 400, "#79e4cf"],
+    ];
+    for (const [x, y, color] of exhibitCourts) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 8;
+      ctx.strokeRect(x - 125, y - 76, 250, 152);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - 105, y - 56, 210, 112);
+      ctx.fillStyle = color;
+      ctx.fillRect(x - 48, y - 4, 96, 8);
+      ctx.fillRect(x - 4, y - 34, 8, 68);
+    }
   }
   ctx.restore();
 }
@@ -6059,7 +6257,8 @@ function drawWorkplaceProp(ctx, block, biome) {
   if (!sheet?.complete || !sheet.naturalWidth || !sheet.naturalHeight || !bounds) return false;
   if (block.kind === "reflecting_pool") return false;
 
-  const alternatives = workplacePropFrames[lab]?.[block.kind] || [0];
+  const computeHardware = biome === "cinder" && ["vent", "furnace", "obelisk", "pillar"].includes(block.kind);
+  const alternatives = computeHardware ? [6] : workplacePropFrames[lab]?.[block.kind] || [0];
   const choice = Math.abs(Math.floor((block.x * 7 + block.y * 11 + block.w * 3 + block.h) / 64)) % alternatives.length;
   const frame = alternatives[choice];
   const columns = 4;
@@ -6076,10 +6275,12 @@ function drawWorkplaceProp(ctx, block, biome) {
   const padding = 3;
   const column = frame % columns;
   const row = Math.floor(frame / columns);
-  const cropX = Math.max(0, content.x - padding);
-  const cropY = Math.max(0, content.y - padding);
-  const cropWidth = Math.min(cellWidth - cropX, content.width + padding * 2);
-  const cropHeight = Math.min(cellHeight - cropY, content.height + padding * 2);
+  // Compute hardware uses a single cabinet from the three-rack atlas tile. This keeps
+  // office planters out of the server aisle and gives each collider one clean rack face.
+  const cropX = computeHardware ? 156 : Math.max(0, content.x - padding);
+  const cropY = computeHardware ? 65 : Math.max(0, content.y - padding);
+  const cropWidth = computeHardware ? 124 : Math.min(cellWidth - cropX, content.width + padding * 2);
+  const cropHeight = computeHardware ? 286 : Math.min(cellHeight - cropY, content.height + padding * 2);
   const sourceX = column * cellWidth + cropX;
   const sourceY = row * cellHeight + cropY;
   const rotate = block.w > block.h * 1.45 && cropHeight > cropWidth * 1.2
@@ -7479,13 +7680,14 @@ function drawSkillCallouts(ctx) {
     const skill = skillManual[entry.owner].find((item) => item.id === entry.abilityId);
     const cell = skillIconCells[entry.abilityId];
     if (!skill || !cell) continue;
-    const actorSkin = skinCatalog[entry.skinId] || skinForRole(entry.owner === "ghost" ? "runner" : "chaser");
+    const actorSkin = skinCatalog[entry.skinId] || skinForRole(entry.owner === "runner" ? "runner" : "chaser");
     const progress = clamp((game.elapsed - entry.at) / entry.duration, 0, 1);
     const alpha = Math.min(1, (1 - progress) * 4.2);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.font = "700 12px Inter, ui-sans-serif, system-ui, sans-serif";
-    const skillName = entry.skillName || brandedSkillName(skill, actorSkin);
+    const actorName = entry.actorName || actorSkin.name.split(" ")[0];
+    const skillName = `${actorName} · ${entry.skillName || brandedSkillName(skill, actorSkin)}`;
     const textWidth = ctx.measureText(skillName).width;
     const boxWidth = textWidth + 45;
     const opponent = entry.owner === "jev" ? game.player : game.jev;
@@ -7518,20 +7720,20 @@ function drawSkillCallouts(ctx) {
 }
 
 function renderDecisionCard(owner, action, probabilities, selectedAction = action) {
-  const isGhost = owner === "ghost";
-  const actionNode = isGhost ? ui.playerDecisionAction : ui.jevDecisionAction;
-  const optionsNode = isGhost ? ui.playerDecisionOptions : ui.jevDecisionOptions;
-  const expandNode = isGhost ? ui.playerDecisionExpand : ui.jevDecisionExpand;
-  const cardNode = isGhost ? ui.playerDecisionCard : ui.jevDecisionCard;
-  const labels = isGhost ? playerModeLabels : modeLabels;
+  const isRunner = owner === "runner";
+  const actionNode = isRunner ? ui.playerDecisionAction : ui.chaserDecisionAction;
+  const optionsNode = isRunner ? ui.playerDecisionOptions : ui.chaserDecisionOptions;
+  const expandNode = isRunner ? ui.playerDecisionExpand : ui.chaserDecisionExpand;
+  const cardNode = isRunner ? ui.playerDecisionCard : ui.chaserDecisionCard;
+  const labels = isRunner ? playerModeLabels : modeLabels;
   const chosen = labels[action] ? action : Object.keys(labels)[0];
   const selected = labels[selectedAction] ? selectedAction : chosen;
   lastDecision[owner] = { action: chosen, selectedAction: selected, probabilities };
   actionNode.textContent = labels[chosen];
   const adjusted = chosen !== selected;
   const actionDescription = adjusted
-    ? (isGhost ? "Ghost selected " : "Jev selected ") + labels[selected].toLowerCase() + " but the game chose " + labels[chosen].toLowerCase() + " to honor the active objective or action safety."
-    : (isGhost ? "Ghost used " : "Jev executed ") + labels[chosen].toLowerCase() + ".";
+    ? (isRunner ? "Runner selected " : "Chaser selected ") + labels[selected].toLowerCase() + " but the game chose " + labels[chosen].toLowerCase() + " to honor the active objective or action safety."
+    : (isRunner ? "Runner used " : "Chaser used ") + labels[chosen].toLowerCase() + ".";
   cardNode.title = actionDescription;
   actionNode.setAttribute("aria-label", actionDescription);
   optionsNode.replaceChildren();
@@ -7730,7 +7932,7 @@ function getJevState() {
     seconds_remaining: Math.round(game.remaining),
     rift_surge: game.enraged,
     objective: {
-      name: "Shatter all three rift anchors, then defeat Jev.",
+      name: "Shatter all three rift anchors, then defeat your rival.",
       active_anchors: game.anchors.filter((anchor) => anchor.health > 0).map((anchor) => ({
         id: anchor.id, x: Math.round(anchor.x), y: Math.round(anchor.y), health: anchor.health,
       })),
@@ -7930,7 +8132,7 @@ async function requestJevDecision(urgent = false) {
       signal: AbortSignal.timeout(14_000),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Jev could not decide.");
+    if (!response.ok) throw new Error(result.error || "Opponent decision failed.");
     if (game === requestedGame && game.running && !game.paused && game.pauseVersion === requestedPauseVersion && Object.hasOwn(modeLabels, result.mode)) {
       if (Object.hasOwn(playerReadLabels, result.player_read)) {
         game.jev.playerRead = result.player_read;
@@ -7942,7 +8144,7 @@ async function requestJevDecision(urgent = false) {
       if (game.mode === "auto") {
         const playerMode = Object.hasOwn(playerModeLabels, result.player_mode) ? result.player_mode : playerModeFallback();
         const executedPlayerMode = setGhostTactic(playerMode);
-        renderDecisionCard("ghost", executedPlayerMode, result.player_probabilities, playerMode);
+        renderDecisionCard("runner", executedPlayerMode, result.player_probabilities, playerMode);
       }
       setConnection(true);
     }
@@ -7954,7 +8156,7 @@ async function requestJevDecision(urgent = false) {
       if (game.mode === "auto") {
         const playerFallback = playerModeFallback();
         const executedPlayerFallback = setGhostTactic(playerFallback);
-        renderDecisionCard("ghost", executedPlayerFallback, null, playerFallback);
+        renderDecisionCard("runner", executedPlayerFallback, null, playerFallback);
       }
       setConnection(false);
     }
@@ -8103,8 +8305,8 @@ ui.decisionToggle.addEventListener("click", () => {
   ui.decisionToggle.setAttribute("aria-pressed", String(decisionsVisible));
   ui.decisionToggle.setAttribute("aria-label", decisionsVisible ? "Hide decision panels" : "Show decision panels");
 });
-ui.jevDecisionExpand.addEventListener("click", () => toggleDecisionOptions("jev"));
-ui.playerDecisionExpand.addEventListener("click", () => toggleDecisionOptions("ghost"));
+ui.chaserDecisionExpand.addEventListener("click", () => toggleDecisionOptions("jev"));
+ui.playerDecisionExpand.addEventListener("click", () => toggleDecisionOptions("runner"));
 ui.start.addEventListener("click", startGame);
 ui.restart.addEventListener("click", startGame);
 ui.nextLevel.addEventListener("click", () => {
@@ -8174,6 +8376,14 @@ if (new URLSearchParams(window.location.search).get("qa") === "1") {
         map: game.level.id,
         mode: game.mode,
         skinLoadout: { runner: skinForRole("runner").id, chaser: skinForRole("chaser").id },
+        mascotAssignment: {
+          runner: skinForRole("runner").id,
+          company: skinCatalog[skinForRole("runner").id].company,
+          mascot: companionForRole("runner"),
+          asset: companionSpriteCatalog[companionForRole("runner")]?.asset,
+          mascotAssetMatchesCompany: companionSpriteCatalog[companionForRole("runner")]?.company === skinCatalog[skinForRole("runner").id].company,
+          activeClones: game.player.clones.map((clone) => clone.companion),
+        },
         elapsed: Math.round(game.elapsed * 100) / 100,
         remaining: Math.round(game.remaining * 100) / 100,
         camera: { x: cameraState.x, y: cameraState.y },
@@ -8255,7 +8465,7 @@ if (new URLSearchParams(window.location.search).get("qa") === "1") {
         }])),
         decisions: {
           jev: lastDecision.jev ? { ...lastDecision.jev } : null,
-          ghost: lastDecision.ghost ? { ...lastDecision.ghost } : null,
+          runner: lastDecision.runner ? { ...lastDecision.runner } : null,
         },
         tacticalGrid: buildTacticalGrid(),
       };

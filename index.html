@@ -8,18 +8,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Frontier Showdown</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/game.js?v=frontier-camera-follow-1" type="module"></script>
+    <script src="/game.js" type="module"></script>
   </head>
   <body>
     <div class="site-shell">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="JEVil home">
+        <a class="brand" href="/" aria-label="Frontier Showdown home">
           <span class="brand-mark" aria-hidden="true">F</span>
           <span class="brand-word">FRONTIER <span>SHOWDOWN</span></span>
         </a>
-        <div class="connection-status" id="connection-status" role="status" aria-label="Jev connection">
+        <div class="connection-status" id="connection-status" role="status" aria-label="Opponent connection">
           <span class="status-dot" aria-hidden="true"></span>
-          <span class="sr-only" id="connection-label">Checking Jev connection</span>
+          <span class="sr-only" id="connection-label">Checking opponent connection</span>
         </div>
       </header>
 
@@ -27,8 +27,6 @@
         <section class="landing" id="landing-screen" aria-labelledby="landing-title">
           <div class="landing-copy">
             <h1 id="landing-title">Break the<br /><em>frontier.</em></h1>
-            <p class="landing-description" id="landing-description">Break three rift anchors, then take the fight to your rival.</p>
-
             <div class="mode-picker" role="group" aria-label="Choose game mode">
               <button class="mode-option is-selected" id="mode-human" type="button" data-mode="human" aria-pressed="true">Manual</button>
               <button class="mode-option" id="mode-auto" type="button" data-mode="auto" aria-pressed="false">Auto Mode</button>
@@ -103,12 +101,23 @@
           </div>
 
           <div class="hero-art">
-            <img src="/assets/frontier-showdown-hero-pixel.png" alt="Pixel art of Sam Altman and Dario Amodei facing off in a bright research office, with the blue Codex and orange Claude mascots" />
+            <img id="landing-hero-image" src="/assets/frontier-showdown-hero-pixel.png" alt="Pixel art of Sam Altman and Dario Amodei facing off in a bright research office, with the blue Codex and orange Claude mascots" />
+            <article class="map-feature" id="map-feature" aria-labelledby="map-feature-name" aria-live="polite" hidden>
+              <header class="map-feature-heading">
+                <span class="map-feature-kicker">ARENA PREVIEW</span>
+                <h2 id="map-feature-name"></h2>
+              </header>
+              <canvas class="map-feature-canvas" id="map-feature-canvas" width="1200" height="750" aria-label="Selected arena layout preview"></canvas>
+              <div class="map-feature-copy">
+                <p id="map-feature-setting"></p>
+                <p id="map-feature-review"></p>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section class="arena-screen" id="arena-screen" hidden aria-label="Shatter the rift anchors and fight Jev">
-          <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat Jev. Move with WASD or arrow keys, aim and fire with left-click or Z, Phase Dash with Space, parry with right-click or Shift, use F for Soul Burst, Q for Mirror Echo, and E for Rift Hook." ></canvas>
+        <section class="arena-screen" id="arena-screen" hidden aria-label="Break the rift anchors and defeat your rival">
+          <canvas id="game-canvas" width="1440" height="900" tabindex="0" aria-label="Top-down arena. Break three rift anchors, then defeat your rival. Move with WASD or arrow keys, aim and fire with left-click or Z, Phase Dash with Space, parry with right-click or Shift, use F for Soul Burst, Q for Mirror Echo, and E for Rift Hook." ></canvas>
 
           <div class="arena-topline">
             <h2 id="arena-name">OPENAI GLASS ATRIUM</h2>
@@ -130,9 +139,9 @@
               <div class="timer" id="timer">01:15</div>
               <span class="timer-caption" id="timer-caption">UNTIL RIFT SURGE</span>
             </div>
-            <div class="hud-cluster demon-cluster">
-              <div class="jev-health-pips" id="jev-health-pips" role="img" aria-label="Jev: six health remaining"></div>
-              <div class="jev-intent" id="jev-intent" data-mode="pursue" aria-live="polite"><span class="intent-dot"></span><span id="jev-mode-label">PRESSING</span></div>
+            <div class="hud-cluster chaser-cluster">
+              <div class="chaser-health-pips" id="chaser-health-pips" role="img" aria-label="Chaser: six health remaining"></div>
+              <div class="chaser-intent" id="chaser-intent" data-mode="pursue" aria-live="polite"><span class="intent-dot"></span><span id="chaser-mode-label">PRESSING</span></div>
             </div>
           </div>
 
@@ -143,14 +152,14 @@
           <canvas class="map-overview" id="map-overview" width="256" height="160" aria-label="Arena map overview"></canvas>
           <div class="game-callout" id="game-callout" aria-live="polite" hidden></div>
 
-          <div class="decision-panels" id="decision-panels" aria-label="Jev decision data">
-            <article class="decision-card demon-decision" id="jev-decision-card" aria-label="Jev decision">
+          <div class="decision-panels" id="decision-panels" aria-label="Opponent decision data">
+            <article class="decision-card chaser-decision" id="chaser-decision-card" aria-label="Chaser decision">
               <span class="decision-owner">CHASER</span>
-              <strong class="decision-action" id="jev-decision-action">Reading the arena</strong>
-              <div class="decision-options" id="jev-decision-options"></div>
-              <button class="decision-expand" id="jev-decision-expand" type="button" aria-expanded="false">View all tactics</button>
+              <strong class="decision-action" id="chaser-decision-action">Reading the arena</strong>
+              <div class="decision-options" id="chaser-decision-options"></div>
+              <button class="decision-expand" id="chaser-decision-expand" type="button" aria-expanded="false">View all tactics</button>
             </article>
-            <article class="decision-card ghost-decision" id="player-decision-card" aria-label="Ghost decision" hidden>
+            <article class="decision-card runner-decision" id="player-decision-card" aria-label="Runner decision" hidden>
               <span class="decision-owner">RUNNER</span>
               <strong class="decision-action" id="player-decision-action">Choosing a route</strong>
               <div class="decision-options" id="player-decision-options"></div>

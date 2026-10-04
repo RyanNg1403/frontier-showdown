@@ -12,16 +12,16 @@ const maxRequestBytes = 32_000;
 const tactics = {
   rift_rend: "Close-range crescent slash. A visible 0.42s wind-up fixes a broad 96-degree arc. Use it to punish a committed route; a ready Lantern Guard can parry it, so first draw out or bypass the guard.",
   power_blast: "Charged high-damage shot. Best when line of sight is clear at medium range.",
-  soul_salvo: "Three closely grouped lead bolts. Best against a moving ghost in a clear lane.",
-  meteor_storm: "Call down aerial meteor bombardment. Best when ghost is hiding behind cover or kiting.",
-  rift_mine: "Place an explosive void trap. Best when cutting off the ghost's escape path or near an anchor.",
-  summon_wraiths: "Summon tracking wraithlings. Best to swarm and flush out an evasive ghost.",
+  soul_salvo: "Three closely grouped lead bolts. Best against a moving runner in a clear lane.",
+  meteor_storm: "Call down aerial meteor bombardment. Best when the runner is hiding behind cover or kiting.",
+  rift_mine: "Place an explosive void trap. Best when cutting off the runner's escape path or near an anchor.",
+  summon_wraiths: "Summon tracking wraithlings. Best to swarm and flush out an evasive runner.",
   rift_rush: "After a visible wind-up, charge through a clear mid-range lane and stop short; wait out post-parry recovery.",
-  rift_aegis: "After all anchors fall, shield only against an incoming hit; keep pressure on the ghost between threats.",
-  shadow_dodge: "Quick evasive sidestep. Best when incoming fire or burst threatens Jev.",
-  pursue: "Relentless forward chase. Best to close in and corner the ghost.",
-  intercept: "Predict ghost escape path and cut them off at a corner or gate.",
-  flank: "Change angle and reset range after a parry; route around cover instead of running straight at the ghost.",
+  rift_aegis: "After all anchors fall, shield only against an incoming hit; keep pressure on the runner between threats.",
+  shadow_dodge: "Quick evasive sidestep. Best when incoming fire or burst threatens the chaser.",
+  pursue: "Relentless forward chase. Best to close in and corner the runner.",
+  intercept: "Predict the runner's escape path and cut them off at a corner or gate.",
+  flank: "Change angle and reset range after a parry; route around cover instead of running straight at the runner.",
 };
 const playerReads = {
   dash_dodger: "Frequent dashes and reversals; lead broadly, then punish cooldown.",
@@ -33,25 +33,25 @@ const playerReads = {
 };
 const plans = {
   steady_pressure: "Approach from an offset; force a turn and punish it without entering burst range.",
-  cut_escape: "Use momentum and repeated cells to occupy an exit before the ghost reaches it.",
-  flush_cover: "Reach an open angle around cover; pressure the exit the ghost is using.",
+  cut_escape: "Use momentum and repeated cells to occupy an exit before the runner reaches it.",
+  flush_cover: "Reach an open angle around cover; pressure the exit the runner is using.",
   punish_recovery: "Track a spent dash, burst, or firing commit; attack during its recovery.",
   relentless_assault: "Close through a reachable lane; use movement skills across blocked approaches.",
   hold_range: "Hold a medium-range lane, force a dodge with a visible attack, then relocate.",
   control_chokepoint: "Occupy a reachable crossing while leaving a bypass; strike if entered.",
-  guard_anchors: "Interpose between the ghost and its threatened anchor, then attack its commit.",
+  guard_anchors: "Interpose between the runner and its threatened anchor, then attack its commit.",
 };
 const playerTactics = {
-  kite_and_shoot: "Back away from Jev while firing from safe distance (keep 350+ distance). Never run toward Jev.",
-  advance_anchor: "Approach a rift anchor cautiously from the flank, keeping cover between yourself and Jev.",
-  fire_anchors: "Shoot the rift anchor from a safe angle, keeping 350+ distance from Jev.",
-  attack_jev: "Back away while firing from safe long range (keep 350+ distance). Never run toward Jev.",
-  evade_warning: "Move along a safe route when Jev approaches or an area hazard is about to activate.",
+  kite_and_shoot: "Back away from the chaser while firing from safe distance (keep 350+ distance). Never run toward it.",
+  advance_anchor: "Approach a rift anchor cautiously from the flank, keeping cover between yourself and the chaser.",
+  fire_anchors: "Shoot the rift anchor from a safe angle, keeping 350+ distance from the chaser.",
+  attack_jev: "Back away while firing from safe long range (keep 350+ distance). Never run toward the chaser.",
+  evade_warning: "Move along a safe route when the chaser approaches or an area hazard is about to activate.",
   lantern_guard: "Timed parry for close contact, incoming projectiles, Rift Rush, or the marked Rift Rend arc. Prefer Phase Dash when ready; use Guard as a deliberate counter when escape is unavailable, never repeatedly.",
-  phase_dash: "Burst through an imminent attack and leave an afterimage that misleads Jev's aim.",
-  mirror_echo: "Spawn mirror decoys to divert Jev's attention and intercept attacks.",
-  rift_hook: "Grapple across the arena to instantly escape Jev or reach a far anchor.",
-  soul_burst: "Pulse only when within 145 units of an anchor, Jev, or wraithlings.",
+  phase_dash: "Burst through an imminent attack and leave an afterimage that misleads the chaser's aim.",
+  mirror_echo: "Spawn mirror decoys to divert the chaser's attention and intercept attacks.",
+  rift_hook: "Grapple across the arena to instantly escape the chaser or reach a far anchor.",
+  soul_burst: "Pulse only when within 145 units of an anchor, the chaser, or wraithlings.",
 };
 const arenas = {
   crossing: {
@@ -75,13 +75,13 @@ const arenas = {
     topology: "Four glasshouse districts combine hedge loops, reflecting pools, trellis bridges, and spore pockets. Cross-gates connect broad outer lanes to tight garden cuts.",
   },
   meridian: {
-    name: "Anthropic Quiet Commons",
-    landscape: "radial reliquary with prismatic cores",
+    name: "Paris AI Action Hall",
+    landscape: "ornate exhibition hall with limestone medallions and bronze floor inlays",
     topology: "Four vault districts mix radial ribs, reliquaries, and broken circular walls. Rotated cuts and gated loops connect the outer chambers to the central heart.",
   },
   fractured: {
-    name: "Frontier Collaboration Hall",
-    landscape: "rift bridge above a starless chasm",
+    name: "AI Impact Expo Pavilion",
+    landscape: "sunlit research expo pavilion with airy glass architecture and lotus-inspired geometry",
     topology: "Four fractured districts form winding island bridges around an unstable center. Narrow crossings connect broad flanks, diagonal shortcuts, and the long return loop.",
   },
 };
@@ -209,7 +209,7 @@ function buildState(body) {
   const shotThreatened = jev.shot_threatened === true;
 
   return {
-    combat_context: "Jev is the demonic apex predator hunting a fragile spirit in an afterlife realm.",
+    combat_context: "The chaser is a relentless rival hunting the runner through a research-lab arena.",
     arena: {
       name: arena.name,
       phase: activeAnchorsCount > 0 ? `ward_active_${activeAnchorsCount}_anchors_standing` : "demon_exposed",
@@ -292,14 +292,14 @@ function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
       ...(refreshPlayerRead ? {
         player_read: {
           type: "choice",
-          instructions: "Classify the ghost's combat playstyle from their movement, kiting, and firing behavior.",
+          instructions: "Classify the runner's combat playstyle from their movement, kiting, and firing behavior.",
           criteria: playerReads,
         },
       } : {}),
       ...(refreshPlan ? {
         strategic_plan: {
           type: "choice",
-          instructions: "Choose Jev's high-level hunting strategy for the next few seconds.",
+          instructions: "Choose the chaser's high-level hunting strategy for the next few seconds.",
           criteria: plans,
         },
       } : {}),
@@ -322,7 +322,7 @@ function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
       ...(gameMode === "auto" ? {
         player_tactic: {
           type: "choice",
-          instructions: "Break anchors, then defeat Jev. During Rift Aegis, move or use decoys until it fades. When Rift Rend marks you, move out of the arc; prefer Phase Dash if ready, or time Lantern Guard to parry if escape is unavailable. Guard projectile wind-ups and near-contact, then punish Jev's stun. Adapt after a parry instead of repeating it. Avoid Rift Rush's marked lane, keep firing through clear lanes, and avoid active hazards.",
+          instructions: "Break anchors, then defeat the chaser. During Rift Aegis, move or use decoys until it fades. When Rift Rend marks you, move out of the arc; prefer Phase Dash if ready, or time Lantern Guard to parry if escape is unavailable. Guard projectile wind-ups and near-contact, then punish the chaser's stun. Adapt after a parry instead of repeating it. Avoid Rift Rush's marked lane, keep firing through clear lanes, and avoid active hazards.",
           criteria: playerTactics,
         },
       } : {}),
@@ -349,7 +349,7 @@ async function chooseResponse(request, response) {
 
   const apiKey = getApiKey();
   if (!apiKey) {
-    sendJson(response, 503, { error: "Jev is unavailable. Add a TypeSafe API key to the server environment." });
+    sendJson(response, 503, { error: "Opponent decisions are unavailable. Check the server's TypeSafe configuration." });
     return;
   }
 
@@ -371,8 +371,8 @@ async function chooseResponse(request, response) {
     if (!upstream.ok) {
       const status = upstream.status === 401 ? 502 : 503;
       const message = upstream.status === 401
-        ? "Jev could not authenticate the configured TypeSafe key."
-        : "Jev could not make a decision right now. Please try again.";
+        ? "The opponent service could not authenticate its configured key."
+        : "The opponent could not make a decision right now. Please try again.";
       sendJson(response, status, { error: message });
       return;
     }
@@ -384,7 +384,7 @@ async function chooseResponse(request, response) {
     const playerAnswer = result?.answers?.player_tactic;
     const mode = answer?.choice;
     if (answer?.type !== "choice" || !Object.hasOwn(tactics, mode)) {
-      sendJson(response, 502, { error: "Jev returned an unexpected response. Please try again." });
+      sendJson(response, 502, { error: "The opponent returned an unexpected response. Please try again." });
       return;
     }
 
@@ -420,8 +420,8 @@ async function chooseResponse(request, response) {
     const timedOut = error?.name === "TimeoutError";
     sendJson(response, 503, {
       error: timedOut
-        ? "Jev took too long to decide. Please try again."
-        : "Jev could not connect. Check your connection and try again.",
+        ? "The opponent took too long to decide. Please try again."
+        : "The opponent could not connect. Check your connection and try again.",
     });
   }
 }
@@ -432,43 +432,12 @@ const mimeTypes = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".jpg": "image/jpeg",
+  ".mp3": "audio/mpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
 };
 const publicFiles = new Set([
   "index.html", "game.js", "styles.css", "favicon.svg",
-  "assets/frontier-sam-run-8.png", "assets/frontier-dario-run-8.png",
-  "assets/frontier-sam-run-16.png", "assets/frontier-dario-run-16.png",
-  "assets/frontier-sam-run-4dir-v1.png", "assets/frontier-dario-run-4dir-v1.png",
-  "assets/frontier-sam-pixel-v3.png", "assets/frontier-dario-pixel-v3.png",
-  "assets/frontier-dario-pixel-v4.png", "assets/frontier-dario-run-16-v4.png",
-  "assets/frontier-dario-pixel-v5.png", "assets/frontier-dario-run-16-v5.png",
-  "assets/frontier-dario-run-side-v2.png",
-  "assets/frontier-dario-run-side-v3.png",
-  "assets/frontier-sam-pixel.png", "assets/frontier-dario-pixel.png",
-  "assets/frontier-codex-pixel.png", "assets/frontier-claude-pixel.png",
-  "assets/frontier-claude-pixel-v2.png", "assets/frontier-claude-pixel-v7.png",
-  "assets/frontier-codex-pixel-v3.png",
-  "assets/frontier-skill-icons-pixel.png", "assets/frontier-showdown-hero-pixel.png",
-  "assets/frontier-skill-icons-openai-pixel.png", "assets/frontier-skill-icons-anthropic-pixel.png",
-  "assets/frontier-floor-openai-atrium.png", "assets/frontier-floor-openai-compute.png",
-  "assets/frontier-floor-anthropic-library.png", "assets/frontier-floor-anthropic-living.png",
-  "assets/frontier-floor-anthropic-quiet.png", "assets/frontier-floor-frontier-common.png",
-  "assets/frontier-props-openai.png", "assets/frontier-props-anthropic.png", "assets/frontier-props-shared.png",
-  "assets/frontier-props-openai-pixel-v2.png", "assets/frontier-props-anthropic-pixel-v2.png",
-  "assets/frontier-barriers-openai-pixel-v2.png", "assets/frontier-barriers-anthropic-pixel-v2.png",
-  "assets/brand-openai-blossom.svg", "assets/brand-anthropic-mark.svg", "assets/brand-anthropic-wordmark.svg",
-  "assets/afterlife-floor.jpg", "assets/ghost-sheet-v2.png", "assets/jev-sheet-v2.png",
-  "assets/cinder-floor.png", "assets/archive-floor.png", "assets/last-crossing-hero.png",
-  "assets/ghost-combat-sheet.png", "assets/jev-combat-sheet.png",
-  "assets/floor-crossing-v2.png", "assets/floor-cinder-v2.png", "assets/floor-archive-v2.png",
-  "assets/floor-garden-v2.png", "assets/floor-vault-v2.png", "assets/floor-rift-v2.png",
-  "assets/skill-icons.png",
-  "assets/rift-aegis-icon.png",
-  "assets/frontier-sam-run-atlas.png",
-  "assets/frontier-dario-run-atlas.png",
-  "assets/frontier-sam-run-atlas.json",
-  "assets/frontier-dario-run-atlas.json",
 ]);
 
 function serveFile(request, response) {
