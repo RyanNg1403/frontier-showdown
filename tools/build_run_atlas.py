@@ -47,8 +47,8 @@ SKINS = {
         "groups": {
             "down": dict(sheet="frontier-dario-run-4dir-v1.png", grid=(8, 4), cells=[(c, 0) for c in range(8)]),
             "up": dict(sheet="frontier-dario-run-4dir-v1.png", grid=(8, 4), cells=[(c, 1) for c in range(8)]),
-            "right": dict(sheet="frontier-dario-run-side-v3.png", grid=(4, 4), cells=[(i % 4, i // 4) for i in range(16)], resample=8),
-            "left": dict(sheet="frontier-dario-run-side-v3.png", grid=(4, 4), cells=[(i % 4, i // 4) for i in range(16)], mirror=True, like="right"),
+            "right": dict(sheet="frontier-dario-run-16-v5.png", grid=(4, 4), cells=[(c, r) for r in (0, 1) for c in range(4)]),
+            "left": dict(sheet="frontier-dario-run-16-v5.png", grid=(4, 4), cells=[(c, r) for r in (2, 3) for c in range(4)]),
         },
     },
     "sam": {

@@ -31,7 +31,13 @@ if (!deterministicFallback && decisionPolicy !== "live") {
   throw new Error('DECISION_POLICY must be "local-fallback" or "live".');
 }
 const baseUrl = deterministicFallback ? "http://frontier.test" : process.env.GAME_URL || "http://127.0.0.1:4173";
-const arenas = ["crossing", "cinder", "drowned", "glassgarden", "meridian", "fractured"];
+const allArenas = ["crossing", "cinder", "drowned", "glassgarden", "meridian", "fractured"];
+const requestedArenas = (process.env.BALANCE_ARENAS || "").split(",").map((value) => value.trim()).filter(Boolean);
+const arenas = requestedArenas.length
+  ? requestedArenas.filter((arena) => allArenas.includes(arena))
+  : allArenas;
+const traceMatch = process.env.TRACE_MATCH || "";
+if (!arenas.length) throw new Error("BALANCE_ARENAS did not include a known arena.");
 const attackModes = new Set([
   "rift_rend", "power_blast", "soul_salvo", "rift_mine", "summon_wraiths", "meteor_storm", "rift_rush",
 ]);
@@ -45,9 +51,13 @@ if (existingReport && (existingReport.baseUrl !== baseUrl || existingReport.runs
 const completed = existingReport?.matches || [];
 const isVerifiedMatch = (match) => Boolean(match.complete && match.winner && match.errors?.length === 0 && match.decisionCalls > 0);
 const completedKeys = new Set(completed.filter(isVerifiedMatch).map((match) => `${match.arena}:${match.run}`));
-const jobs = Array.from({ length: runsPerArena }, (_, run) =>
+const allJobs = Array.from({ length: runsPerArena }, (_, run) =>
   arenas.map((arena) => ({ arena, run: run + 1 })),
 ).flat().filter((job) => !completedKeys.has(`${job.arena}:${job.run}`));
+const jobs = process.env.TRACE_ONLY === "1" && traceMatch
+  ? allJobs.filter((job) => `${job.arena}-${job.run}` === traceMatch)
+  : allJobs;
+if (!jobs.length) throw new Error("No balance matches were selected.");
 
 const chromePath = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const browser = await chromium.launch({
@@ -114,7 +124,7 @@ async function runMatch(job) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   let decisionCalls = 0;
-  const arenaIndex = arenas.indexOf(job.arena);
+  const arenaIndex = allArenas.indexOf(job.arena);
   const seed = ((arenaIndex + 1) * 1_000_000 + job.run) >>> 0;
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("response", (response) => {
@@ -210,6 +220,7 @@ async function runMatch(job) {
   const eventKeys = new Set();
   const events = [];
   const observedActions = new Map();
+  const trace = [];
   let maxRunnerStuckSeconds = 0;
   let maxChaserStuckSeconds = 0;
   let runnerRecoveryAttempts = 0;
@@ -237,6 +248,24 @@ async function runMatch(job) {
     while (Date.now() - startedAt < timeoutMs) {
       finalState = await page.evaluate(() => window.__FRONTIER_QA__?.snapshot());
       if (!finalState) throw new Error("The game QA snapshot is unavailable.");
+      if (traceMatch === `${job.arena}-${job.run}`) {
+        trace.push({
+          elapsed: finalState.elapsed,
+          player: {
+            x: finalState.player.x, y: finalState.player.y, vx: finalState.player.vx, vy: finalState.player.vy,
+            target: finalState.player.target, recoveryTarget: finalState.player.recoveryTarget,
+            stuck: finalState.player.stuck, recoveryAttempts: finalState.player.recoveryAttempts,
+            pathLength: finalState.player.pathLength, blocked: finalState.player.currentBlocked,
+          },
+          jev: {
+            x: finalState.jev.x, y: finalState.jev.y, vx: finalState.jev.vx, vy: finalState.jev.vy,
+            target: finalState.jev.target, recoveryTarget: finalState.jev.recoveryTarget,
+            stuck: finalState.jev.stuck, recoveryAttempts: finalState.jev.recoveryAttempts,
+            pathLength: finalState.jev.pathLength, blocked: finalState.jev.currentBlocked,
+            mode: finalState.jev.mode,
+          },
+        });
+      }
       if (previous) {
         const dt = Math.max(0, finalState.elapsed - previous.elapsed);
         runnerTravel += Math.hypot(finalState.player.x - previous.player.x, finalState.player.y - previous.player.y);
@@ -346,6 +375,7 @@ async function runMatch(job) {
     attacks,
     events,
     errors,
+    ...(trace.length ? { trace } : {}),
   };
   await page.close();
   return match;

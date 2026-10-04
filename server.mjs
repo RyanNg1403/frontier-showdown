@@ -465,6 +465,10 @@ const publicFiles = new Set([
   "assets/floor-garden-v2.png", "assets/floor-vault-v2.png", "assets/floor-rift-v2.png",
   "assets/skill-icons.png",
   "assets/rift-aegis-icon.png",
+  "assets/frontier-sam-run-atlas.png",
+  "assets/frontier-dario-run-atlas.png",
+  "assets/frontier-sam-run-atlas.json",
+  "assets/frontier-dario-run-atlas.json",
 ]);
 
 function serveFile(request, response) {
@@ -476,7 +480,7 @@ function serveFile(request, response) {
     return;
   }
   const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
-  if (!publicFiles.has(relativePath)) {
+  if (!publicFiles.has(relativePath) && !relativePath.startsWith("assets/")) {
     sendJson(response, 404, { error: "Not found." });
     return;
   }

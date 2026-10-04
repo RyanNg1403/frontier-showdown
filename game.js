@@ -5,6 +5,7 @@ const POWER_BLAST_SPEED = 640;
 const POWER_BLAST_WINDUP = 0.32;
 const SOUL_SALVO_SPEED = 540;
 const SOUL_SALVO_WINDUP = 0.36;
+const SOUL_SALVO_FAN_ANGLE = 0.1;
 const RIFT_REND_RANGE = 184;
 const RIFT_REND_HALF_ANGLE = 0.84;
 const RIFT_REND_WINDUP = 0.42;
@@ -18,6 +19,7 @@ const PLAYER_SHOT_INTERVAL = 0.38;
 const CHARACTER_SPRITE_WIDTH = 100;
 const CHARACTER_SPRITE_HEIGHT = 110;
 const SURVIVAL_SECONDS = 75;
+const MAX_MATCH_SECONDS = 105;
 const TACTIC_DECISION_INTERVAL = 820;
 const TACTIC_DECISION_MIN_GAP = 650;
 const PLAN_COMMITMENT = 3.8;
@@ -536,7 +538,7 @@ if (selectedRunnerSkin === selectedChaserSkin) {
   selectedChaserSkin = selectedRunnerSkin === "sam" ? "dario" : "sam";
   writePreference("frontier.chaserSkin", selectedChaserSkin);
 }
-const artwork = { floors: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
+const artwork = { floors: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, propBounds: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
 for (const [biome, file] of Object.entries({
   office: "frontier-floor-openai-atrium.png",
   cinder: "frontier-floor-openai-compute.png",
@@ -579,6 +581,9 @@ for (const [lab, file] of Object.entries({
   shared: "frontier-props-shared.png",
 })) {
   artwork.props[lab] = new Image();
+  artwork.props[lab].addEventListener("load", () => {
+    artwork.propBounds[lab] = prepareAtlasFrameBounds(artwork.props[lab], 4, 2, 64);
+  }, { once: true });
   artwork.props[lab].src = "/assets/" + file;
 }
 for (const [lab, file] of Object.entries({
@@ -587,7 +592,7 @@ for (const [lab, file] of Object.entries({
 })) {
   artwork.barriers[lab] = new Image();
   artwork.barriers[lab].addEventListener("load", () => {
-    artwork.barrierBounds[lab] = prepareAtlasFrameBounds(artwork.barriers[lab], 4, 2);
+    artwork.barrierBounds[lab] = prepareAtlasFrameBounds(artwork.barriers[lab], 4, 2, 64);
   }, { once: true });
   artwork.barriers[lab].src = "/assets/" + file;
 }
@@ -756,7 +761,7 @@ function measureAlphaBounds(canvas, minimumAlpha = 1) {
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
-function prepareAtlasFrameBounds(sheet, columns, rows) {
+function prepareAtlasFrameBounds(sheet, columns, rows, minimumAlpha = 1) {
   const frameWidth = sheet.naturalWidth / columns;
   const frameHeight = sheet.naturalHeight / rows;
   return Array.from({ length: rows * columns }, (_, frame) => {
@@ -768,7 +773,7 @@ function prepareAtlasFrameBounds(sheet, columns, rows) {
       column * frameWidth, row * frameHeight, frameWidth, frameHeight,
       0, 0, frameWidth, frameHeight,
     );
-    return measureAlphaBounds(cell);
+    return measureAlphaBounds(cell, minimumAlpha);
   });
 }
 
@@ -1020,26 +1025,76 @@ function removeDetachedRedSpecks(canvas) {
   if (changed) context.putImageData(image, 0, 0);
 }
 
-function drawProfileRunFrame(ctx, skinId, direction, frameIndex, x, y, width, height) {
+function prepareRunAtlasFrames(sheet) {
+  const cell = 256;
+  const cols = 8;
+  const directions = ["down", "up", "left", "right"];
+  const frames = {};
+  const idles = {};
+
+  directions.forEach((direction, rowIndex) => {
+    frames[direction] = [];
+    for (let col = 0; col < cols; col++) {
+      const canvas = createAnimationCanvas(cell, cell);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(sheet, col * cell, rowIndex * cell, cell, cell, 0, 0, cell, cell);
+      frames[direction].push(canvas);
+    }
+  });
+
+  directions.forEach((direction, idx) => {
+    const rowIndex = idx + 4;
+    const canvas = createAnimationCanvas(cell, cell);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(sheet, 0, rowIndex * cell, cell, cell, 0, 0, cell, cell);
+    idles[direction] = canvas;
+  });
+
+  return {
+    sheet,
+    frames,
+    idles,
+    cell,
+    ground: 246,
+    pivotX: 128,
+    characterHeight: 205,
+    bounds: { cell, ground: 246, pivotX: 128, width: cell, height: cell },
+    normalized: true,
+  };
+}
+
+function drawProfileRunFrame(ctx, skinId, direction, frameIndex, x, y, width, height, isRunning = true) {
   const animation = artwork.runFrames[skinId];
   const skin = skinCatalog[skinId];
   if (!animation || !skin) return false;
-  const frames = animation.frames[direction];
-  if (!frames) return false;
-  const frame = frames[frameIndex % frames.length];
-  const scale = Math.min(width / frame.width, height / frame.height)
-    * (skin.spriteVisualScale ?? 1)
-    * (animation.normalized ? skin.frameSizeScale ?? 1 : 1);
-  const scaledWidth = frame.width * scale;
-  const scaledHeight = frame.height * scale;
-  const phase = frameIndex / frames.length * Math.PI * 2;
-  const bounce = (1 - Math.cos(phase * 2)) * 1.5;
-  const lean = Math.sin(phase) * 0.03;
-  const nativeSideRun = skin.nativeSideRunMotion && (direction === "left" || direction === "right");
+
+  const dir = (direction === "up" || direction === "down" || direction === "left" || direction === "right")
+    ? direction
+    : "down";
+
+  let frame;
+  if (isRunning) {
+    const frames = animation.frames[dir] || animation.frames.down;
+    if (!frames || !frames.length) return false;
+    frame = frames[frameIndex % frames.length];
+  } else {
+    frame = animation.idles[dir] || animation.idles.down || animation.frames.down[0];
+  }
+  if (!frame) return false;
+
+  const visualScale = skin.spriteVisualScale ?? 1.12;
+  const scale = (height * visualScale) / animation.characterHeight;
+  const drawSize = animation.cell * scale;
+  const drawX = x - animation.pivotX * scale;
+  let drawY = (y + height / 2) - animation.ground * scale;
+
+  if (!isRunning) {
+    drawY += Math.sin(game.elapsed * 4) * 0.8;
+  }
+
   ctx.save();
-  ctx.translate(x + (nativeSideRun ? 0 : Math.cos(phase) * 1.2), y + height / 2 - (nativeSideRun ? 0 : bounce));
-  if (!nativeSideRun) ctx.rotate(lean);
-  ctx.drawImage(frame, -scaledWidth / 2, -scaledHeight, scaledWidth, scaledHeight);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(frame, drawX, drawY, drawSize, drawSize);
   ctx.restore();
   return true;
 }
@@ -1048,12 +1103,16 @@ function profileRunPose(entity, skinId, direction) {
   const skin = skinCatalog[skinId];
   const isSideways = direction === "left" || direction === "right";
   const frameCount = artwork.runFrames[skinId]?.frames[direction]?.length || 8;
-  if (isSideways && skin?.sideRunStrideDistance) {
-    const speed = Math.hypot(Number(entity.vx) || 0, Number(entity.vy) || 0);
-    const cycleDuration = clamp(skin.sideRunStrideDistance / Math.max(speed, 1), 0.46, 1.12);
-    return Math.floor((entity.spriteAnimationTime || 0) / (cycleDuration / frameCount)) % frameCount;
+  const strideDistance = isSideways
+    ? (skin?.runStrideDistance?.side || 150)
+    : (skin?.runStrideDistance?.vertical || 132);
+
+  const distance = Number(entity.spriteTravel || 0);
+  if (distance > 0) {
+    const cycle = (distance / strideDistance) * frameCount;
+    return Math.floor(cycle) % frameCount;
   }
-  const frameDuration = 0.075;
+  const frameDuration = 0.085;
   return Math.floor((entity.spriteAnimationTime || 0) / frameDuration) % frameCount;
 }
 
@@ -2882,7 +2941,7 @@ function firePowerBlast() {
     skinId: skinForRole("chaser").id,
     x: jev.x, y: jev.y - 5,
     vx: dx / length * POWER_BLAST_SPEED, vy: dy / length * POWER_BLAST_SPEED,
-    radius: 14, life: 2.2, age: 0, distanceTravelled: 0,
+    radius: 18, life: 2.2, age: 0, distanceTravelled: 0,
     maxDistance: length + (combatTarget().radius || game.player.radius) + 14,
   });
   jev.facing = Math.sign(dx || jev.facing);
@@ -2920,7 +2979,7 @@ function fireSoulSalvo() {
   const angle = Math.atan2(jev.salvoTarget.y - origin.y, jev.salvoTarget.x - origin.x);
   const reach = Math.min(distance(origin, jev.salvoTarget), SOUL_SALVO_SPEED * 1.9);
   let fired = 0;
-  for (const offset of [-0.035, 0, 0.035]) {
+  for (const offset of [-SOUL_SALVO_FAN_ANGLE, 0, SOUL_SALVO_FAN_ANGLE]) {
     const shotAngle = angle + offset;
     const endpoint = {
       x: origin.x + Math.cos(shotAngle) * reach,
@@ -2934,7 +2993,7 @@ function fireSoulSalvo() {
       owner: "jev", kind: "salvo", skinId: skinForRole("chaser").id, x: origin.x, y: origin.y,
       vx: Math.cos(shotAngle) * SOUL_SALVO_SPEED,
       vy: Math.sin(shotAngle) * SOUL_SALVO_SPEED,
-      radius: 11, life: 1.9, age: 0, distanceTravelled: 0,
+      radius: 13, life: 1.9, age: 0, distanceTravelled: 0,
       maxDistance: reach + (combatTarget().radius || game.player.radius) + 11,
     });
     fired += 1;
@@ -3025,7 +3084,7 @@ function startMeteorStorm() {
     : { x: 0, y: 1 };
   for (let index = 0; index < 3; index += 1) {
     const lead = 0.38 + index * 0.24;
-    const predicted = predictPlayer(lead);
+    const predicted = predictPlayerPosition(lead, true);
     const spread = (index - 1) * 70;
     const point = {
       x: clamp(predicted.x + lateral.x * spread, 50, WORLD.width - 50),
@@ -3035,7 +3094,7 @@ function startMeteorStorm() {
       point.x = predicted.x;
       point.y = predicted.y;
     }
-    game.meteors.push({ ...point, radius: 62, delay: 0.92 + index * 0.27 });
+    game.meteors.push({ ...point, radius: 82, delay: 0.92 + index * 0.27 });
   }
   jev.meteorCooldown = 11.5;
   remember("meteor_storm_started");
@@ -3456,7 +3515,7 @@ function findPath(start, target, avoidEntity = null) {
   const nearestOpenCell = (centerX, centerY, reachableFrom) => {
     const isReachable = (x, y) => {
       if (cellBlocked(x, y, movementRadius)) return false;
-      return isLaneClear(reachableFrom, pointForCell({ x, y }), movementRadius);
+      return !reachableFrom || isLaneClear(reachableFrom, pointForCell({ x, y }), movementRadius);
     };
     if (isReachable(centerX, centerY)) return { x: centerX, y: centerY };
     for (let radius = 1; radius < Math.max(cols, rows); radius += 1) {
@@ -3479,7 +3538,11 @@ function findPath(start, target, avoidEntity = null) {
     return null;
   };
   const startCell = nearestOpenCell(toCell(start.x, cols), toCell(start.y, rows), start);
-  const endCell = nearestOpenCell(toCell(target.x, cols), toCell(target.y, rows), target);
+  // Interception and flank predictions can land inside an obstacle even when
+  // the real target is clear. Snap those destinations to the nearest open tile
+  // without asking a ray to begin inside solid geometry.
+  const reachableTarget = blocked(target.x, target.y, movementRadius) ? null : target;
+  const endCell = nearestOpenCell(toCell(target.x, cols), toCell(target.y, rows), reachableTarget);
   if (!startCell || !endCell) return [];
   const sx = startCell.x;
   const sy = startCell.y;
@@ -3492,7 +3555,9 @@ function findPath(start, target, avoidEntity = null) {
     : 0;
   const startAvoidGap = avoidEntity ? distance(start, avoidEntity) : Infinity;
   const escapingAvoidZone = Boolean(avoidEntity && startAvoidGap < avoidDistance);
+  const softAvoidDistance = avoidDistance * 0.72;
   const routeClear = (from, to) => !avoidEntity || distanceToSegment(avoidEntity, from, to) >= avoidDistance;
+  const routeSoftClear = (from, to) => !avoidEntity || distanceToSegment(avoidEntity, from, to) >= softAvoidDistance;
   const heuristic = (x, y) => {
     const dx = Math.abs(ex - x);
     const dy = Math.abs(ey - y);
@@ -3562,17 +3627,15 @@ function findPath(start, target, avoidEntity = null) {
       const key = keyOf(x, y);
       const center = { x: x * WORLD.cell + WORLD.cell / 2, y: y * WORLD.cell + WORLD.cell / 2 };
       const currentCenter = pointForCell(current);
-      if (!escapingAvoidZone && !routeClear(currentCenter, center)) continue;
+      if (!escapingAvoidZone && !routeSoftClear(currentCenter, center)) continue;
       if (avoidEntity) {
         const nextAvoidGap = distance(center, avoidEntity);
-        // Once an actor is already inside the preferred clearance radius,
-        // allow a temporary step toward the threat when a wall or corner
-        // makes that the only route out. The spacing cost still strongly
-        // favors paths that regain distance as soon as geometry allows.
-        if (!escapingAvoidZone && nextAvoidGap < avoidDistance) continue;
+        // Keep the preferred gap whenever possible. Tight corners can require
+        // a smaller gap; forbid contact range and strongly penalize this fallback.
+        if (!escapingAvoidZone && nextAvoidGap < softAvoidDistance) continue;
       }
       const spacingCost = avoidEntity
-        ? Math.max(0, avoidDistance + 54 - distance(center, avoidEntity)) * 2.6
+        ? Math.max(0, avoidDistance + 54 - distance(center, avoidEntity)) * 3.8
         : 0;
       const nextCost = current.g + terrainTravelCost(x, y, dx, dy, stepCost) + spacingCost;
       if (nextCost >= (cost.get(key) ?? Infinity)) continue;
@@ -3587,7 +3650,7 @@ function findPath(start, target, avoidEntity = null) {
     if (!blocked(target.x, target.y, movementRadius) && isLaneClear(start, target, movementRadius)) return [target];
     const startCenter = pointForCell(startCell);
     return distance(start, startCenter) > 12 && isLaneClear(start, startCenter, movementRadius) &&
-      isLaneClear(startCenter, target, movementRadius) ? [startCenter, target] : [];
+      isLaneClear(startCenter, target, movementRadius) && routeSoftClear(startCenter, target) ? [startCenter, target] : [];
   }
   const rawPath = [];
   let cursor = destinationKey;
@@ -3614,6 +3677,8 @@ function findPath(start, target, avoidEntity = null) {
     if (farthest < 0 && escapingAvoidZone && isLaneClear(anchor, rawPath[nextIndex], movementRadius)) {
       farthest = nextIndex;
     }
+    if (farthest < 0 && routeSoftClear(anchor, rawPath[nextIndex]) &&
+        isLaneClear(anchor, rawPath[nextIndex], movementRadius)) farthest = nextIndex;
     if (farthest < 0) return [];
     anchor = rawPath[farthest];
     path.push(anchor);
@@ -3706,6 +3771,7 @@ function updateJev(dt) {
   jev.meteorCooldown = Math.max(0, jev.meteorCooldown - dt * cooldownScale);
   if (jev.recoverTimer > 0) jev.recoverTimer = Math.max(0, jev.recoverTimer - dt);
   if (jev.stunned > 0) {
+    jev.stuckTimer = 0;
     if (jev.rendPhase === "windup") remember("rift_rend_interrupted");
     jev.rendPhase = "";
     jev.rendTimer = 0;
@@ -3724,6 +3790,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.rendPhase === "windup") {
+    jev.stuckTimer = 0;
     jev.rendTimer -= dt;
     jev.vx = 0;
     jev.vy = 0;
@@ -3731,6 +3798,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.rendPhase === "recover") {
+    jev.stuckTimer = 0;
     jev.rendTimer = Math.max(0, jev.rendTimer - dt);
     if (jev.rendTimer <= 0) jev.rendPhase = "";
     jev.vx *= Math.pow(0.04, dt);
@@ -3738,6 +3806,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.riftRushPhase === "charge") {
+    jev.stuckTimer = 0;
     const requestedStep = Math.min(RIFT_RUSH_SPEED * dt, jev.riftRushRemaining);
     const beforeX = jev.x;
     const beforeY = jev.y;
@@ -3759,6 +3828,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.riftRushPhase === "windup") {
+    jev.stuckTimer = 0;
     jev.riftRushTimer -= dt;
     jev.vx = 0;
     jev.vy = 0;
@@ -3766,6 +3836,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.shadowDodgePhase === "windup") {
+    jev.stuckTimer = 0;
     jev.shadowDodgeTimer -= dt;
     jev.vx = 0;
     jev.vy = 0;
@@ -3773,6 +3844,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.salvoPhase === "windup") {
+    jev.stuckTimer = 0;
     jev.salvoTimer -= dt;
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
@@ -3782,6 +3854,7 @@ function updateJev(dt) {
     return;
   }
   if (jev.blastPhase === "windup") {
+    jev.stuckTimer = 0;
     jev.blastTimer -= dt;
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
@@ -4500,6 +4573,11 @@ function advanceSpriteTravel(entity, dt) {
 function update(dt) {
   game.elapsed += dt;
   game.remaining = Math.max(0, game.remaining - dt);
+  if (game.elapsed >= MAX_MATCH_SECONDS) {
+    game.elapsed = MAX_MATCH_SECONDS;
+    finishGame("overtime");
+    return;
+  }
   if (game.remaining <= 0 && !game.enraged) {
     game.enraged = true;
     announce("The rift surges. Jev grows faster.", 2100);
@@ -4844,10 +4922,12 @@ function drawMirrorEcho(ctx) {
     if (sprite?.complete && sprite.naturalWidth > 0) {
       const spriteId = companion?.complete ? runnerSkin.companion : runnerSkin.id;
       const direction = spriteDirectionFor(clone);
-      const row = Math.hypot(clone.vx || 0, clone.vy || 0) > 35
-        ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.085) % 2
-        : 0;
-      drawSpriteFrame(ctx, sprite, spriteId, direction, row, clone.x, clone.y, 88, 96);
+      const isRunning = Math.hypot(clone.vx || 0, clone.vy || 0) > 25;
+      const clonePose = profileRunPose(clone, runnerSkin.id, direction);
+      if (!drawProfileRunFrame(ctx, runnerSkin.id, direction, clonePose, clone.x, clone.y, 88, 96, isRunning)) {
+        const row = isRunning ? 1 + Math.floor((clone.spriteAnimationTime || 0) / 0.085) % 2 : 0;
+        drawSpriteFrame(ctx, sprite, spriteId, direction, row, clone.x, clone.y, 88, 96);
+      }
     }
     ctx.restore();
   }
@@ -5025,10 +5105,10 @@ function drawPixelRoomFrame(ctx, biome) {
 
 function drawCompanyFloorPlaque(ctx, brand, x, y, opacity = 0.34) {
   const openAI = brand === "openai";
-  const logo = artwork.brandMarks[openAI ? "openai" : "anthropic"];
+  const logo = artwork.brandMarks[openAI ? "openai" : "anthropicMark"];
   if (!logo?.complete || !logo.naturalWidth) return;
-  const width = openAI ? 76 : 152;
-  const height = openAI ? 62 : 42;
+  const width = 70;
+  const height = 70;
   ctx.save();
   ctx.globalAlpha = opacity;
   const plate = openAI ? "rgba(224, 226, 206, 0.68)" : "rgba(231, 216, 190, 0.7)";
@@ -5040,7 +5120,7 @@ function drawCompanyFloorPlaque(ctx, brand, x, y, opacity = 0.34) {
   ctx.fillStyle = trim;
   ctx.fillRect(x - width / 2, y - height / 2, width, 3);
   ctx.fillRect(x - width / 2, y + height / 2 - 3, width, 3);
-  const logoWidth = openAI ? 38 : 128;
+  const logoWidth = openAI ? 38 : 42;
   const logoHeight = logo.naturalHeight * logoWidth / logo.naturalWidth;
   ctx.drawImage(logo, x - logoWidth / 2, y - logoHeight / 2, logoWidth, logoHeight);
   ctx.restore();
@@ -5058,9 +5138,8 @@ function companyFloorPositions(level) {
   const obstacles = level.blocks || [];
   const hazards = level.hazards || [];
   const spawns = [level.playerStart, level.jevStart].filter(Boolean);
-  const anthropicMap = ["archive", "garden", "vault"].includes(level.biome);
-  const halfPlaqueWidth = anthropicMap ? 84 : 46;
-  const halfPlaqueHeight = anthropicMap ? 30 : 40;
+  const halfPlaqueWidth = 42;
+  const halfPlaqueHeight = 42;
   const clear = (x, y) => {
     const overlaps = (left, top, right, bottom) =>
       x + halfPlaqueWidth > left - 16 && x - halfPlaqueWidth < right + 16
@@ -5098,7 +5177,9 @@ function drawCompanyFloorBranding(ctx, biome, opacity = 0.38, level = game?.leve
   const positions = companyFloorPositions(level);
   const brand = biome === "office" || biome === "cinder" ? "openai"
     : biome === "archive" || biome === "garden" || biome === "vault" ? "anthropic" : "shared";
+  // Two inset brand medallions are enough to anchor the theme without turning the floor into signage.
   positions.forEach((position, index) => {
+    if (index !== 0 && index !== 3) return;
     if (!position) return;
     const [x, y] = position;
     const plaqueBrand = brand === "shared" ? ((index % 2) ? "anthropic" : "openai") : brand;
@@ -5114,8 +5195,8 @@ function drawFloor(ctx) {
       garden: "#173631", vault: "#c9bda5", rift: "#273039",
     };
     const textureOpacity = {
-      office: 0.34, cinder: 0.78, archive: 0.43,
-      garden: 0.43, vault: 0.4, rift: 0.46,
+      office: 0.88, cinder: 0.92, archive: 0.88,
+      garden: 0.88, vault: 0.88, rift: 0.85,
     };
     ctx.fillStyle = baseColors[game.level.biome] || "#273039";
     ctx.fillRect(0, 0, WORLD.width, WORLD.height);
@@ -5974,31 +6055,55 @@ function workplaceArtLab(biome) {
 function drawWorkplaceProp(ctx, block, biome) {
   const lab = workplaceArtLab(biome);
   const sheet = artwork.props[lab];
-  if (!sheet?.complete || !sheet.naturalWidth || !sheet.naturalHeight) return false;
+  const bounds = artwork.propBounds[lab];
+  if (!sheet?.complete || !sheet.naturalWidth || !sheet.naturalHeight || !bounds) return false;
   if (block.kind === "reflecting_pool") return false;
-  const aspect = block.w / block.h;
-  const compact = aspect >= 0.58 && aspect <= 1.72 && Math.min(block.w, block.h) >= 88;
-  if (!compact) return false;
-  const alternatives = workplacePropFrames[lab][block.kind] || [0];
+
+  const alternatives = workplacePropFrames[lab]?.[block.kind] || [0];
   const choice = Math.abs(Math.floor((block.x * 7 + block.y * 11 + block.w * 3 + block.h) / 64)) % alternatives.length;
   const frame = alternatives[choice];
   const columns = 4;
   const rows = 2;
   const cellWidth = sheet.naturalWidth / columns;
   const cellHeight = sheet.naturalHeight / rows;
-  const sourceX = (frame % columns) * cellWidth;
-  const sourceY = Math.floor(frame / columns) * cellHeight;
+  const content = bounds[frame];
+  if (!content?.width || !content?.height) return false;
+
+  // Keep the authored furniture inside the actual map footprint. The old renderer fit the
+  // transparent atlas cell instead of its opaque art, which made each prop look undersized.
   drawPixelOfficeObstacle(ctx, block, biome);
+
+  const padding = 3;
+  const column = frame % columns;
+  const row = Math.floor(frame / columns);
+  const cropX = Math.max(0, content.x - padding);
+  const cropY = Math.max(0, content.y - padding);
+  const cropWidth = Math.min(cellWidth - cropX, content.width + padding * 2);
+  const cropHeight = Math.min(cellHeight - cropY, content.height + padding * 2);
+  const sourceX = column * cellWidth + cropX;
+  const sourceY = row * cellHeight + cropY;
+  const rotate = block.w > block.h * 1.45 && cropHeight > cropWidth * 1.2
+    || block.h > block.w * 1.45 && cropWidth > cropHeight * 1.2;
+  const orientedWidth = rotate ? cropHeight : cropWidth;
+  const orientedHeight = rotate ? cropWidth : cropHeight;
+  const targetWidth = Math.max(1, block.w - 8);
+  const targetHeight = Math.max(1, block.h - 8);
+  const scale = Math.min(targetWidth / orientedWidth, targetHeight / orientedHeight);
+  const drawWidth = orientedWidth * scale;
+  const drawHeight = orientedHeight * scale;
+
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(block.x + 2, block.y + 2, block.w - 4, block.h - 4);
-  ctx.clip();
+  ctx.translate(block.x + block.w / 2, block.y + block.h / 2);
+  if (rotate) ctx.rotate(Math.PI / 2);
   ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = 0.98;
-  const targetSize = Math.min(block.w, block.h) - 8;
-  const targetX = block.x + (block.w - targetSize) / 2;
-  const targetY = block.y + (block.h - targetSize) / 2;
-  ctx.drawImage(sheet, sourceX, sourceY, cellWidth, cellHeight, targetX, targetY, targetSize, targetSize);
+  ctx.drawImage(
+    sheet,
+    sourceX, sourceY, cropWidth, cropHeight,
+    rotate ? -drawHeight / 2 : -drawWidth / 2,
+    rotate ? -drawWidth / 2 : -drawHeight / 2,
+    rotate ? drawHeight : drawWidth,
+    rotate ? drawWidth : drawHeight,
+  );
   ctx.restore();
   return true;
 }
@@ -6008,75 +6113,75 @@ function drawWorkplaceBarrier(ctx, block, biome) {
   const sheet = artwork.barriers[lab];
   const bounds = artwork.barrierBounds[lab];
   if (!sheet?.complete || !sheet.naturalWidth || !bounds || block.kind === "reflecting_pool") return false;
+
   const horizontal = block.w >= block.h;
   const longSide = Math.max(block.w, block.h);
   const shortSide = Math.min(block.w, block.h);
-  if (longSide / shortSide < 2.25 || shortSide < 34) return false;
+  if (longSide / shortSide < 1.45 || shortSide < 24) return false;
+
   const alternatives = workplaceBarrierFrames[lab]?.[block.kind] || [0, 3, 4, 7];
   const choice = Math.abs(Math.floor((block.x * 7 + block.y * 11 + block.w * 3 + block.h) / 64)) % alternatives.length;
   const columns = 4;
   const cellWidth = sheet.naturalWidth / columns;
   const cellHeight = sheet.naturalHeight / 2;
-  const targetLength = longSide - 8;
-  const targetThickness = shortSide - 8;
-  if (targetThickness <= 0) return true;
-  const tiles = [];
-  let runLength = 0;
-  while (runLength < targetLength && tiles.length < 20) {
-    const frameIndex = alternatives[(choice + tiles.length) % alternatives.length];
+  const targetLength = Math.max(1, longSide - 6);
+  const targetThickness = Math.max(1, shortSide - 6);
+  const panelCount = clamp(Math.round(targetLength / Math.max(targetThickness * 3.2, 54)), 1, 6);
+  const panelLength = targetLength / panelCount;
+  const panels = Array.from({ length: panelCount }, (_, index) => {
+    const frameIndex = alternatives[(choice + index) % alternatives.length];
     const frame = bounds[frameIndex];
-    if (!frame?.width || !frame?.height) break;
-    const tileLength = frame.width * targetThickness / frame.height;
-    if (tileLength <= 0) break;
-    tiles.push({ frameIndex, frame, tileLength });
-    runLength += tileLength;
-  }
-  if (!tiles.length) return true;
-  const mark = artwork.brandMarks[lab === "openai" ? "openai" : "anthropicMark"];
+    return frame?.width && frame?.height ? { frameIndex, frame } : null;
+  }).filter(Boolean);
+  if (!panels.length) return false;
 
-  const palette = pixelObstaclePalette(biome);
-  const base = lab === "openai" ? "#25373c" : "#4c4036";
-  ctx.fillStyle = "rgba(5, 9, 12, 0.42)";
-  ctx.fillRect(block.x + 5, block.y + 6, block.w - 1, block.h - 1);
-  ctx.fillStyle = palette.edge;
-  ctx.fillRect(block.x, block.y, block.w, block.h);
-  ctx.fillStyle = base;
-  ctx.fillRect(block.x + 3, block.y + 3, block.w - 6, block.h - 6);
-  ctx.fillStyle = palette.highlight;
-  if (horizontal) ctx.fillRect(block.x + 5, block.y + 4, block.w - 10, 2);
-  else ctx.fillRect(block.x + 4, block.y + 5, 2, block.h - 10);
+  // The art sheet contains both tall cabinets and horizontal fence modules. Always lay the
+  // authored pixels over a full-size collider-shaped base, then stretch a small number of
+  // modules across it. The previous aspect-only tiling made square frames collapse into dashes.
+  drawPixelOfficeObstacle(ctx, block, biome);
 
   ctx.save();
   ctx.beginPath();
-  ctx.rect(block.x + 2, block.y + 2, block.w - 4, block.h - 4);
+  ctx.rect(block.x, block.y, block.w, block.h);
   ctx.clip();
+
   ctx.translate(block.x + block.w / 2, block.y + block.h / 2);
   if (!horizontal) ctx.rotate(Math.PI / 2);
   ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = 0.98;
+
   let tileX = -targetLength / 2;
-  for (const { frameIndex, frame, tileLength } of tiles) {
+  for (let index = 0; index < panelCount; index += 1) {
+    const { frameIndex, frame } = panels[index % panels.length];
     const sourceX = (frameIndex % columns) * cellWidth + frame.x;
     const sourceY = Math.floor(frameIndex / columns) * cellHeight + frame.y;
     ctx.drawImage(
       sheet,
       sourceX, sourceY, frame.width, frame.height,
-      tileX, -targetThickness / 2, tileLength, targetThickness,
+      tileX, -targetThickness / 2, panelLength, targetThickness,
     );
-    tileX += tileLength;
+    tileX += panelLength;
   }
-  if (mark?.complete && mark.naturalWidth > 0) {
-    const markSize = Math.min(16, targetThickness * 0.24);
-    ctx.globalAlpha = 0.9;
+
+  // Draw subtle lab logo/brandmark on the barrier
+  const mark = artwork.brandMarks[lab === "openai" ? "openai" : "anthropicMark"];
+  if (mark?.complete && mark.naturalWidth > 0 && targetThickness >= 44) {
+    const markSize = Math.min(21, targetThickness * 0.4);
+    ctx.globalAlpha = 0.72;
     ctx.drawImage(
       mark,
       -markSize / 2, -markSize / 2,
       markSize, markSize * mark.naturalHeight / mark.naturalWidth,
     );
   }
+
   ctx.restore();
   return true;
 }
+
+const WORKPLACE_PROP_KINDS = new Set([
+  "pillar", "glass_pillar", "obelisk", "furnace", "vent",
+  "vault_core", "reliquary", "crystal", "rift_pillar", "rift_crystal"
+]);
 
 function drawObstacle(ctx, source) {
   ctx.save();
@@ -6086,8 +6191,15 @@ function drawObstacle(ctx, source) {
     ctx.rotate(source.angle);
     block = { ...source, x: -source.w / 2, y: -source.h / 2, angle: 0 };
   }
-  if (!drawWorkplaceProp(ctx, block, game.level.biome) && !drawWorkplaceBarrier(ctx, block, game.level.biome)) {
-    drawPixelOfficeObstacle(ctx, block, game.level.biome);
+  const isProp = WORKPLACE_PROP_KINDS.has(block.kind);
+  if (isProp) {
+    if (!drawWorkplaceProp(ctx, block, game.level.biome) && !drawWorkplaceBarrier(ctx, block, game.level.biome)) {
+      drawPixelOfficeObstacle(ctx, block, game.level.biome);
+    }
+  } else {
+    if (!drawWorkplaceBarrier(ctx, block, game.level.biome) && !drawWorkplaceProp(ctx, block, game.level.biome)) {
+      drawPixelOfficeObstacle(ctx, block, game.level.biome);
+    }
   }
   ctx.restore();
 }
@@ -7077,10 +7189,9 @@ function drawJev(ctx) {
     };
     const direction = contactActive ? contactFacing(jev.contactStrike.angle) : spriteDirectionFor(jev);
     const speed = Math.hypot(jev.vx, jev.vy);
-    const runningProfile = !contactActive && speed > 35
-      && Boolean(artwork.runFrames[chaserSkin.id]?.frames[direction]?.length);
+    const isRunning = !contactActive && speed > 25;
     const runPose = profileRunPose(jev, chaserSkin.id, direction);
-    const row = !contactActive && speed > 35 ? 1 + Math.floor((jev.spriteAnimationTime || 0) / 0.085) % 3 : 0;
+    const row = isRunning ? 1 + Math.floor((jev.spriteAnimationTime || 0) / 0.085) % 3 : 0;
     ctx.save();
     ctx.translate(drawX, jev.y + 10);
     const groundShadow = ctx.createRadialGradient(0, 23, 2, 0, 23, 37);
@@ -7108,11 +7219,9 @@ function drawJev(ctx) {
       ctx.setLineDash([]);
     }
     ctx.restore();
-    const nativeSideRun = runningProfile && chaserSkin.nativeSideRunMotion
-      && (direction === "left" || direction === "right");
-    const spriteY = jev.y + (nativeSideRun ? 0 : runningProfile && runPose === 2 ? -2 : bob);
-    if (!runningProfile || !drawProfileRunFrame(ctx, chaserSkin.id, direction, runPose, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT)) {
-      drawSpriteFrame(ctx, chaserSprite, chaserSkin.id, direction, row, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT);
+    const spriteY = jev.y;
+    if (!drawProfileRunFrame(ctx, chaserSkin.id, direction, runPose, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT, isRunning)) {
+      drawSpriteFrame(ctx, chaserSprite, chaserSkin.id, direction, row, drawX, spriteY + bob, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT);
     }
     if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
       ctx.save();
@@ -7229,10 +7338,9 @@ function drawPlayer(ctx) {
   if (player.hurtTimer > 0 && Math.floor(game.elapsed * 18) % 2 === 0) return;
   if (runnerSprite?.complete && runnerSprite.naturalWidth > 0) {
     const speed = Math.hypot(player.vx, player.vy);
-      const runningProfile = speed > 35
-        && Boolean(artwork.runFrames[runnerSkin.id]?.frames[direction]?.length);
-      const runPose = profileRunPose(player, runnerSkin.id, direction);
-      const row = speed > 35 ? 1 + Math.floor((player.spriteAnimationTime || 0) / 0.085) % 3 : 0;
+    const isRunning = speed > 25;
+    const runPose = profileRunPose(player, runnerSkin.id, direction);
+    const row = isRunning ? 1 + Math.floor((player.spriteAnimationTime || 0) / 0.085) % 3 : 0;
     if (player.afterimageTimer > 0) {
       ctx.save();
       ctx.globalAlpha = 0.32 * clamp(player.afterimageTimer / PHASE_AFTERIMAGE_DURATION, 0, 1);
@@ -7262,11 +7370,9 @@ function drawPlayer(ctx) {
     const stretch = dash ? 1.08 : 1;
     ctx.save();
     ctx.globalAlpha = 1;
-    const nativeSideRun = runningProfile && runnerSkin.nativeSideRunMotion
-      && (direction === "left" || direction === "right");
-    const spriteY = player.y + (nativeSideRun ? 0 : runningProfile && runPose === 2 ? -2 : Math.sin(game.elapsed * 9) * 1.5);
-    if (!runningProfile || !drawProfileRunFrame(ctx, runnerSkin.id, direction, runPose, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch)) {
-      drawSpriteFrame(ctx, runnerSprite, runnerSkin.id, direction, row, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch);
+    const spriteY = player.y;
+    if (!drawProfileRunFrame(ctx, runnerSkin.id, direction, runPose, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch, isRunning)) {
+      drawSpriteFrame(ctx, runnerSprite, runnerSkin.id, direction, row, player.x, spriteY + Math.sin(game.elapsed * 9) * 1.5, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch);
     }
     ctx.restore();
     if (player.pulseTimer > 0) {
@@ -7874,7 +7980,9 @@ function finishGame(outcome) {
   ui.resultTitle.textContent = winner.victoryHeadline || `${winner.company} won`;
   ui.resultCopy.textContent = foughtBack
     ? `${winner.name} broke the anchors and defeated ${loser.name}.`
-    : `${winner.name} caught ${loser.name}.`;
+    : outcome === "overtime"
+      ? `${winner.name} held the arena through the final surge.`
+      : `${winner.name} caught ${loser.name}.`;
   ui.nextLevel.hidden = !foughtBack || selectedLevelIndex >= levels.length - 1;
   if (foughtBack) {
     emitParticles(game.jev.x, game.jev.y, "#ffd07b", 60, 260);

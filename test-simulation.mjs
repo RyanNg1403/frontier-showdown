@@ -190,6 +190,41 @@ async function runSimulation() {
     console.log(`      #${idx + 1}: Jev -> [${d.mode}] (${(d.confidence * 100).toFixed(0)}%) | Plan: ${d.plan || 'steady_pressure'}`);
   });
 
+  // ----------------------------------------------------
+  // TEST 3: ANTHROPIC & OPENAI THEMED MAPS VISUAL INSPECTION
+  // ----------------------------------------------------
+  console.log('\n>>> 3. TESTING ANTHROPIC & OPENAI MAPS VISUAL RENDERING...');
+  await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+  await page.click('#mode-auto');
+  await page.waitForTimeout(300);
+
+  // Navigate to Level 2 (Anthropic Reading Room: 2 clicks from level 0)
+  await page.click('#level-next');
+  await page.waitForTimeout(200);
+  await page.click('#level-next');
+  await page.waitForTimeout(300);
+  await page.click('#start-button');
+  await page.waitForTimeout(1500);
+  const anthropicReadingShot = path.join(OUTPUT_DIR, 'anthropic_reading_room.png');
+  await page.screenshot({ path: anthropicReadingShot });
+  console.log(`    [Anthropic Reading Room saved]: ${anthropicReadingShot}`);
+
+  // Navigate to Level 3 (Anthropic Living Studio: 3 clicks from level 0)
+  await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+  await page.click('#mode-auto');
+  await page.waitForTimeout(300);
+  await page.click('#level-next');
+  await page.waitForTimeout(200);
+  await page.click('#level-next');
+  await page.waitForTimeout(200);
+  await page.click('#level-next');
+  await page.waitForTimeout(300);
+  await page.click('#start-button');
+  await page.waitForTimeout(1500);
+  const anthropicLivingShot = path.join(OUTPUT_DIR, 'anthropic_living_studio.png');
+  await page.screenshot({ path: anthropicLivingShot });
+  console.log(`    [Anthropic Living Studio saved]: ${anthropicLivingShot}`);
+
   await browser.close();
 
   // Print Summary
