@@ -167,7 +167,6 @@ kbd {
 .chaser-intent[data-mode="intercept"] .intent-dot { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
 .chaser-intent[data-mode="flank"] .intent-dot,
 .chaser-intent[data-mode="rift_mine"] .intent-dot,
-.chaser-intent[data-mode="rift_rush"] .intent-dot { background: #d69df0; box-shadow: 0 0 10px #d69df0; }
 .chaser-intent[data-mode="shadow_dodge"] .intent-dot { background: #8fead3; box-shadow: 0 0 10px #8fead3; }
 .chaser-intent[data-mode="ambush"] .intent-dot { background: var(--mint); box-shadow: 0 0 10px var(--mint); }
 .chaser-intent[data-mode="rift_rend"] .intent-dot { background: #ff7768; box-shadow: 0 0 10px #ff7768; }
@@ -251,6 +250,8 @@ kbd {
   .touch-actions { display: flex; align-items: end; gap: 10px; pointer-events: auto; }
 .touch-action { width: 56px; height: 56px; border: 1px solid rgb(244 232 250 / 34%); border-radius: 50%; color: #f7ebf8; background: rgb(35 27 46 / 80%); box-shadow: 0 5px 18px rgb(0 0 0 / 28%); font-size: 20px; touch-action: none; }
 .touch-action:disabled { opacity: .4; filter: saturate(.45); }
+.touch-action.skill-stasis { color: #bcecff; border-color: rgb(102 204 245 / 58%); }
+.touch-action.skill-mascot { color: #f6c28f; border-color: rgb(240 151 91 / 58%); }
 .pulse-action { width: 66px; height: 66px; color: #27202f; background: rgb(242 195 111 / 88%); }
 }
 @media (max-width: 380px) {
@@ -346,7 +347,10 @@ kbd {
   image-rendering: pixelated;
   filter: drop-shadow(0 2px 4px rgb(0 0 0 / 28%));
 }
-.skin-choice-avatar[data-skin="sam"] { background-image: url("/assets/frontier-sam-pixel.png"); }
+.skin-choice-avatar[data-skin="sam"] {
+  background-image: url("/assets/frontier-sam-run-atlas.png");
+  background-size: 800% 800%;
+}
 .skin-choice-avatar[data-skin="dario"] { background-image: url("/assets/frontier-dario-pixel.png"); }
 .skin-choice-name { min-width: 0; overflow: hidden; font: 600 8px/1.1 Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
 .skin-choice-name-short { display: none; }
@@ -473,6 +477,8 @@ body:has(.site-shell.is-playing) { width: 100%; height: 100%; min-height: 0; ove
 .touch-actions { display: flex; align-items: end; gap: 8px; pointer-events: auto; }
 .touch-action { width: 49px; height: 49px; border: 1px solid rgb(244 232 250 / 34%); border-radius: 50%; color: #f7ebf8; background: rgb(35 27 46 / 82%); box-shadow: 0 5px 18px rgb(0 0 0 / 28%); font-size: 16px; touch-action: none; }
 .touch-action:disabled { opacity: .4; filter: saturate(.45); }
+.touch-action.skill-stasis { color: #bcecff; border-color: rgb(102 204 245 / 58%); }
+.touch-action.skill-mascot { color: #f6c28f; border-color: rgb(240 151 91 / 58%); }
 .pulse-action { width: 59px; height: 59px; color: #27202f; background: rgb(242 195 111 / 91%); }
 .skill-hook { color: #f3d4ff; }
 .skill-guard { color: #bff8e7; }

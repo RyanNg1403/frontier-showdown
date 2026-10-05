@@ -3,17 +3,32 @@ const DISTRICT = { width: 1280, height: 800 };
 const LEGACY_EXPANSION = DISTRICT.width / 960;
 const POWER_BLAST_SPEED = 880;
 const POWER_BLAST_WINDUP = 0.32;
-const SOUL_SALVO_SPEED = 760;
+const SIGNAL_TETHER_SPEED = 1120;
+const SIGNAL_TETHER_WINDUP = 0.38;
+const SIGNAL_TETHER_COOLDOWN = 10.5;
+const SIGNAL_TETHER_MIN_RANGE = 250;
+const SIGNAL_TETHER_MAX_RANGE = 690;
+const SIGNAL_TETHER_SNARE = 0.85;
+const SIGNAL_TETHER_PULL = 62;
+const RUNNER_STASIS_WINDUP = 0.92;
+const RUNNER_STASIS_COOLDOWN = 13.5;
+const RUNNER_STASIS_SPEED = 980;
+const RUNNER_STASIS_DURATION = 1.55;
+const RUNNER_STASIS_RANGE = 720;
+const MASCOT_CHARGE_COOLDOWN = 12;
+const MASCOT_CHARGE_SPEED = 700;
+const MASCOT_CHARGE_RANGE = 620;
+const MASCOT_CHARGE_SLOW = 1.8;
+const MASCOT_CHARGE_SHOVE = 520;
+const MASCOT_CHARGE_KNOCKBACK = 0.34;
+const MASCOT_CHARGE_REACTION = 1.02;
+const SOUL_SALVO_SPEED = 920;
 const SOUL_SALVO_WINDUP = 0.36;
-const SOUL_SALVO_FAN_ANGLE = 0.1;
+const SOUL_SALVO_FAN_ANGLE = 0.15;
 const RIFT_REND_RANGE = 184;
 const RIFT_REND_HALF_ANGLE = 0.84;
 const RIFT_REND_WINDUP = 0.42;
 const RIFT_REND_COOLDOWN = 5.2;
-const RIFT_RUSH_SPEED = 690;
-const RIFT_RUSH_WINDUP = 0.42;
-const RIFT_RUSH_COOLDOWN = 8.6;
-const RIFT_RUSH_MAX_TRAVEL = 430;
 const PLAYER_SHOT_SPEED = 780;
 const PLAYER_SHOT_INTERVAL = 0.38;
 const CHARACTER_SPRITE_WIDTH = 100;
@@ -51,12 +66,16 @@ function writePreference(key, value) {
 
 const storedDifficulty = readPreference("jevil.difficulty", "standard");
 let selectedDifficulty = Object.hasOwn(DIFFICULTY_SETTINGS, storedDifficulty) ? storedDifficulty : "standard";
-const storedMusicVolume = Number(readPreference("jevil.musicVolume", "55"));
+const storedMusicVolume = Number(readPreference("jevil.musicVolume", "27.5"));
 const music = {
   audio: null,
   enabled: readPreference("jevil.musicEnabled", "true") !== "false",
-  volume: Number.isFinite(storedMusicVolume) ? clamp(storedMusicVolume, 0, 100) / 100 : 0.55,
+  volume: Number.isFinite(storedMusicVolume) ? clamp(storedMusicVolume, 0, 100) / 100 : 0.275,
 };
+function musicVolumePercent() {
+  const rounded = Math.round(music.volume * 1000) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
 const baseLevels = [
   {
     id: "crossing",
@@ -409,12 +428,11 @@ const modeLabels = {
   flank: "FLANK",
   ambush: "CUTTING OFF",
   rift_rend: "RIFT REND",
-  power_blast: "BLAST",
+  power_blast: "POWER BLAST",
   rift_mine: "RIFT MINE",
-  rift_rush: "RIFT RUSH",
   shadow_dodge: "RIFT SLIDE",
   soul_salvo: "SOUL SALVO",
-  summon_wraiths: "WRAITH SWARM",
+  signal_tether: "SIGNAL TETHER",
   meteor_storm: "METEOR STORM",
   rift_aegis: "RIFT AEGIS",
 };
@@ -434,13 +452,16 @@ const planStepDescriptions = {
   capitalize: "use a ready skill to exploit the setup",
   assess: "read the outcome and the runner's response before repeating",
 };
-const commitmentTactics = new Set(["rift_rend", "power_blast", "rift_mine", "soul_salvo", "shadow_dodge", "summon_wraiths", "meteor_storm", "rift_aegis"]);
+const commitmentTactics = new Set(["rift_rend", "power_blast", "rift_mine", "soul_salvo", "shadow_dodge", "signal_tether", "meteor_storm", "rift_aegis"]);
 const planBreakEvents = new Set([
   "phase_dash", "soul_burst", "burst_hit", "burst_missed", "shot_hit", "anchor_hit", "anchor_broken",
-  "mirror_echo", "rift_hook", "lantern_parry", "blast_hit", "blast_dodged", "blast_blocked",
-  "salvo_hit", "salvo_dodged", "salvo_blocked", "blast_cover_blocked", "blast_guard_blocked", "blast_decoy_blocked",
+  "mirror_echo", "rift_hook", "lantern_parry", "freeze_hit", "freeze_missed", "mascot_charge_hit", "mascot_charge_missed",
+  "blast_hit", "blast_dodged", "blast_blocked", "blast_cover_blocked", "blast_guard_blocked", "blast_decoy_blocked",
+  "salvo_hit", "salvo_dodged", "salvo_blocked",
   "salvo_cover_blocked", "salvo_guard_blocked", "salvo_decoy_blocked", "rift_rend_hit", "rift_rend_missed",
   "rift_rend_evaded", "rift_rend_interrupted",
+  "signal_tether_hit", "signal_tether_missed", "signal_tether_evaded", "signal_tether_guard_blocked",
+  "signal_tether_decoy_blocked", "signal_tether_cover_blocked", "signal_tether_canceled",
   "mine_hit", "mine_evaded", "rift_aegis_activated", "rift_aegis_blocked",
 ]);
 const actionOutcomeEvents = {
@@ -458,6 +479,14 @@ const actionOutcomeEvents = {
   blast_guard_blocked: ["power_blast", "parried"],
   blast_decoy_blocked: ["power_blast", "diverted_by_decoy"],
   blast_canceled: ["power_blast", "interrupted"],
+  freeze_hit: ["stasis_cast", "frozen"],
+  freeze_missed: ["stasis_cast", "missed"],
+  freeze_shield_blocked: ["stasis_cast", "shielded"],
+  stasis_interrupted: ["stasis_cast", "interrupted"],
+  mascot_charge_launched: ["mascot_charge", "launched"],
+  mascot_charge_hit: ["mascot_charge", "shoved"],
+  mascot_charge_missed: ["mascot_charge", "missed"],
+  mascot_charge_shielded: ["mascot_charge", "shielded"],
   soul_salvo_windup: ["soul_salvo", "started"],
   soul_salvo_fired: ["soul_salvo", "in_flight"],
   salvo_hit: ["soul_salvo", "hit"],
@@ -472,9 +501,6 @@ const actionOutcomeEvents = {
   mine_triggered: ["rift_mine", "triggered"],
   mine_hit: ["rift_mine", "hit"],
   mine_evaded: ["rift_mine", "evaded"],
-  rift_rush_windup: ["rift_rush", "started"],
-  rift_rush_used: ["rift_rush", "charged"],
-  rift_rush_canceled: ["rift_rush", "interrupted"],
   rift_aegis_activated: ["rift_aegis", "activated"],
   rift_aegis_blocked: ["rift_aegis", "blocked_a_hit"],
   rift_aegis_expired: ["rift_aegis", "faded"],
@@ -484,11 +510,15 @@ const actionOutcomeEvents = {
   meteor_storm_started: ["meteor_storm", "started"],
   meteor_hit: ["meteor_storm", "hit"],
   meteor_evaded: ["meteor_storm", "missed"],
-  wraiths_summoned: ["summon_wraiths", "deployed"],
-  wraith_hit: ["summon_wraiths", "hit"],
-  wraith_shot: ["summon_wraiths", "missed"],
-  wraith_burst: ["summon_wraiths", "evaded"],
-  wraith_dash: ["summon_wraiths", "evaded"],
+  signal_tether_windup: ["signal_tether", "started"],
+  signal_tether_fired: ["signal_tether", "in_flight"],
+  signal_tether_hit: ["signal_tether", "hit"],
+  signal_tether_missed: ["signal_tether", "missed"],
+  signal_tether_evaded: ["signal_tether", "dodged"],
+  signal_tether_guard_blocked: ["signal_tether", "parried"],
+  signal_tether_decoy_blocked: ["signal_tether", "diverted_by_decoy"],
+  signal_tether_cover_blocked: ["signal_tether", "blocked_by_cover"],
+  signal_tether_canceled: ["signal_tether", "interrupted"],
 };
 const playerReadLabels = {
   dash_dodger: true,
@@ -516,12 +546,6 @@ const skinCatalog = Object.freeze({
     light: [115, 226, 205],
     spriteVisualScale: 1.12,
     spriteRows: 4,
-    spriteFrameBounds: [
-      [[87, 44, 143, 266], [83, 44, 158, 266], [84, 44, 154, 266], [81, 45, 146, 265]],
-      [[78, 44, 162, 266], [55, 43, 203, 267], [63, 39, 195, 271], [79, 42, 161, 268]],
-      [[84, 35, 152, 273], [66, 36, 191, 272], [72, 36, 194, 272], [80, 34, 155, 274]],
-      [[87, 16, 150, 263], [60, 18, 174, 260], [84, 16, 164, 263], [78, 18, 157, 261]],
-    ],
     futureGameplay: Object.freeze({ statModifiers: null, skillOverrides: null }),
   }),
   dario: Object.freeze({
@@ -567,7 +591,43 @@ if (selectedRunnerSkin === selectedChaserSkin) {
   selectedChaserSkin = selectedRunnerSkin === "sam" ? "dario" : "sam";
   writePreference("frontier.chaserSkin", selectedChaserSkin);
 }
-const artwork = { floors: {}, mapBackdrops: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, props: {}, propBounds: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
+const artwork = { floors: {}, mapBackdrops: {}, skins: {}, runs: {}, runSides: {}, runFrames: {}, spriteBounds: {}, companions: {}, skillIcons: {}, skillAtlases: {}, signalSkillIcons: {}, props: {}, propBounds: {}, barriers: {}, barrierBounds: {}, brandMarks: {}, anchorBrandSheets: {} };
+for (const [company, file] of Object.entries({
+  OpenAI: "frontier-skill-signal-icon-openai.svg",
+  Anthropic: "frontier-skill-signal-icon-anthropic.svg",
+})) {
+  const image = new Image();
+  image.addEventListener("load", renderSkillCatalog, { once: true });
+  image.src = "/assets/" + file;
+  artwork.signalSkillIcons[company] = image;
+}
+artwork.runnerSkillIcons = new Image();
+artwork.runnerSkillIcons.addEventListener("load", renderSkillCatalog, { once: true });
+artwork.runnerSkillIcons.src = "/assets/frontier-skill-icons-runner-pixel.png";
+const skillAtlasFiles = {
+  stasisCastSam: "frontier-skill-freeze-cast-sam.png",
+  stasisCastDario: "frontier-skill-freeze-cast-dario.png",
+  stasisReactionSam: "frontier-skill-freeze-reaction-sam.png",
+  stasisReactionDario: "frontier-skill-freeze-reaction-dario.png",
+  mascotReactionSam: "frontier-skill-mascot-ram-reaction-sam.png",
+  mascotReactionDario: "frontier-skill-mascot-ram-reaction-dario.png",
+  stasisOpenAI: "frontier-skill-freeze-vfx-openai.png",
+  stasisAnthropic: "frontier-skill-freeze-vfx-anthropic.png",
+  mascotCodex: "frontier-skill-mascot-ram-vfx-codex.png",
+  mascotClaude: "frontier-skill-mascot-ram-vfx-claude.png",
+  signalSam: "frontier-skill-signal-tether-sam.png",
+  signalDario: "frontier-skill-signal-tether-dario.png",
+  signalOpenAI: "frontier-skill-signal-tether-openai.png",
+  signalAnthropic: "frontier-skill-signal-tether-anthropic.png",
+};
+for (const [id, file] of Object.entries(skillAtlasFiles)) {
+  const image = new Image();
+  image.addEventListener("load", () => {
+    artwork.skillAtlases[id] = { image, bounds: prepareAtlasFrameBounds(image, 4, 2, 32) };
+    renderSkillCatalog();
+  }, { once: true });
+  image.src = "/assets/" + file;
+}
 for (const [mapId, file] of Object.entries({
   crossing: "frontier-map-floor-crossing.png",
   cinder: "frontier-map-floor-cinder.png",
@@ -653,7 +713,7 @@ for (const [brand, file] of Object.entries({
 const skillIconCells = {
   phase_dash: [0, 0], rift_hook: [1, 0], mirror_echo: [2, 0], lantern_guard: [3, 0],
   soul_burst: [0, 1], rift_rend: [1, 1], power_blast: [2, 1], soul_salvo: [3, 1],
-  meteor_storm: [0, 2], rift_mine: [1, 2], summon_wraiths: [2, 2], rift_rush: [3, 2],
+  meteor_storm: [0, 2], rift_mine: [1, 2],
   shadow_dodge: [0, 3], rift_aegis: [1, 3],
 };
 const skillManual = {
@@ -663,15 +723,16 @@ const skillManual = {
     { id: "lantern_guard", name: "Lantern Guard", key: "Shift / C / right click", description: "Timed parry reflects attacks and staggers the chaser. Use against Rift Rend when escape skills are recharging." },
     { id: "rift_hook", name: "Rift Hook", key: "E", description: "Grapple across a clear route to a safe landing." },
     { id: "soul_burst", name: "Soul Burst", key: "F / X", description: "Short-range shockwave that interrupts the chaser and cracks anchors." },
+    { id: "stasis_cast", name: "Stasis Cast", key: "R", description: "Stand still for 0.92s to charge a freeze bolt. A hit freezes the chaser for about 1.55s; damage interrupts the channel." },
+    { id: "mascot_charge", name: "Mascot Charge", key: "G", description: "Send your company mascot down a clear lane. A hit shoves and slows the chaser for 1.8s; no damage." },
   ],
   jev: [
     { id: "rift_rend", name: "Rift Rend", description: "A wide close-range slash. Dodge its warning arc or parry it with Lantern Guard." },
-    { id: "power_blast", name: "Power Blast", description: "Charged, aimed projectile with a clear wind-up." },
-    { id: "soul_salvo", name: "Soul Salvo", description: "Three-shot spread against a moving target." },
+    { id: "power_blast", name: "Power Blast", description: "A charged, aimed blast with a readable wind-up." },
+    { id: "soul_salvo", name: "Soul Salvo", description: "Three fast forecast bolts; dodge the marked fan." },
     { id: "meteor_storm", name: "Meteor Storm", description: "Marked impacts pressure the runner out of cover." },
     { id: "rift_mine", name: "Rift Mine", description: "Delayed trap placed to close a route." },
-    { id: "summon_wraiths", name: "Summon Wraiths", description: "Send tracking wraithlings to flush the runner." },
-    { id: "rift_rush", name: "Rift Rush", description: "Wind up, then charge through a clear lane." },
+    { id: "signal_tether", name: "Signal Tether", description: "Fire a lab-branded line that pulls and slows the runner. It deals no damage and cannot pass through cover." },
     { id: "shadow_dodge", name: "Shadow Dodge", description: "Sidestep an incoming burst or shot." },
     { id: "rift_aegis", name: "Rift Aegis", description: "After the anchors fall, block two hits during a brief shield window." },
   ],
@@ -688,6 +749,8 @@ const playerModeLabels = {
   phase_dash: "PHASE DASH",
   lantern_guard: "LANTERN GUARD",
   soul_burst: "SOUL BURST",
+  stasis_cast: "STASIS CAST",
+  mascot_charge: "MASCOT CHARGE",
 };
 let selectedMode = "human";
 
@@ -751,6 +814,8 @@ const ui = {
   echoTouch: document.querySelector("#echo-touch"),
   hookTouch: document.querySelector("#hook-touch"),
   guardTouch: document.querySelector("#guard-touch"),
+  stasisTouch: document.querySelector("#stasis-touch"),
+  mascotTouch: document.querySelector("#mascot-touch"),
   modeHuman: document.querySelector("#mode-human"),
   modeAuto: document.querySelector("#mode-auto"),
   decisionToggle: document.querySelector("#decision-toggle"),
@@ -1191,12 +1256,13 @@ function brandedSkillName(skill, skin) {
     lantern_guard: "Safety Kernel",
     soul_burst: "Codex Overload",
     rift_rend: "Vector Sweep",
-    power_blast: "Vector Lance",
     soul_salvo: "Parallel Salvo",
     meteor_storm: "Compute Rain",
     rift_mine: "Latent Trap",
-    summon_wraiths: "Codex Agents",
-    rift_rush: "Inference Rush",
+    signal_tether: "Codex Signal Latch",
+    power_blast: "Vector Lance",
+    stasis_cast: "Codex Stasis Beam",
+    mascot_charge: "Codex Relay Charge",
     shadow_dodge: "Low-Latency Step",
     rift_aegis: "Safety Shield",
   };
@@ -1207,12 +1273,13 @@ function brandedSkillName(skill, skin) {
     lantern_guard: "Constitution Guard",
     soul_burst: "Claude Ember Bloom",
     rift_rend: "Redline Rend",
-    power_blast: "Claude Ember Lance",
     soul_salvo: "Claude Scatterflare",
     meteor_storm: "Redline Meteor",
     rift_mine: "Tripwire Warden",
-    summon_wraiths: "Claude Wardens",
-    rift_rush: "Redline Charge",
+    signal_tether: "Claude Thread Latch",
+    power_blast: "Claude Ember Lance",
+    stasis_cast: "Claude Stillpoint",
+    mascot_charge: "Claude Relay Charge",
     shadow_dodge: "Constitution Sidestep",
     rift_aegis: "Constitution Aegis",
   };
@@ -1247,14 +1314,19 @@ function swapSkinRoles() {
   renderSkillCatalog();
 }
 
-function startMusic() {
-  if (!music.enabled) return;
+function startMusic(restart = false) {
+  if (!music.audio && !music.enabled) return;
   if (!music.audio) {
     music.audio = new Audio("/assets/frontier-soundtrack.mp3");
     music.audio.loop = true;
     music.audio.preload = "auto";
   }
+  if (restart) {
+    music.audio.pause();
+    music.audio.currentTime = 0;
+  }
   music.audio.volume = music.volume;
+  if (!music.enabled) return;
   void music.audio.play().catch(() => {});
 }
 
@@ -1279,9 +1351,9 @@ function toggleMusic() {
 
 function setMusicVolume(value) {
   music.volume = clamp(Number(value) / 100, 0, 1);
-  writePreference("jevil.musicVolume", String(Math.round(music.volume * 100)));
-  ui.settingsVolume.value = String(Math.round(music.volume * 100));
-  ui.settingsVolumeValue.value = Math.round(music.volume * 100) + "%";
+  writePreference("jevil.musicVolume", musicVolumePercent());
+  ui.settingsVolume.value = musicVolumePercent();
+  ui.settingsVolumeValue.value = musicVolumePercent() + "%";
   if (music.audio) music.audio.volume = music.volume;
 }
 
@@ -1304,8 +1376,8 @@ function openSettings() {
   game.player.fireHeld = false;
   ui.settingsOverlay.hidden = false;
   ui.settingsMusic.checked = music.enabled;
-  ui.settingsVolume.value = String(Math.round(music.volume * 100));
-  ui.settingsVolumeValue.value = Math.round(music.volume * 100) + "%";
+  ui.settingsVolume.value = musicVolumePercent();
+  ui.settingsVolumeValue.value = musicVolumePercent() + "%";
   ui.settingsDifficulty.value = selectedDifficulty;
   ui.settingsToggle.setAttribute("aria-label", "Resume game");
   ui.settingsPanel.focus({ preventScroll: true });
@@ -1401,6 +1473,8 @@ function makeGame() {
       speed: selectedMode === "auto" ? 254 : 244,
       facing: 1, health: selectedMode === "auto" ? 5 : 4, shotsFired: 0, hitsLanded: 0, fireCooldown: 0,
       aim: null, fireHeld: false, dashTimer: 0, dashCooldown: 0, dashVx: 0, dashVy: 0,
+      stasisCooldown: 0, stasisPhase: "", stasisTimer: 0, stasisTarget: null,
+      mascotChargeCooldown: 0, signalTetherReactionTimer: 0,
       pulseCooldown: 0, pulseTimer: 0, hurtTimer: 0, invulnerable: 0, snaredTimer: 0,
       echoCooldown: 0, hookCooldown: 0, guardCooldown: 0, guardTimer: 0, guardAdaptUntil: 0,
       afterimageTimer: 0, lastKnown: { x: selectedLevel.playerStart.x, y: selectedLevel.playerStart.y },
@@ -1415,11 +1489,13 @@ function makeGame() {
       rendCooldown: 0, rendPhase: "", rendTimer: 0, rendAngle: 0,
       blastCooldown: 0, blastPhase: "", blastTimer: 0, blastTarget: null,
       salvoCooldown: 0, salvoPhase: "", salvoTimer: 0, salvoTarget: null,
-      mineCooldown: 0, riftRushCooldown: 0, riftRushPhase: "", riftRushTimer: 0, riftRushTarget: null,
-      riftRushVx: 0, riftRushVy: 0, riftRushRemaining: 0,
+      signalCooldown: 0, signalPhase: "", signalTimer: 0, signalTarget: null,
+      mineCooldown: 0,
       shadowDodgeCooldown: 0, shadowDodgePhase: "", shadowDodgeTimer: 0, shadowDodgeTarget: null,
-      summonCooldown: 0, meteorCooldown: 0,
+      meteorCooldown: 0,
       riftAegisCooldown: 0, riftAegisTimer: 0, riftAegisCharges: 0,
+      slowTimer: 0, freezeReactionTimer: 0, ramReactionTimer: 0, ramKnockbackTimer: 0,
+      ramKnockbackVx: 0, ramKnockbackVy: 0, ramReactionFacing: "right",
       contactStrike: null,
       stuckTimer: 0, recoveryTarget: null, recoveryUntil: 0, recoveryAttempts: 0,
       parryRecoveryUntil: 0,
@@ -1430,9 +1506,10 @@ function makeGame() {
     },
     hazards: selectedLevel.hazards.map((hazard) => ({ ...hazard, hitCycle: { player: -1, jev: -1 } })),
     projectiles: [],
-    minions: [],
     meteors: [],
     meteorImpacts: [],
+    mascotCharge: null,
+    skillImpacts: [],
     history: [],
     actionTimeline: [],
     skillCallouts: [],
@@ -1635,15 +1712,11 @@ function renderSkillCatalog() {
     for (const skill of skillManual[owner]) {
       const item = document.createElement("li");
       item.className = "skill-card";
-      const cell = skillIconCells[skill.id];
       const icon = document.createElement("span");
       icon.className = "skill-icon";
       icon.dataset.owner = owner;
+      icon.dataset.skillId = skill.id;
       icon.setAttribute("aria-hidden", "true");
-      if (cell) {
-        icon.style.setProperty("--icon-x", (cell[0] * 100 / 3) + "%");
-        icon.style.setProperty("--icon-y", (cell[1] * 100 / 3) + "%");
-      }
       const copy = document.createElement("span");
       copy.className = "skill-copy";
       const name = document.createElement("strong");
@@ -1671,9 +1744,52 @@ function syncSkillCatalogIcons(root = document.querySelector("#skill-catalog")) 
   for (const icon of root.querySelectorAll(".skill-icon[data-owner]")) {
     const role = icon.dataset.owner === "runner" ? "runner" : "chaser";
     const skin = skinForRole(role);
-    icon.style.backgroundImage = `url("/assets/${skin.skillIconSheet}")`;
+    const skillId = icon.dataset.skillId;
+    if (role === "runner" && ["stasis_cast", "mascot_charge"].includes(skillId)) {
+      const cell = runnerSkillIconCell(skillId, skin);
+      icon.style.backgroundImage = "url(\"/assets/frontier-skill-icons-runner-pixel.png\")";
+      icon.style.backgroundSize = "200% 200%";
+      icon.style.backgroundPosition = `${cell[0] * 100}% ${cell[1] * 100}%`;
+    } else if (skillId === "signal_tether") {
+      const company = skin.company;
+      icon.style.backgroundImage = `url("/assets/frontier-skill-signal-icon-${company.toLowerCase()}.svg")`;
+      icon.style.backgroundSize = "contain";
+      icon.style.backgroundPosition = "center";
+    } else {
+      icon.style.backgroundImage = `url("/assets/${skin.skillIconSheet}")`;
+      icon.style.backgroundSize = "400% 400%";
+      const cell = skillIconCells[skillId];
+      icon.style.backgroundPosition = cell ? `${cell[0] * 100 / 3}% ${cell[1] * 100 / 3}%` : "center";
+    }
+    icon.classList.toggle("is-custom", skillId === "signal_tether" || (role === "runner" && ["stasis_cast", "mascot_charge"].includes(skillId)));
     icon.style.setProperty("--skill-accent", skin.accent);
   }
+}
+
+function runnerSkillIconCell(skillId, skin) {
+  if (skillId === "stasis_cast") return [1, 0];
+  if (skillId === "mascot_charge") return [skin.companion === "claude" ? 1 : 0, 1];
+  return skillIconCells[skillId] || [0, 0];
+}
+
+function drawSkillIcon(ctx, skillId, owner, skin, x, y, size) {
+  if (skillId === "signal_tether") {
+    const image = artwork.signalSkillIcons[skin.company];
+    if (!image?.complete || image.naturalWidth <= 0) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(image, x, y, size, size);
+    return;
+  }
+  const customRunnerIcon = owner === "runner" && ["stasis_cast", "mascot_charge"].includes(skillId);
+  const sheet = customRunnerIcon ? artwork.runnerSkillIcons : artwork.skillIcons[skin.id];
+  const cell = customRunnerIcon ? runnerSkillIconCell(skillId, skin) : skillIconCells[skillId];
+  if (!sheet?.complete || sheet.naturalWidth <= 0 || !cell) return;
+  const columns = customRunnerIcon ? 2 : 4;
+  const rows = customRunnerIcon ? 2 : 4;
+  const cellWidth = sheet.naturalWidth / columns;
+  const cellHeight = sheet.naturalHeight / rows;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sheet, cell[0] * cellWidth, cell[1] * cellHeight, cellWidth, cellHeight, x, y, size, size);
 }
 
 function setSelectedMode(mode) {
@@ -1711,14 +1827,14 @@ function startGame() {
   ui.settingsOverlay.hidden = true;
   ui.settingsToggle.setAttribute("aria-label", "Pause and open settings");
   ui.settingsMusic.checked = music.enabled;
-  ui.settingsVolume.value = String(Math.round(music.volume * 100));
-  ui.settingsVolumeValue.value = Math.round(music.volume * 100) + "%";
+  ui.settingsVolume.value = musicVolumePercent();
+  ui.settingsVolumeValue.value = musicVolumePercent() + "%";
   ui.settingsDifficulty.value = selectedDifficulty;
   decisionPanelCorner = "";
   lastDecisionPanelPlacementAt = -1;
   decisionPanelX = -1;
   decisionPanelY = -1;
-  startMusic();
+  startMusic(true);
   particles = [];
   screenShake = 0;
   keys.clear();
@@ -1759,6 +1875,7 @@ function setMode(mode, confidence, source = "system_one") {
   const requestedMode = mode;
   const gap = distance(combatTarget(), game.jev);
   const playerGap = distance(game.player, game.jev);
+  if (game.jev.blastPhase === "windup" && game.jev.stunned <= 0) mode = "power_blast";
   if (requestedMode !== "rift_aegis" && game.player.pulseTimer > 0 && playerGap < 174 &&
       !game.player.echo && game.jev.shadowDodgeCooldown <= 0) mode = "shadow_dodge";
   if (mode === "rift_rend" && (
@@ -1768,14 +1885,14 @@ function setMode(mode, confidence, source = "system_one") {
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
-  if (mode === "rift_mine" && (game.jev.mineCooldown > 0 || game.activeMine)) {
-    mode = "flank";
-  }
   if (mode === "power_blast" && (
-    game.jev.blastCooldown > 0 || gap < 174 || gap > 475 || game.jev.rendPhase || game.jev.stunned > 0 ||
-    !isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())
+    game.jev.blastCooldown > 0 || game.jev.blastPhase || playerGap < 174 || playerGap > 475 ||
+    game.jev.rendPhase || game.jev.stunned > 0 || !isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
+  }
+  if (mode === "rift_mine" && (game.jev.mineCooldown > 0 || game.activeMine)) {
+    mode = "flank";
   }
   if (mode === "soul_salvo" && (
     game.jev.salvoCooldown > 0 || game.jev.salvoPhase || game.jev.stunned > 0 || gap < 240 || gap > 820 ||
@@ -1783,11 +1900,13 @@ function setMode(mode, confidence, source = "system_one") {
   )) {
     mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
-  if (mode === "rift_rush" && (
-    game.jev.riftRushCooldown > 0 || gap < 235 || gap > 740 || game.jev.rendPhase ||
-    game.jev.blastPhase || game.jev.salvoPhase || !riftRushDestination()
+  if (mode === "signal_tether" && (
+    game.jev.signalCooldown > 0 || game.jev.signalPhase || game.jev.stunned > 0 ||
+    playerGap < SIGNAL_TETHER_MIN_RANGE || playerGap > SIGNAL_TETHER_MAX_RANGE ||
+    game.player.invulnerable > 0.12 || game.player.hurtTimer > 0.25 ||
+    !isSignalTetherLaneClear(game.jev, predictedSignalTetherTarget())
   )) {
-    mode = "intercept";
+    mode = Math.hypot(game.player.vx, game.player.vy) > 35 ? "intercept" : "pursue";
   }
   if (mode === "rift_aegis" && (
     game.anchors.some((anchor) => anchor.health > 0) || game.jev.riftAegisCooldown > 0 ||
@@ -1795,8 +1914,8 @@ function setMode(mode, confidence, source = "system_one") {
     (!isPlayerShotThreateningJev() && !(game.player.pulseTimer > 0 && playerGap < 174))
   )) mode = "flank";
   const parryRecoveryActions = [
-    "pursue", "intercept", "rift_rush", "ambush", "rift_rend", "power_blast",
-    "soul_salvo", "rift_mine", "summon_wraiths", "meteor_storm",
+    "pursue", "intercept", "ambush", "rift_rend", "power_blast",
+    "soul_salvo", "rift_mine", "signal_tether", "meteor_storm",
   ];
   if (game.elapsed < game.jev.parryRecoveryUntil && parryRecoveryActions.includes(mode)) {
     mode = "flank";
@@ -1807,7 +1926,6 @@ function setMode(mode, confidence, source = "system_one") {
   )) {
     mode = "flank";
   }
-  if (mode === "summon_wraiths" && (game.jev.summonCooldown > 0 || game.minions.length >= 3 || game.jev.stunned > 0)) mode = "intercept";
   if (mode === "meteor_storm" && (game.jev.meteorCooldown > 0 || game.meteors.length > 0 || game.jev.stunned > 0 || gap < 250 || gap > 920)) mode = "intercept";
   const changed = game.jev.mode !== mode;
   if (changed && mode === "flank") game.jev.flankSide *= -1;
@@ -1830,10 +1948,9 @@ function setMode(mode, confidence, source = "system_one") {
   if (mode === "rift_rend") startRiftRend();
   if (mode === "power_blast") startPowerBlast();
   if (mode === "rift_mine") startRiftMine();
-  if (mode === "rift_rush") startRiftRush();
   if (mode === "shadow_dodge") startShadowDodge();
   if (mode === "soul_salvo") startSoulSalvo();
-  if (mode === "summon_wraiths") summonWraiths();
+  if (mode === "signal_tether") startSignalTether();
   if (mode === "meteor_storm") startMeteorStorm();
 }
 
@@ -1980,7 +2097,7 @@ function renderChaserIntent() {
   if (!game) return;
   const planText = planLabels[game.jev.plan] || "PRESSING";
   const tacticText = modeLabels[game.jev.mode] || "HUNT";
-  const activeSkill = ["rift_rend", "power_blast", "rift_mine", "rift_rush", "shadow_dodge", "soul_salvo", "summon_wraiths", "meteor_storm", "rift_aegis"].includes(game.jev.mode);
+  const activeSkill = ["rift_rend", "power_blast", "rift_mine", "shadow_dodge", "soul_salvo", "signal_tether", "meteor_storm", "rift_aegis"].includes(game.jev.mode);
   ui.modeLabel.textContent = activeSkill ? tacticText : planText;
   ui.intent.setAttribute("aria-label", "Chaser is " + planText.toLowerCase() + "; current tactic: " + tacticText.toLowerCase());
 }
@@ -2052,7 +2169,9 @@ function announce(message, duration = 1450) {
 }
 
 function showSkillCallout(owner, abilityId) {
-  if (!game?.running || !skillIconCells[abilityId]) return;
+  const customSkill = abilityId === "signal_tether" ||
+    (owner === "runner" && ["stasis_cast", "mascot_charge"].includes(abilityId));
+  if (!game?.running || (!skillIconCells[abilityId] && !customSkill)) return;
   game.skillCallouts = game.skillCallouts.filter((entry) => entry.owner !== owner && game.elapsed - entry.at < 1.2);
   const role = owner === "runner" ? "runner" : "chaser";
   const skin = skinForRole(role);
@@ -2181,11 +2300,10 @@ function isJevAttackThreateningPlayer() {
   const player = game.player;
   const jev = game.jev;
   if (isJevRiftRendThreateningPlayer()) return true;
-  if (jev.riftRushPhase === "windup" && jev.riftRushTarget && distance(jev.riftRushTarget, player) < 165) return true;
-  if (jev.riftRushPhase === "charge" && distanceToSegment(player, jev, {
-    x: jev.x + jev.riftRushVx * 0.38,
-    y: jev.y + jev.riftRushVy * 0.38,
-  }) < player.radius + jev.radius + 28) return true;
+  if (jev.blastPhase === "windup" && jev.blastTarget &&
+      distanceToSegment(player, jev, jev.blastTarget) < player.radius + 36) return true;
+  if (jev.signalPhase === "windup" && jev.signalTarget &&
+      distanceToSegment(player, jev, jev.signalTarget) < player.radius + 30) return true;
   const incoming = game.projectiles.some((projectile) => {
     if (projectile.owner !== "jev") return false;
     const speedSquared = projectile.vx ** 2 + projectile.vy ** 2 || 1;
@@ -2198,10 +2316,8 @@ function isJevAttackThreateningPlayer() {
     return distance(predicted, player) < player.radius + projectile.radius + 24;
   });
   if (incoming) return true;
-  if (jev.blastPhase === "windup" && jev.blastTarget && distance(jev.blastTarget, player) < 115) return true;
   if (jev.salvoPhase === "windup" && jev.salvoTarget && distance(jev.salvoTarget, player) < 170) return true;
   if (game.meteors.some((meteor) => meteor.delay < 1.05 && distance(meteor, player) < meteor.radius + 76)) return true;
-  if (game.minions.some((wraith) => distance(wraith, player) < wraith.radius + player.radius + 96)) return true;
   return Boolean(game.activeMine && game.activeMine.warning <= 1.05 && distance(game.activeMine, player) < game.activeMine.radius + 82);
 }
 
@@ -2255,12 +2371,6 @@ function useSoulBurst() {
   const player = game.player;
   const jev = game.jev;
   const gap = distance(player, jev);
-  const clearedWraiths = game.minions.filter((wraith) => distance(player, wraith) <= 148);
-  if (clearedWraiths.length) {
-    game.minions = game.minions.filter((wraith) => !clearedWraiths.includes(wraith));
-    remember("wraith_burst");
-    for (const wraith of clearedWraiths) emitParticles(wraith.x, wraith.y, "#b8f4df", 12, 125);
-  }
   const nearbyAnchor = game.anchors
     .filter((anchor) => anchor.health > 0)
     .sort((left, right) => distance(left, player) - distance(right, player))[0];
@@ -2274,13 +2384,7 @@ function useSoulBurst() {
     if (jev.rendPhase === "windup") remember("rift_rend_interrupted");
     jev.rendPhase = "";
     jev.rendTimer = 0;
-    if (jev.blastPhase) remember("blast_canceled");
-    jev.blastPhase = "";
-    jev.blastTimer = 0;
-    jev.blastTarget = null;
-    jev.riftRushPhase = "";
-    jev.riftRushTimer = 0;
-    jev.riftRushTarget = null;
+    cancelPowerBlast("blast_canceled", 1.2);
     if (game.anchors.every((anchor) => anchor.health <= 0) && !absorbRiftAegisHit()) {
       jev.health = Math.max(0, jev.health - 1);
     }
@@ -2466,22 +2570,11 @@ function hitJev(projectile) {
   jev.health = Math.max(0, jev.health - 1);
   jev.hurtTimer = 0.18;
   game.player.hitsLanded += 1;
-  if (jev.blastPhase === "windup") {
-    jev.blastPhase = "";
-    jev.blastTimer = 0;
-    jev.blastTarget = null;
-    remember("blast_canceled");
-  }
+  if (jev.blastPhase === "windup") cancelPowerBlast("blast_canceled", 1.2);
   if (jev.rendPhase === "windup") {
     jev.rendPhase = "";
     jev.rendTimer = 0;
     remember("rift_rend_interrupted");
-  }
-  if (jev.riftRushPhase === "windup") {
-    jev.riftRushPhase = "";
-    jev.riftRushTimer = 0;
-    jev.riftRushTarget = null;
-    remember("rift_rush_canceled");
   }
   if (jev.shadowDodgePhase === "windup") {
     jev.shadowDodgePhase = "";
@@ -2676,21 +2769,13 @@ function terrainTravelCost(x, y, dx, dy, baseCost) {
   return baseCost * multiplier;
 }
 
-function predictedPowerBlastTarget() {
-  const player = combatTarget();
-  if (player !== game.player) return { x: player.x, y: player.y };
-  const origin = { x: game.jev.x, y: game.jev.y - 5 };
-  const flightTime = estimateInterceptTime(origin, player, POWER_BLAST_SPEED, POWER_BLAST_WINDUP, 1.8);
-  const target = predictPlayerPosition(POWER_BLAST_WINDUP + flightTime);
-  return target;
-}
-
-function predictedSoulSalvoTarget() {
+function predictedSoulSalvoTarget(windup = SOUL_SALVO_WINDUP) {
   const player = combatTarget();
   if (player !== game.player) return { x: player.x, y: player.y };
   const origin = { x: game.jev.x, y: game.jev.y - 6 };
-  const flightTime = estimateInterceptTime(origin, player, SOUL_SALVO_SPEED, SOUL_SALVO_WINDUP, 1.8);
-  return predictPlayerPosition(SOUL_SALVO_WINDUP + flightTime);
+  const remainingWindup = clamp(windup, 0, SOUL_SALVO_WINDUP);
+  const flightTime = estimateInterceptTime(origin, player, SOUL_SALVO_SPEED, remainingWindup, 1.8);
+  return predictPlayerPosition(remainingWindup + flightTime);
 }
 
 function predictPlayerPosition(duration, trackRealGhost = false) {
@@ -2829,15 +2914,20 @@ function isLaneClear(origin, target, radius) {
 }
 
 function isProjectileLaneClear(origin, target, radius) {
-  return !blocked(target.x, target.y, radius) && isLaneClear(origin, target, radius);
-}
-
-function isPowerBlastLaneClear(origin, target) {
-  return isProjectileLaneClear(origin, target, 14);
+  if (!isLaneClear(origin, target, radius)) return false;
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const length = Math.hypot(dx, dy);
+  const steps = Math.ceil(length / Math.max(4, radius * 0.45));
+  for (let step = 1; step < steps; step += 1) {
+    const progress = step / steps;
+    if (blocked(origin.x + dx * progress, origin.y + dy * progress, radius)) return false;
+  }
+  return true;
 }
 
 function isSoulSalvoLaneClear(origin, target) {
-  return isProjectileLaneClear(origin, target, 11);
+  return isProjectileLaneClear({ x: origin.x, y: origin.y - 6 }, target, 13);
 }
 
 function moveEntity(entity, dx, dy, radius) {
@@ -2933,51 +3023,396 @@ function fireRiftRend() {
   jev.vy = 0;
 }
 
+function predictedPowerBlastTarget(windup = POWER_BLAST_WINDUP) {
+  const target = combatTarget();
+  const origin = { x: game.jev.x, y: game.jev.y - 5 };
+  if (target !== game.player) return { x: target.x, y: target.y };
+  const flightTime = estimateInterceptTime(origin, target, POWER_BLAST_SPEED, windup, 1.8);
+  return predictPlayerPosition(windup + flightTime);
+}
+
+function isPowerBlastLaneClear(origin, target) {
+  return isProjectileLaneClear({ x: origin.x, y: origin.y - 5 }, target, 18);
+}
+
+function predictedSignalTetherTarget(windup = SIGNAL_TETHER_WINDUP) {
+  const origin = { x: game.jev.x, y: game.jev.y - 8 };
+  const flightTime = estimateInterceptTime(origin, game.player, SIGNAL_TETHER_SPEED, windup, 1.1);
+  return predictPlayerPosition(windup + flightTime, true);
+}
+
+function isSignalTetherLaneClear(origin, target) {
+  const gap = distance(origin, game.player);
+  return gap >= SIGNAL_TETHER_MIN_RANGE && gap <= SIGNAL_TETHER_MAX_RANGE &&
+    isProjectileLaneClear({ x: origin.x, y: origin.y - 8 }, target, 12);
+}
+
+function startSignalTether() {
+  const jev = game.jev;
+  const target = predictedSignalTetherTarget();
+  const gap = distance(jev, game.player);
+  if (jev.signalCooldown > 0 || jev.signalPhase || jev.stunned > 0 || jev.rendPhase ||
+      jev.blastPhase || jev.salvoPhase || jev.shadowDodgePhase ||
+      gap < SIGNAL_TETHER_MIN_RANGE || gap > SIGNAL_TETHER_MAX_RANGE ||
+      game.player.invulnerable > 0.12 || game.player.hurtTimer > 0.25 ||
+      !isSignalTetherLaneClear(jev, target)) return false;
+  jev.signalPhase = "windup";
+  jev.signalTimer = SIGNAL_TETHER_WINDUP;
+  jev.signalTarget = target;
+  jev.signalCooldown = SIGNAL_TETHER_COOLDOWN;
+  jev.path = [];
+  jev.vx = 0;
+  jev.vy = 0;
+  jev.facing = Math.sign(target.x - jev.x || jev.facing);
+  remember("signal_tether_windup");
+  emitParticles(jev.x, jev.y, skinForRole("chaser").accent, 12, 100, skinForRole("chaser"));
+  return true;
+}
+
+function cancelSignalTether() {
+  const jev = game.jev;
+  if (!jev.signalPhase) return;
+  jev.signalPhase = "";
+  jev.signalTimer = 0;
+  jev.signalTarget = null;
+  jev.signalCooldown = Math.min(jev.signalCooldown, 1.4);
+  remember("signal_tether_canceled");
+}
+
+function fireSignalTether() {
+  const jev = game.jev;
+  const target = predictedSignalTetherTarget(0);
+  const origin = { x: jev.x, y: jev.y - 8 };
+  if (!isSignalTetherLaneClear(jev, target)) {
+    cancelSignalTether();
+    queueJevDecision();
+    return;
+  }
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const reach = Math.min(SIGNAL_TETHER_MAX_RANGE + 40, length + game.player.radius + 24);
+  game.projectiles.push({
+    owner: "jev", kind: "signal_tether", skinId: skinForRole("chaser").id,
+    x: origin.x, y: origin.y, vx: dx / length * SIGNAL_TETHER_SPEED, vy: dy / length * SIGNAL_TETHER_SPEED,
+    radius: 12, life: reach / SIGNAL_TETHER_SPEED + 0.12, age: 0,
+    distanceTravelled: 0, maxDistance: reach,
+  });
+  jev.signalPhase = "";
+  jev.signalTimer = 0;
+  jev.signalTarget = null;
+  remember("signal_tether_fired");
+  showSkillCallout("jev", "signal_tether");
+  emitParticles(jev.x, jev.y, skinForRole("chaser").accent, 16, 135, skinForRole("chaser"));
+}
+
+function resolveSignalTetherHit(projectile) {
+  const player = game.player;
+  const skin = skinCatalog[projectile.skinId] || skinForRole("chaser");
+  if (player.guardTimer > 0) {
+    const length = Math.hypot(projectile.vx, projectile.vy) || 1;
+    damagePlayer("signal_tether_guard_blocked", projectile.vx / length, projectile.vy / length, 0, true);
+    remember("signal_tether_guard_blocked");
+    game.skillImpacts.push({ kind: "signal_tether", skinId: skin.id, x: player.x, y: player.y, at: game.elapsed, duration: 0.48 });
+    emitParticles(player.x, player.y, skin.accent, 16, 130, skin);
+    return;
+  }
+  if (player.invulnerable > 0 || player.hurtTimer > 0) {
+    remember("signal_tether_evaded");
+    game.skillImpacts.push({ kind: "signal_tether", skinId: skin.id, x: player.x, y: player.y, at: game.elapsed, duration: 0.34 });
+    emitParticles(player.x, player.y, skin.accent, 10, 95, skin);
+    return;
+  }
+  const gap = distance(player, game.jev);
+  const pullDistance = Math.min(SIGNAL_TETHER_PULL, Math.max(0, gap - player.radius - game.jev.radius - 8));
+  const steps = Math.ceil(pullDistance / 5);
+  const dx = (game.jev.x - player.x) / (gap || 1);
+  const dy = (game.jev.y - player.y) / (gap || 1);
+  for (let step = 0; step < steps; step += 1) {
+    const next = { x: player.x + dx * 5, y: player.y + dy * 5 };
+    if (blocked(next.x, next.y, player.radius) || !isLaneClear(player, next, player.radius)) break;
+    player.x = next.x;
+    player.y = next.y;
+  }
+  player.snaredTimer = Math.max(player.snaredTimer, SIGNAL_TETHER_SNARE);
+  player.signalTetherReactionTimer = 0.72;
+  remember("signal_tether_hit");
+  game.skillImpacts.push({ kind: "signal_tether", skinId: skin.id, x: player.x, y: player.y, at: game.elapsed, duration: 0.58 });
+  emitParticles(player.x, player.y, skin.accent, 22, 145, skin);
+  screenShake = Math.max(screenShake, 3.2);
+}
+
 function startPowerBlast() {
   const jev = game.jev;
-  const gap = distance(combatTarget(), jev);
-  if (jev.blastCooldown > 0 || jev.blastPhase || jev.rendPhase || jev.stunned > 0 || gap < 174 || gap > 475) return;
   const target = predictedPowerBlastTarget();
-  if (!isPowerBlastLaneClear(jev, target)) return;
+  const gap = distance(combatTarget(), jev);
+  if (jev.blastCooldown > 0 || jev.blastPhase || jev.rendPhase || jev.stunned > 0 ||
+      gap < 174 || gap > 475 || !isPowerBlastLaneClear(jev, target)) return;
   jev.blastTarget = target;
   jev.blastPhase = "windup";
-  if (Math.abs(target.x - jev.x) > 5) jev.facing = Math.sign(target.x - jev.x);
   jev.blastTimer = POWER_BLAST_WINDUP;
   jev.blastCooldown = 3.45;
+  jev.vx = 0;
+  jev.vy = 0;
+  jev.facing = Math.sign(target.x - jev.x || jev.facing);
+  remember("power_blast_windup");
   const skin = skinForRole("chaser");
   const skill = skillManual.jev.find((item) => item.id === "power_blast");
   announce(brandedSkillName(skill, skin) + " charging");
   emitParticles(jev.x, jev.y, skin.accent, 14, 110, skin);
 }
 
-function firePowerBlast() {
+function predictedStasisTarget(windup = 0) {
   const jev = game.jev;
-  if (!jev.blastTarget) return;
-  if (!isPowerBlastLaneClear(jev, jev.blastTarget)) {
-    jev.blastPhase = "";
-    jev.blastTarget = null;
-    jev.blastCooldown = Math.min(jev.blastCooldown, 1.2);
-    remember("blast_cover_blocked");
-    queueJevDecision();
+  const origin = { x: game.player.x, y: game.player.y - 6 };
+  const flightTime = estimateInterceptTime(origin, jev, RUNNER_STASIS_SPEED, windup, 1.3);
+  return {
+    x: clamp(jev.x + jev.vx * (windup + flightTime), 24, WORLD.width - 24),
+    y: clamp(jev.y + jev.vy * (windup + flightTime), 24, WORLD.height - 24),
+  };
+}
+
+function isStasisLaneClear(target = predictedStasisTarget()) {
+  const gap = distance(game.player, target);
+  return gap >= 1 && gap <= RUNNER_STASIS_RANGE &&
+    isProjectileLaneClear({ x: game.player.x, y: game.player.y - 6 }, target, 12);
+}
+
+function useStasisCast() {
+  const player = game?.player;
+  if (!game?.running || !player || player.stasisCooldown > 0 || player.stasisPhase ||
+      player.dashTimer > 0 || player.hookTarget || player.hurtTimer > 0.12 ||
+      player.guardTimer > 0 || distance(player, game.jev) < 175 || distance(player, game.jev) > RUNNER_STASIS_RANGE ||
+      !isStasisLaneClear()) return false;
+  player.stasisPhase = "charging";
+  player.stasisTimer = RUNNER_STASIS_WINDUP;
+  player.stasisTarget = predictedStasisTarget(RUNNER_STASIS_WINDUP);
+  player.stasisCooldown = RUNNER_STASIS_COOLDOWN;
+  player.fireHeld = false;
+  player.aiInput = { x: 0, y: 0 };
+  player.aiArrivalTarget = null;
+  player.vx = 0;
+  player.vy = 0;
+  remember("stasis_cast_started");
+  emitParticles(player.x, player.y - 10, skinForRole("runner").accent, 11, 92, skinForRole("runner"));
+  return true;
+}
+
+function cancelStasisCast() {
+  const player = game?.player;
+  if (!player?.stasisPhase) return;
+  player.stasisPhase = "";
+  player.stasisTimer = 0;
+  player.stasisTarget = null;
+  player.stasisCooldown = Math.max(player.stasisCooldown, 5.5);
+  remember("stasis_interrupted");
+}
+
+function fireStasisCast() {
+  const player = game.player;
+  const target = isStasisLaneClear(predictedStasisTarget())
+    ? predictedStasisTarget()
+    : player.stasisTarget;
+  player.stasisPhase = "";
+  player.stasisTimer = 0;
+  player.stasisTarget = null;
+  if (!target) {
+    remember("freeze_missed");
     return;
   }
+  const origin = { x: player.x, y: player.y - 6 };
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+  game.projectiles.push({
+    owner: "player", kind: "stasis", skinId: skinForRole("runner").id,
+    companion: companionForRole("runner"),
+    x: origin.x + dx / length * 20, y: origin.y + dy / length * 20,
+    vx: dx / length * RUNNER_STASIS_SPEED, vy: dy / length * RUNNER_STASIS_SPEED,
+    radius: 12, life: 1.1, age: 0, distanceTravelled: 0,
+    maxDistance: RUNNER_STASIS_RANGE,
+  });
+  remember("stasis_cast_fired");
+  showSkillCallout("runner", "stasis_cast");
+  const skin = skinForRole("runner");
+  emitParticles(player.x + dx / length * 18, player.y + dy / length * 18, skin.accent, 12, 120, skin);
+}
+
+function updateStasisCast(dt) {
+  const player = game.player;
+  if (player.stasisPhase !== "charging") return false;
+  if (player.hurtTimer > 0 || player.health <= 0) {
+    cancelStasisCast();
+    return false;
+  }
+  player.vx = 0;
+  player.vy = 0;
+  player.aiInput = { x: 0, y: 0 };
+  player.aiArrivalTarget = null;
+  const freshTarget = predictedStasisTarget(Math.max(0, player.stasisTimer));
+  if (isStasisLaneClear(freshTarget)) player.stasisTarget = freshTarget;
+  player.stasisTimer = Math.max(0, player.stasisTimer - dt);
+  if (player.stasisTimer <= 0) fireStasisCast();
+  return true;
+}
+
+function findMascotChargeHeading() {
+  const player = game.player;
+  const jev = game.jev;
+  const gap = distance(player, jev);
+  if (gap < 38 || gap > MASCOT_CHARGE_RANGE) return null;
+  const travelTime = Math.min(gap / MASCOT_CHARGE_SPEED, 0.88);
+  const predicted = {
+    x: clamp(jev.x + jev.vx * travelTime, 24, WORLD.width - 24),
+    y: clamp(jev.y + jev.vy * travelTime, 24, WORLD.height - 24),
+  };
+  const baseAngle = Math.atan2(predicted.y - player.y, predicted.x - player.x);
+  for (const offset of [0, -0.13, 0.13, -0.27, 0.27, -0.45, 0.45]) {
+    const angle = baseAngle + offset;
+    const margin = player.radius + 8;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const worldLimitX = cos > 0.001 ? (WORLD.width - margin - player.x) / cos
+      : cos < -0.001 ? (player.x - margin) / -cos : Infinity;
+    const worldLimitY = sin > 0.001 ? (WORLD.height - margin - player.y) / sin
+      : sin < -0.001 ? (player.y - margin) / -sin : Infinity;
+    const laneLength = Math.min(
+      MASCOT_CHARGE_RANGE,
+      distance(player, predicted) + jev.radius + 36,
+      worldLimitX,
+      worldLimitY,
+    );
+    const end = { x: player.x + Math.cos(angle) * laneLength, y: player.y + Math.sin(angle) * laneLength };
+    if (laneLength > 0 && isProjectileLaneClear(player, end, 12) &&
+        distanceToSegment(predicted, player, end) < jev.radius + 22) return { x: cos, y: sin };
+  }
+  return null;
+}
+
+function useMascotCharge() {
+  const player = game?.player;
+  if (!game?.running || !player || player.mascotChargeCooldown > 0 || game.mascotCharge) return false;
+  const heading = findMascotChargeHeading();
+  if (!heading) return false;
+  const companion = companionForRole("runner");
+  player.mascotChargeCooldown = MASCOT_CHARGE_COOLDOWN;
+  game.mascotCharge = {
+    x: player.x + heading.x * 24, y: player.y + heading.y * 24,
+    vx: heading.x * MASCOT_CHARGE_SPEED, vy: heading.y * MASCOT_CHARGE_SPEED,
+    direction: heading.x < -0.15 ? "left" : heading.x > 0.15 ? "right" : heading.y < 0 ? "up" : "down",
+    companion, skinId: skinForRole("runner").id, distanceTravelled: 0, age: 0,
+    radius: 12, active: true,
+  };
+  remember("mascot_charge_launched");
+  showSkillCallout("runner", "mascot_charge");
+  emitParticles(game.mascotCharge.x, game.mascotCharge.y, skinForRole("runner").accent, 10, 102, skinForRole("runner"));
+  return true;
+}
+
+function finishMascotCharge(result = "mascot_charge_missed") {
+  const charge = game.mascotCharge;
+  if (!charge) return;
+  charge.active = false;
+  if (result) remember(result);
+  game.skillImpacts.push({
+    kind: "mascot", companion: charge.companion, skinId: charge.skinId,
+    x: charge.x, y: charge.y, direction: charge.direction, hit: result === "mascot_charge_hit", at: game.elapsed,
+    duration: result === "mascot_charge_hit" ? 0.68 : 0.28,
+  });
+  game.mascotCharge = null;
+}
+
+function updateMascotCharge(dt) {
+  const charge = game.mascotCharge;
+  if (!charge) return;
+  const travel = Math.min(MASCOT_CHARGE_SPEED * dt, MASCOT_CHARGE_RANGE - charge.distanceTravelled);
+  const steps = Math.max(1, Math.ceil(travel / 5));
+  for (let index = 0; index < steps; index += 1) {
+    const step = travel / steps;
+    const nextX = charge.x + charge.vx / MASCOT_CHARGE_SPEED * step;
+    const nextY = charge.y + charge.vy / MASCOT_CHARGE_SPEED * step;
+    if (blocked(nextX, nextY, charge.radius)) {
+      finishMascotCharge("mascot_charge_missed");
+      return;
+    }
+    charge.x = nextX;
+    charge.y = nextY;
+    charge.distanceTravelled += step;
+    if (distance(charge, game.jev) <= charge.radius + game.jev.radius) {
+      const length = Math.hypot(charge.vx, charge.vy) || 1;
+      if (absorbRiftAegisHit("mascot_charge_shielded")) {
+        finishMascotCharge(null);
+        return;
+      }
+      game.jev.ramKnockbackVx = charge.vx / length * MASCOT_CHARGE_SHOVE;
+      game.jev.ramKnockbackVy = charge.vy / length * MASCOT_CHARGE_SHOVE;
+      game.jev.ramReactionFacing = Math.abs(charge.vx) > 0.001
+        ? charge.vx < 0 ? "left" : "right"
+        : "right";
+      game.jev.ramKnockbackTimer = MASCOT_CHARGE_KNOCKBACK;
+      game.jev.slowTimer = Math.max(game.jev.slowTimer, MASCOT_CHARGE_SLOW);
+      game.jev.ramReactionTimer = Math.max(game.jev.ramReactionTimer, MASCOT_CHARGE_REACTION);
+      const skin = skinForRole("runner");
+      emitParticles(game.jev.x, game.jev.y, skin.accent, 22, 168, skin);
+      screenShake = Math.max(screenShake, 3.6);
+      finishMascotCharge("mascot_charge_hit");
+      queueJevDecision();
+      return;
+    }
+  }
+  charge.age += dt;
+  if (charge.age > 1.02 || charge.distanceTravelled >= MASCOT_CHARGE_RANGE - 0.5) finishMascotCharge();
+}
+
+function applyStasisHit() {
+  const jev = game.jev;
+  if (absorbRiftAegisHit("freeze_shield_blocked")) {
+    game.skillImpacts.push({ kind: "stasis", skinId: skinForRole("runner").id, x: jev.x, y: jev.y, at: game.elapsed, duration: 0.42 });
+    emitParticles(jev.x, jev.y, "#c3f4ff", 15, 122, skinForRole("runner"));
+    return;
+  }
+  jev.stunned = Math.max(jev.stunned, RUNNER_STASIS_DURATION);
+  jev.freezeReactionTimer = Math.max(jev.freezeReactionTimer, RUNNER_STASIS_DURATION);
+  jev.vx = 0;
+  jev.vy = 0;
+  cancelPowerBlast("blast_canceled", 1.2);
+  game.skillImpacts.push({ kind: "stasis", skinId: skinForRole("runner").id, x: jev.x, y: jev.y, at: game.elapsed, duration: 0.55 });
+  emitParticles(jev.x, jev.y, "#c3f4ff", 24, 155, skinForRole("runner"));
+  remember("freeze_hit");
+  queueJevDecision();
+}
+
+function cancelPowerBlast(eventName = "blast_canceled", cooldown = 1.2) {
+  const jev = game.jev;
+  if (!jev.blastPhase) return;
+  jev.blastPhase = "";
+  jev.blastTimer = 0;
+  jev.blastTarget = null;
+  jev.blastCooldown = Math.min(jev.blastCooldown, cooldown);
+  remember(eventName);
+}
+
+function firePowerBlast() {
+  const jev = game.jev;
+  if (!jev.blastTarget) return cancelPowerBlast("blast_cover_blocked");
+  if (!isPowerBlastLaneClear(jev, jev.blastTarget)) return cancelPowerBlast("blast_cover_blocked");
   const dx = jev.blastTarget.x - jev.x;
   const dy = jev.blastTarget.y - jev.y;
   const length = Math.hypot(dx, dy) || 1;
   game.projectiles.push({
-    owner: "jev", kind: "blast",
-    skinId: skinForRole("chaser").id,
-    x: jev.x, y: jev.y - 5,
-    vx: dx / length * POWER_BLAST_SPEED, vy: dy / length * POWER_BLAST_SPEED,
+    owner: "jev", kind: "blast", skinId: skinForRole("chaser").id,
+    x: jev.x, y: jev.y - 5, vx: dx / length * POWER_BLAST_SPEED, vy: dy / length * POWER_BLAST_SPEED,
     radius: 18, life: 2.2, age: 0, distanceTravelled: 0,
     maxDistance: length + (combatTarget().radius || game.player.radius) + 14,
   });
   jev.facing = Math.sign(dx || jev.facing);
   jev.blastPhase = "";
+  jev.blastTimer = 0;
   jev.blastTarget = null;
   remember("power_blast_fired");
   showSkillCallout("jev", "power_blast");
-  emitParticles(jev.x, jev.y, skinForRole("chaser").accent, 12, 125, skinForRole("chaser"));
+  const skin = skinForRole("chaser");
+  emitParticles(jev.x, jev.y, skin.accent, 12, 125, skin);
 }
 
 function startSoulSalvo() {
@@ -3013,7 +3448,7 @@ function fireSoulSalvo() {
       x: origin.x + Math.cos(shotAngle) * reach,
       y: origin.y + Math.sin(shotAngle) * reach,
     };
-    if (!isProjectileLaneClear(origin, endpoint, 11)) {
+    if (!isProjectileLaneClear(origin, endpoint, 13)) {
       remember("salvo_cover_blocked");
       continue;
     }
@@ -3022,7 +3457,7 @@ function fireSoulSalvo() {
       vx: Math.cos(shotAngle) * SOUL_SALVO_SPEED,
       vy: Math.sin(shotAngle) * SOUL_SALVO_SPEED,
       radius: 13, life: 1.9, age: 0, distanceTravelled: 0,
-      maxDistance: reach + (combatTarget().radius || game.player.radius) + 11,
+      maxDistance: reach,
     });
     fired += 1;
   }
@@ -3068,37 +3503,6 @@ function startRiftMine() {
   remember("mine_placed");
   showSkillCallout("jev", "rift_mine");
   emitParticles(point.x, point.y, "#cb8ff2", 13, 90);
-}
-
-function summonWraiths() {
-  const jev = game.jev;
-  if (jev.summonCooldown > 0 || game.minions.length >= 3 || jev.stunned > 0) return;
-  const towardPlayer = Math.atan2(game.player.y - jev.y, game.player.x - jev.x);
-  const newWraiths = [];
-  for (const [index, offset] of [-0.7, 0, 0.7].entries()) {
-    const angle = towardPlayer + offset + Math.PI;
-    const candidate = [58, 86, 118].map((radius) => ({
-      x: clamp(jev.x + Math.cos(angle) * radius, 40, WORLD.width - 40),
-      y: clamp(jev.y + Math.sin(angle) * radius, 40, WORLD.height - 40),
-    })).find((point) => !blocked(point.x, point.y, 12));
-    if (!candidate) continue;
-    newWraiths.push({
-      ...candidate,
-      vx: 0,
-      vy: 0,
-      radius: 12,
-      life: 9.5,
-      nextPathAt: 0,
-      path: [],
-      phase: game.elapsed * 1.3 + index * 2.1,
-    });
-  }
-  if (!newWraiths.length) return;
-  game.minions.push(...newWraiths.slice(0, 3 - game.minions.length));
-  jev.summonCooldown = 14;
-  remember("wraiths_summoned");
-  showSkillCallout("jev", "summon_wraiths");
-  for (const wraith of newWraiths) emitParticles(wraith.x, wraith.y, "#ca83fa", 10, 88);
 }
 
 function startMeteorStorm() {
@@ -3152,45 +3556,6 @@ function updateMeteors(dt) {
   game.meteorImpacts = game.meteorImpacts.filter((impact) => impact.life > 0);
 }
 
-function updateWraiths(dt) {
-  const remaining = [];
-  for (const wraith of game.minions) {
-    wraith.life -= dt;
-    if (wraith.life <= 0) continue;
-    const target = game.player;
-    if (game.elapsed >= wraith.nextPathAt || !wraith.path.length) {
-      wraith.path = findPath(wraith, predictPlayer(0.16));
-      wraith.nextPathAt = game.elapsed + 0.38;
-    }
-    while (wraith.path.length && distance(wraith, wraith.path[0]) < 14) wraith.path.shift();
-    const waypoint = wraith.path[0] || target;
-    const dx = waypoint.x - wraith.x;
-    const dy = waypoint.y - wraith.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const beforeX = wraith.x;
-    const beforeY = wraith.y;
-    const speed = 232 + Math.sin(game.elapsed * 8 + wraith.phase) * 18;
-    wraith.vx = dx / length * speed;
-    wraith.vy = dy / length * speed;
-    moveEntity(wraith, wraith.vx * dt, wraith.vy * dt, wraith.radius);
-    if (distance(wraith, target) <= wraith.radius + target.radius + 5) {
-      if (target.dashTimer > 0) {
-        remember("wraith_dash");
-      } else if (target.guardTimer > 0) {
-        target.guardTimer = 0;
-        remember("wraith_burst");
-      } else {
-        damagePlayer("wraith_hit", Math.sign(target.x - wraith.x), Math.sign(target.y - wraith.y));
-      }
-      emitParticles(wraith.x, wraith.y, "#c993f1", 13, 110);
-      continue;
-    }
-    if (Math.hypot(wraith.x - beforeX, wraith.y - beforeY) > 0.2) wraith.phase += dt * 3;
-    remaining.push(wraith);
-  }
-  game.minions = remaining;
-}
-
 function updateRiftMine(dt) {
   const mine = game.activeMine;
   if (!mine) return;
@@ -3224,61 +3589,6 @@ function predictPlayer(seconds) {
     x: clamp(game.player.x + game.player.vx * seconds, 38, WORLD.width - 38),
     y: clamp(game.player.y + game.player.vy * seconds, 38, WORLD.height - 38),
   };
-}
-
-function startRiftRush() {
-  const jev = game.jev;
-  const gap = distance(combatTarget(), jev);
-  const destination = riftRushDestination();
-  if (jev.riftRushCooldown > 0 || gap < 235 || gap > 740 || jev.rendPhase || jev.blastPhase || !destination) return;
-  jev.riftRushTarget = destination;
-  const dx = destination.x - jev.x;
-  const dy = destination.y - jev.y;
-  const length = Math.hypot(dx, dy) || 1;
-  jev.riftRushVx = dx / length * RIFT_RUSH_SPEED;
-  jev.riftRushVy = dy / length * RIFT_RUSH_SPEED;
-  jev.riftRushRemaining = length;
-  jev.riftRushPhase = "windup";
-  jev.riftRushTimer = RIFT_RUSH_WINDUP;
-  jev.riftRushCooldown = RIFT_RUSH_COOLDOWN;
-  jev.path = [];
-  remember("rift_rush_windup");
-  showSkillCallout("jev", "rift_rush");
-  emitParticles(jev.x, jev.y, "#ff9779", 18, 125);
-}
-
-function completeRiftRush() {
-  const jev = game.jev;
-  if (!jev.riftRushTarget || !isLaneClear(jev, jev.riftRushTarget, jev.radius)) {
-    jev.riftRushPhase = "";
-    jev.riftRushTarget = null;
-    remember("rift_rush_canceled");
-    return;
-  }
-  jev.riftRushPhase = "charge";
-  jev.facing = Math.sign(jev.riftRushVx || jev.facing);
-  emitParticles(jev.x, jev.y, "#ffb17f", 20, 180);
-}
-
-function riftRushDestination() {
-  if (!game?.jev || !game?.player) return null;
-  const target = combatTarget();
-  const gap = distance(target, game.jev);
-  if (gap < 235 || gap > 740) return null;
-  const aim = target === game.player
-    ? predictPlayer(clamp(gap / RIFT_RUSH_SPEED * 0.42, 0.16, 0.38))
-    : { x: target.x, y: target.y };
-  const dx = aim.x - game.jev.x;
-  const dy = aim.y - game.jev.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const travel = Math.min(RIFT_RUSH_MAX_TRAVEL, Math.max(0, length - 118));
-  if (travel < 145) return null;
-  const destination = {
-    x: clamp(game.jev.x + dx / length * travel, 38, WORLD.width - 38),
-    y: clamp(game.jev.y + dy / length * travel, 38, WORLD.height - 38),
-  };
-  if (blocked(destination.x, destination.y, game.jev.radius) || !isLaneClear(game.jev, destination, game.jev.radius)) return null;
-  return destination;
 }
 
 function startRiftAegis() {
@@ -3458,7 +3768,7 @@ function strategicTarget() {
 }
 
 function jevTarget() {
-  const urgentModes = ["rift_mine", "rift_rush", "shadow_dodge", "summon_wraiths", "meteor_storm"];
+  const urgentModes = ["rift_mine", "power_blast", "shadow_dodge", "signal_tether", "meteor_storm"];
   if (urgentModes.includes(game.jev.mode)) return tacticTarget();
   const tactical = tacticTarget();
   const strategic = strategicTarget();
@@ -3784,9 +4094,12 @@ function updateJev(dt) {
   jev.rendCooldown = Math.max(0, jev.rendCooldown - dt * cooldownScale);
   jev.blastCooldown = Math.max(0, jev.blastCooldown - dt * cooldownScale);
   jev.salvoCooldown = Math.max(0, jev.salvoCooldown - dt * cooldownScale);
+  jev.signalCooldown = Math.max(0, jev.signalCooldown - dt * cooldownScale);
   jev.mineCooldown = Math.max(0, jev.mineCooldown - dt * cooldownScale);
-  jev.riftRushCooldown = Math.max(0, jev.riftRushCooldown - dt * cooldownScale);
   jev.riftAegisCooldown = Math.max(0, jev.riftAegisCooldown - dt * cooldownScale);
+  jev.slowTimer = Math.max(0, jev.slowTimer - dt);
+  jev.freezeReactionTimer = Math.max(0, jev.freezeReactionTimer - dt);
+  jev.ramReactionTimer = Math.max(0, jev.ramReactionTimer - dt);
   if (jev.riftAegisTimer > 0) {
     jev.riftAegisTimer = Math.max(0, jev.riftAegisTimer - dt);
     if (jev.riftAegisTimer === 0 && jev.riftAegisCharges > 0) {
@@ -3795,7 +4108,6 @@ function updateJev(dt) {
     }
   }
   jev.shadowDodgeCooldown = Math.max(0, jev.shadowDodgeCooldown - dt * cooldownScale);
-  jev.summonCooldown = Math.max(0, jev.summonCooldown - dt * cooldownScale);
   jev.meteorCooldown = Math.max(0, jev.meteorCooldown - dt * cooldownScale);
   if (jev.recoverTimer > 0) jev.recoverTimer = Math.max(0, jev.recoverTimer - dt);
   if (jev.stunned > 0) {
@@ -3803,16 +4115,11 @@ function updateJev(dt) {
     if (jev.rendPhase === "windup") remember("rift_rend_interrupted");
     jev.rendPhase = "";
     jev.rendTimer = 0;
-    jev.riftRushPhase = "";
-    jev.riftRushTimer = 0;
-    jev.riftRushTarget = null;
-    if (jev.blastPhase) remember("blast_canceled");
-    jev.blastPhase = "";
-    jev.blastTimer = 0;
-    jev.blastTarget = null;
+    cancelPowerBlast("blast_canceled", 1.2);
     jev.salvoPhase = "";
     jev.salvoTimer = 0;
     jev.salvoTarget = null;
+    cancelSignalTether();
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
     return;
@@ -3833,34 +4140,19 @@ function updateJev(dt) {
     jev.vy *= Math.pow(0.04, dt);
     return;
   }
-  if (jev.riftRushPhase === "charge") {
+  if (jev.ramKnockbackTimer > 0) {
     jev.stuckTimer = 0;
-    const requestedStep = Math.min(RIFT_RUSH_SPEED * dt, jev.riftRushRemaining);
     const beforeX = jev.x;
     const beforeY = jev.y;
-    moveEntity(jev, jev.riftRushVx / RIFT_RUSH_SPEED * requestedStep, jev.riftRushVy / RIFT_RUSH_SPEED * requestedStep, jev.radius);
-    const travelled = Math.hypot(jev.x - beforeX, jev.y - beforeY);
-    jev.riftRushRemaining = Math.max(0, jev.riftRushRemaining - travelled);
-    jev.vx = jev.riftRushVx;
-    jev.vy = jev.riftRushVy;
-    if (travelled < requestedStep * 0.42 || jev.riftRushRemaining <= 1) {
-      jev.riftRushPhase = "";
-      jev.riftRushTarget = null;
-      jev.riftRushRemaining = 0;
-      jev.vx = 0;
-      jev.vy = 0;
-      remember("rift_rush_used");
-      emitParticles(jev.x, jev.y, "#ffb17f", 16, 130);
-      queueJevDecision();
+    const knockbackProgress = clamp(jev.ramKnockbackTimer / MASCOT_CHARGE_KNOCKBACK, 0, 1);
+    moveEntity(jev, jev.ramKnockbackVx * knockbackProgress * dt, jev.ramKnockbackVy * knockbackProgress * dt, jev.radius);
+    jev.ramKnockbackTimer = Math.max(0, jev.ramKnockbackTimer - dt);
+    jev.vx = dt > 0 ? (jev.x - beforeX) / dt : 0;
+    jev.vy = dt > 0 ? (jev.y - beforeY) / dt : 0;
+    if (jev.ramKnockbackTimer <= 0) {
+      jev.ramKnockbackVx = 0;
+      jev.ramKnockbackVy = 0;
     }
-    return;
-  }
-  if (jev.riftRushPhase === "windup") {
-    jev.stuckTimer = 0;
-    jev.riftRushTimer -= dt;
-    jev.vx = 0;
-    jev.vy = 0;
-    if (jev.riftRushTimer <= 0) completeRiftRush();
     return;
   }
   if (jev.shadowDodgePhase === "windup") {
@@ -3871,13 +4163,30 @@ function updateJev(dt) {
     if (jev.shadowDodgeTimer <= 0) completeShadowDodge();
     return;
   }
+  if (jev.signalPhase === "windup") {
+    jev.stuckTimer = 0;
+    jev.signalTimer -= dt;
+    jev.vx *= Math.pow(0.04, dt);
+    jev.vy *= Math.pow(0.04, dt);
+    const predictedTarget = predictedSignalTetherTarget(Math.max(0, jev.signalTimer));
+    if (isSignalTetherLaneClear(jev, predictedTarget)) jev.signalTarget = predictedTarget;
+    else {
+      cancelSignalTether();
+      queueJevDecision();
+      return;
+    }
+    if (jev.signalTimer <= 0) fireSignalTether();
+    return;
+  }
   if (jev.salvoPhase === "windup") {
     jev.stuckTimer = 0;
     jev.salvoTimer -= dt;
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
     const target = combatTarget();
-    jev.salvoTarget = target === game.player ? predictedSoulSalvoTarget() : { x: target.x, y: target.y };
+    jev.salvoTarget = target === game.player
+      ? predictedSoulSalvoTarget(Math.max(0, jev.salvoTimer))
+      : { x: target.x, y: target.y };
     if (jev.salvoTimer <= 0) fireSoulSalvo();
     return;
   }
@@ -3886,13 +4195,10 @@ function updateJev(dt) {
     jev.blastTimer -= dt;
     jev.vx *= Math.pow(0.04, dt);
     jev.vy *= Math.pow(0.04, dt);
-    const predictedTarget = predictedPowerBlastTarget();
+    const predictedTarget = predictedPowerBlastTarget(Math.max(0, jev.blastTimer));
     if (isPowerBlastLaneClear(jev, predictedTarget)) jev.blastTarget = predictedTarget;
     else if (!jev.blastTarget || !isPowerBlastLaneClear(jev, jev.blastTarget)) {
-      jev.blastPhase = "";
-      jev.blastTarget = null;
-      jev.blastCooldown = Math.min(jev.blastCooldown, 1.2);
-      remember("blast_cover_blocked");
+      cancelPowerBlast("blast_cover_blocked");
       queueJevDecision();
       return;
     }
@@ -3938,14 +4244,14 @@ function updateJev(dt) {
     ambush: 270,
     rift_rend: 282,
     rift_mine: 296,
-    rift_rush: 298,
     shadow_dodge: 340,
-    summon_wraiths: 310,
+    signal_tether: 304,
     meteor_storm: 316,
   };
   const terrain = environmentEffects(jev);
   const autoPressure = game.mode === "auto" ? 1.05 : 1;
-  const speed = (speeds[jev.mode] || speeds.pursue) * terrain.speed * autoPressure * difficulty.speed * (game.enraged ? 1.2 : 1);
+  const slowScale = jev.slowTimer > 0 ? 0.58 : 1;
+  const speed = (speeds[jev.mode] || speeds.pursue) * terrain.speed * slowScale * autoPressure * difficulty.speed * (game.enraged ? 1.2 : 1);
   jev.vx = dx * speed + terrain.flowX;
   jev.vy = dy * speed + terrain.flowY;
   jev.facing = Math.sign(dx || jev.facing);
@@ -3990,6 +4296,9 @@ function updatePlayer(dt) {
   player.echoCooldown = Math.max(0, player.echoCooldown - dt);
   player.hookCooldown = Math.max(0, player.hookCooldown - dt);
   player.guardCooldown = Math.max(0, player.guardCooldown - dt);
+  player.stasisCooldown = Math.max(0, player.stasisCooldown - dt);
+  player.mascotChargeCooldown = Math.max(0, player.mascotChargeCooldown - dt);
+  player.signalTetherReactionTimer = Math.max(0, player.signalTetherReactionTimer - dt);
   player.guardTimer = Math.max(0, player.guardTimer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
   player.snaredTimer = Math.max(0, player.snaredTimer - dt);
@@ -4004,7 +4313,8 @@ function updatePlayer(dt) {
     player.hookTarget.life -= dt;
     if (player.hookTarget.life <= 0) player.hookTarget = null;
   }
-  if (game.mode === "auto") updateAIPlayer(dt);
+  if (game.mode === "auto" && !player.stasisPhase) updateAIPlayer(dt);
+  if (updateStasisCast(dt)) return;
   const input = activeInput();
   if (player.dashTimer > 0) {
     player.vx = player.dashVx * 740;
@@ -4207,7 +4517,6 @@ function aiEvadePoint() {
   const areaThreats = [
     ...(game.activeMine ? [{ ...game.activeMine, radius: game.activeMine.radius + player.radius + 34 }] : []),
     ...game.meteors.filter((meteor) => meteor.delay < 1.5).map((meteor) => ({ ...meteor, radius: meteor.radius + player.radius + 34 })),
-    ...game.minions.filter((wraith) => distance(wraith, player) < 210).map((wraith) => ({ ...wraith, radius: wraith.radius + player.radius + 34 })),
   ];
   const candidates = [];
   const candidateKeys = new Set();
@@ -4292,8 +4601,6 @@ function updateAIPlayer(dt) {
     distance(game.activeMine, player) < game.activeMine.radius + player.radius + 40
   ) || game.meteors.some((meteor) =>
     meteor.delay <= 0.28 && distance(meteor, player) < meteor.radius + player.radius + 34
-  ) || game.minions.some((wraith) =>
-    distance(wraith, player) < wraith.radius + player.radius + 45
   );
 
   const projectileThreat = game.projectiles.some((projectile) => projectile.owner === "jev" &&
@@ -4304,7 +4611,7 @@ function updateAIPlayer(dt) {
   const echoThreat = projectileThreat ||
     (game.jev.blastPhase === "windup" && jevGap < 610) ||
     (game.jev.salvoPhase === "windup" && jevGap < 610) ||
-    game.minions.some((wraith) => distance(wraith, player) < 190);
+    game.jev.signalPhase === "windup" && game.jev.signalTarget && distance(game.jev.signalTarget, player) < 190;
   const directBurstCounter = jevGap < 138 && (
     rendThreat || (threatened && player.guardCooldown > 0) || game.jev.stunned > 0
   );
@@ -4357,6 +4664,13 @@ function updateAIPlayer(dt) {
     }
   } else if (contactRisk && !["lantern_guard", "mirror_echo", "phase_dash"].includes(player.aiTactic)) {
     recordGhostActionOverride("evade_warning");
+  }
+
+  if (!usedDefense && !immediateDanger && tactic === "mascot_charge" && useMascotCharge()) {
+    recordGhostActionOverride("mascot_charge");
+  } else if (!usedDefense && !immediateDanger && tactic === "stasis_cast" &&
+      jevGap > 310 && (contactSeconds === null || contactSeconds > 1.7) && useStasisCast()) {
+    recordGhostActionOverride("stasis_cast");
   }
 
   const anchorApproach = player.aiObjectivePosition || objective;
@@ -4451,6 +4765,7 @@ function checkContact() {
 
 function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, canParry = true) {
   const player = game.player;
+  if (player.stasisPhase) cancelStasisCast();
   if (canParry && player.guardTimer > 0 && event !== "lava_hit") {
     player.guardTimer = 0;
     player.guardCooldown = 2.6;
@@ -4461,9 +4776,7 @@ function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, 
     game.jev.mode = "flank";
     game.jev.path = [];
     game.jev.nextPathAt = game.elapsed;
-    game.jev.riftRushPhase = "";
-    game.jev.riftRushTimer = 0;
-    game.jev.riftRushTarget = null;
+    cancelPowerBlast("blast_canceled", 1.2);
     game.jev.vx = 0;
     game.jev.vy = 0;
     remember("lantern_parry");
@@ -4485,12 +4798,10 @@ function damagePlayer(event, knockbackX, knockbackY, amount = 1, quiet = false, 
     ? player.health > 0 ? "Rift mine detonated" : "The chaser caught you"
     : event === "salvo_hit"
       ? player.health > 0 ? "Soul salvo hit" : "The chaser caught you"
-      : event === "blast_hit"
-        ? player.health > 0 ? "Blast hit" : "The chaser caught you"
-        : event === "rift_rend_hit"
-          ? player.health > 0 ? "Rift Rend struck" : "Rift Rend caught you"
-      : player.health > 0 ? "The chaser caught you" : "The chaser caught you");
-  const brandedAttack = ["blast_hit", "salvo_hit"].includes(event);
+      : event === "rift_rend_hit"
+        ? player.health > 0 ? "Rift Rend struck" : "Rift Rend caught you"
+        : player.health > 0 ? "The chaser caught you" : "The chaser caught you");
+  const brandedAttack = event === "salvo_hit";
   const impactSkin = brandedAttack ? skinForRole("chaser") : null;
   emitParticles(player.x, player.y, impactSkin?.accent || "#ff806d", 20, 170, impactSkin);
   screenShake = Math.max(screenShake, 8);
@@ -4510,7 +4821,10 @@ function updateProjectiles(dt) {
       const stepDistance = distanceThisFrame / steps;
       if (projectile.maxDistance !== undefined &&
           (projectile.distanceTravelled || 0) + stepDistance > projectile.maxDistance) {
-        remember(projectile.kind === "salvo" ? "salvo_missed" : "blast_missed");
+        remember(projectile.kind === "stasis" ? "freeze_missed"
+          : projectile.kind === "blast" ? "blast_missed"
+            : projectile.kind === "salvo" ? "salvo_missed"
+              : projectile.kind === "signal_tether" ? "signal_tether_missed" : "shot_missed");
         consumed = true;
         break;
       }
@@ -4518,7 +4832,7 @@ function updateProjectiles(dt) {
       projectile.x += projectile.vx * dt / steps;
       projectile.y += projectile.vy * dt / steps;
       const anchor = projectile.owner === "player"
-        ? game.anchors.find((item) => item.health > 0 && distance(projectile, item) <= projectile.radius + 31)
+        ? projectile.kind === "stasis" ? null : game.anchors.find((item) => item.health > 0 && distance(projectile, item) <= projectile.radius + 31)
         : null;
       const mirrorClone = projectile.owner === "jev"
         ? game.player.clones.find((clone) => distance(projectile, clone) <= projectile.radius + clone.radius)
@@ -4527,8 +4841,9 @@ function updateProjectiles(dt) {
         hitAnchor(anchor, skinCatalog[projectile.skinId] || skinForRole("runner"));
         consumed = true;
       } else if (mirrorClone) {
-        if (projectile.owner === "jev" && ["blast", "salvo"].includes(projectile.kind)) {
-          remember(projectile.kind === "salvo" ? "salvo_decoy_blocked" : "blast_decoy_blocked");
+        if (projectile.owner === "jev" && ["salvo", "blast", "signal_tether"].includes(projectile.kind)) {
+          remember(projectile.kind === "blast" ? "blast_decoy_blocked"
+            : projectile.kind === "salvo" ? "salvo_decoy_blocked" : "signal_tether_decoy_blocked");
         }
         breakMirrorClone(mirrorClone);
         consumed = true;
@@ -4536,7 +4851,10 @@ function updateProjectiles(dt) {
         const target = projectile.owner === "player" ? game.jev : game.player;
         if (distance(projectile, target) <= projectile.radius + target.radius) {
         if (projectile.owner === "player") {
-          hitJev(projectile);
+          if (projectile.kind === "stasis") applyStasisHit();
+          else hitJev(projectile);
+        } else if (projectile.kind === "signal_tether") {
+          resolveSignalTetherHit(projectile);
         } else {
           const parrying = game.player.guardTimer > 0;
           if (parrying) {
@@ -4548,28 +4866,33 @@ function updateProjectiles(dt) {
               radius: 9, life: 0.8, age: 0,
             });
           }
-          const projectileOutcome = projectile.kind === "salvo" ? "salvo_hit" : "blast_hit";
-          const attackPrefix = projectile.kind === "salvo" ? "salvo" : "blast";
+          const attackPrefix = projectile.kind === "blast" ? "blast" : projectile.kind === "salvo" ? "salvo" : "projectile";
+          const projectileOutcome = attackPrefix === "blast" ? "blast_hit" : attackPrefix === "salvo" ? "salvo_hit" : "projectile_hit";
           const knockback = Math.hypot(projectile.vx, projectile.vy) || 1;
           if (parrying) remember(attackPrefix + "_guard_blocked");
           if (!damagePlayer(projectileOutcome, projectile.vx / knockback, projectile.vy / knockback) && !parrying) {
-            remember(projectile.kind === "salvo" ? "salvo_dodged" : "blast_dodged");
+            remember(attackPrefix + "_dodged");
             const skin = skinCatalog[projectile.skinId] || skinForRole("chaser");
             emitParticles(projectile.x, projectile.y, skin.accent, 12, 105, skin);
           }
         }
         consumed = true;
         } else if (blocked(projectile.x, projectile.y, projectile.radius)) {
-          const attackPrefix = projectile.kind === "salvo" ? "salvo" : "blast";
-          remember(projectile.owner === "player" ? "shot_blocked" : attackPrefix + "_cover_blocked");
+          const attackPrefix = projectile.kind === "blast" ? "blast" : projectile.kind === "salvo" ? "salvo" : "projectile";
+          remember(projectile.owner === "player"
+            ? projectile.kind === "stasis" ? "freeze_missed" : "shot_blocked"
+            : projectile.kind === "signal_tether" ? "signal_tether_cover_blocked" : attackPrefix + "_cover_blocked");
           const skin = skinCatalog[projectile.skinId] || skinForRole(projectile.owner === "player" ? "runner" : "chaser");
           emitParticles(projectile.x, projectile.y, skin.accent, 10, 80, skin);
           consumed = true;
         }
       }
     }
-    if (projectile.life <= 0 && projectile.owner === "jev") {
-      remember(projectile.kind === "salvo" ? "salvo_missed" : "blast_missed");
+    if (projectile.life <= 0) {
+      if (projectile.kind === "stasis" && projectile.owner === "player") remember("freeze_missed");
+      else if (projectile.owner === "jev") remember(projectile.kind === "blast" ? "blast_missed"
+        : projectile.kind === "salvo" ? "salvo_missed"
+          : projectile.kind === "signal_tether" ? "signal_tether_missed" : "shot_missed");
     }
     if (!consumed) remaining.push(projectile);
   }
@@ -4612,7 +4935,6 @@ function update(dt) {
   }
   updatePlayer(dt);
   updateMeteors(dt);
-  updateWraiths(dt);
   if (game.elapsed >= game.nextTrailSampleAt) {
     game.playerTrail.push({ x: Math.round(game.player.x), y: Math.round(game.player.y), at: game.elapsed });
     if (game.playerTrail.length > 24) game.playerTrail.shift();
@@ -4620,6 +4942,7 @@ function update(dt) {
     game.nextTrailSampleAt = game.elapsed + 0.42;
   }
   updateRiftMine(dt);
+  updateMascotCharge(dt);
   updateJev(dt);
   advanceSpriteTravel(game.player, dt);
   advanceSpriteTravel(game.jev, dt);
@@ -4729,10 +5052,11 @@ function drawWorld() {
   drawWorldLighting(ctx);
   drawAnchors(ctx);
   drawDepthSortedArena(ctx);
+  drawMascotCharge(ctx);
   drawParticles(ctx);
-  drawWraithlings(ctx);
   drawMirrorEcho(ctx);
   drawProjectiles(ctx);
+  drawSkillEffects(ctx);
   drawTacticalEffects(ctx);
   drawSkillCallouts(ctx);
   ctx.restore();
@@ -4959,60 +5283,6 @@ function drawMirrorEcho(ctx) {
         }
       }
     }
-    ctx.restore();
-  }
-}
-
-function drawWraithlings(ctx) {
-  const skin = skinForRole("chaser");
-  const anthropic = skin.company === "Anthropic";
-  for (const wraith of game.minions) {
-    const pulse = 0.72 + Math.sin(game.elapsed * 11 + wraith.phase) * 0.13;
-    const rotation = game.elapsed * (anthropic ? -1.35 : 1.1) + wraith.phase;
-    ctx.save();
-    ctx.translate(wraith.x, wraith.y);
-    ctx.globalAlpha = pulse;
-    ctx.shadowColor = skin.accent;
-    ctx.shadowBlur = 17;
-    ctx.fillStyle = anthropic ? "#713c3a" : "#214d4a";
-    ctx.strokeStyle = skin.accent;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, wraith.radius * 0.84, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    if (anthropic) {
-      ctx.strokeStyle = "rgb(255 210 158 / 78%)";
-      ctx.lineWidth = 1.5;
-      for (let ray = 0; ray < 8; ray += 1) {
-        const angle = rotation + ray * Math.PI / 4;
-        const inner = wraith.radius * 0.9;
-        const outer = inner + (ray % 2 ? 3 : 7);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-        ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
-        ctx.stroke();
-      }
-    } else {
-      ctx.strokeStyle = "rgb(168 244 224 / 78%)";
-      ctx.lineWidth = 1.4;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, wraith.radius * 1.22, wraith.radius * 0.72, rotation, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      for (let node = 0; node < 3; node += 1) {
-        const angle = rotation + node * Math.PI * 2 / 3;
-        ctx.fillStyle = "#b9ffed";
-        ctx.fillRect(Math.cos(angle) * wraith.radius - 1.5, Math.sin(angle) * wraith.radius - 1.5, 3, 3);
-      }
-    }
-    ctx.fillStyle = anthropic ? "#fff1d7" : "#e4fff6";
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(3, wraith.radius * 0.37), 0, Math.PI * 2);
-    ctx.fill();
-    drawCompanyMark(ctx, skin, 0, 0, Math.min(10, wraith.radius * 0.6));
     ctx.restore();
   }
 }
@@ -6764,12 +7034,45 @@ function drawParticles(ctx) {
 
 function drawLabProjectile(ctx, projectile, skin) {
   const anthropic = skin.company === "Anthropic";
-  const scale = projectile.kind === "salvo" ? 0.76 : projectile.owner === "player" ? 0.72 : 1;
+  const scale = projectile.kind === "salvo" ? 0.9 : projectile.owner === "player" ? 0.72 : 1;
   const radius = Math.max(7, projectile.radius * scale);
+  const trailLength = radius * (projectile.kind === "salvo" ? 5.2 : 3.4);
   const accent = skin.accent;
   const pale = anthropic ? "#fff1d7" : "#e4fff6";
   const angle = Math.atan2(projectile.vy, projectile.vx);
   const pulse = 0.94 + Math.sin(projectile.age * 24) * 0.06;
+  if (projectile.kind === "signal_tether") {
+    const atlas = anthropic ? "signalAnthropic" : "signalOpenAI";
+    ctx.save();
+    ctx.translate(projectile.x, projectile.y);
+    ctx.rotate(angle);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.78 + Math.sin(projectile.age * 32) * 0.12;
+    ctx.strokeStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 18;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(-74, 0);
+    ctx.lineTo(-13, 0);
+    ctx.stroke();
+    ctx.restore();
+    drawSkillAtlasFrame(ctx, atlas, Math.floor(projectile.age * 18) % 4,
+      projectile.x - Math.cos(angle) * 34, projectile.y - Math.sin(angle) * 34, 116, pulse, angle);
+    ctx.save();
+    ctx.translate(projectile.x, projectile.y);
+    ctx.rotate(angle);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = anthropic ? "#fff0cf" : "#e6fff5";
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 22;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7 + Math.sin(projectile.age * 29) * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(projectile.x, projectile.y);
   ctx.rotate(angle);
@@ -6783,8 +7086,8 @@ function drawLabProjectile(ctx, projectile, skin) {
       const offset = ray * radius * 0.48;
       ctx.lineWidth = ray === 0 ? 4 : 2;
       ctx.beginPath();
-      ctx.moveTo(-radius * 3.3, offset * 0.42);
-      ctx.quadraticCurveTo(-radius * 1.5, offset * 0.6, -radius * 0.35, offset * 0.26);
+      ctx.moveTo(-trailLength, offset * 0.42);
+      ctx.quadraticCurveTo(-trailLength * 0.47, offset * 0.6, -radius * 0.35, offset * 0.26);
       ctx.stroke();
     }
     ctx.strokeStyle = "rgb(255 211 159 / 86%)";
@@ -6807,8 +7110,8 @@ function drawLabProjectile(ctx, projectile, skin) {
       const offset = rail * radius * 0.5;
       ctx.lineWidth = rail === 0 ? 3.5 : 1.7;
       ctx.beginPath();
-      ctx.moveTo(-radius * 3.4, offset);
-      ctx.lineTo(-radius * 1.7, offset);
+      ctx.moveTo(-trailLength, offset);
+      ctx.lineTo(-trailLength * 0.5, offset);
       ctx.lineTo(-radius * 0.46, offset * 0.35);
       ctx.stroke();
     }
@@ -6997,6 +7300,222 @@ function drawContactStrike(ctx) {
   ctx.restore();
 }
 
+function drawSkillAtlasFrame(ctx, atlasId, frameIndex, x, y, size, alpha = 1, rotation = 0, flip = false) {
+  const atlas = artwork.skillAtlases[atlasId];
+  const image = atlas?.image;
+  const bounds = atlas?.bounds?.[clamp(Math.floor(frameIndex), 0, 7)];
+  if (!image?.complete || image.naturalWidth <= 0 || !bounds) return false;
+  const frameWidth = image.naturalWidth / 4;
+  const frameHeight = image.naturalHeight / 2;
+  const scale = size / Math.max(bounds.width, bounds.height);
+  const drawWidth = bounds.width * scale;
+  const drawHeight = bounds.height * scale;
+  const column = Math.floor(frameIndex) % 4;
+  const row = Math.floor(frameIndex / 4);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.scale(flip ? -1 : 1, 1);
+  ctx.globalAlpha *= alpha;
+  ctx.imageSmoothingEnabled = false;
+  ctx.shadowColor = atlasId.includes("Anthropic") || atlasId.includes("Claude") ? "#f39b66" : "#70d8ee";
+  ctx.shadowBlur = Math.min(22, size * 0.18);
+  ctx.drawImage(
+    image,
+    column * frameWidth + bounds.x, row * frameHeight + bounds.y, bounds.width, bounds.height,
+    -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight,
+  );
+  ctx.restore();
+  return true;
+}
+
+function drawMascotCharge(ctx) {
+  const charge = game.mascotCharge;
+  if (!charge) return;
+  const companionSprite = artwork.companions[charge.companion];
+  const atlas = charge.companion === "claude" ? "mascotClaude" : "mascotCodex";
+  const frame = Math.floor(game.elapsed * 14) % 4;
+  const direction = charge.direction;
+  const trailLength = 94;
+  const trailX = charge.x - charge.vx / MASCOT_CHARGE_SPEED * trailLength;
+  const trailY = charge.y - charge.vy / MASCOT_CHARGE_SPEED * trailLength;
+  const tail = 1 - (charge.distanceTravelled / MASCOT_CHARGE_RANGE) * 0.22;
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = charge.companion === "claude" ? "#ffb16e" : "#79eaff";
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.shadowBlur = 20;
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.moveTo(trailX, trailY);
+  ctx.lineTo(charge.x, charge.y);
+  ctx.stroke();
+  ctx.restore();
+  drawSkillAtlasFrame(ctx, atlas, frame, (trailX + charge.x) / 2, (trailY + charge.y) / 2, trailLength * tail, 0.8,
+    Math.atan2(charge.vy, charge.vx) - Math.PI / 2);
+  if (companionSprite?.complete && companionSprite.naturalWidth > 0) {
+    const row = 1 + Math.floor(game.elapsed * 12) % 3;
+    drawSpriteFrame(ctx, companionSprite, charge.companion, direction, row, charge.x, charge.y, 72, 80);
+  }
+}
+
+function drawSkillEffects(ctx) {
+  const player = game.player;
+  const jev = game.jev;
+  if (jev.signalPhase === "windup" && jev.signalTarget) {
+    const chaserSkin = skinForRole("chaser");
+    const atlas = chaserSkin.id === "dario" ? "signalDario" : "signalSam";
+    const progress = clamp(1 - jev.signalTimer / SIGNAL_TETHER_WINDUP, 0, 0.999);
+    const accent = chaserSkin.company === "Anthropic" ? "#f2a16d" : "#65dbe3";
+    ctx.save();
+    ctx.globalAlpha = 0.36 + Math.sin(game.elapsed * 24) * 0.1;
+    ctx.strokeStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(jev.x, jev.y - 8);
+    ctx.lineTo(jev.signalTarget.x, jev.signalTarget.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(jev.signalTarget.x, jev.signalTarget.y, 14 + Math.sin(game.elapsed * 19) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    drawSkillAtlasFrame(ctx, atlas, Math.min(3, Math.floor(progress * 4)), jev.x, jev.y - 12, 108, 0.98);
+  }
+  if (player.stasisPhase === "charging" && player.stasisTarget) {
+    const progress = 1 - player.stasisTimer / RUNNER_STASIS_WINDUP;
+    const skin = skinForRole("runner");
+    const atlas = skin.company === "Anthropic" ? "stasisAnthropic" : "stasisOpenAI";
+    const accent = skin.company === "Anthropic" ? "#f0a26b" : "#76d7ee";
+    ctx.save();
+    ctx.globalAlpha = 0.36 + Math.sin(game.elapsed * 27) * 0.1;
+    ctx.strokeStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 2.4;
+    ctx.setLineDash([7, 7]);
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y - 8);
+    ctx.lineTo(player.stasisTarget.x, player.stasisTarget.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    drawSkillAtlasFrame(ctx, atlas, clamp(Math.floor(progress * 4), 0, 3), player.x, player.y - 12, 54, 0.54);
+    drawSkillAtlasFrame(ctx, atlas, 4 + clamp(Math.floor(progress * 4), 0, 3), player.x, player.y - 12, 44, 0.2 + progress * 0.08);
+  }
+  for (const projectile of game.projectiles) {
+    if (projectile.kind !== "stasis") continue;
+    const skin = skinCatalog[projectile.skinId] || skinForRole("runner");
+    const atlas = skin.company === "Anthropic" ? "stasisAnthropic" : "stasisOpenAI";
+    const frame = Math.floor(projectile.age * 18) % 4;
+    drawSkillAtlasFrame(ctx, atlas, frame, projectile.x, projectile.y, 49, 0.88,
+      Math.atan2(projectile.vy, projectile.vx) - Math.PI / 2);
+  }
+  for (const impact of game.skillImpacts) {
+    const progress = (game.elapsed - impact.at) / impact.duration;
+    if (progress < 0 || progress >= 1) continue;
+    const atlas = impact.kind === "signal_tether"
+      ? skinCatalog[impact.skinId]?.company === "Anthropic" ? "signalAnthropic" : "signalOpenAI"
+      : impact.kind === "stasis"
+      ? skinCatalog[impact.skinId]?.company === "Anthropic" ? "stasisAnthropic" : "stasisOpenAI"
+      : impact.companion === "claude" ? "mascotClaude" : "mascotCodex";
+    if (impact.kind === "signal_tether") {
+      const frame = 4 + Math.min(3, Math.floor(progress * 4));
+      drawSkillAtlasFrame(ctx, atlas, frame, impact.x, impact.y, 94 + progress * 18, 0.82 * (1 - progress));
+    } else if (impact.kind === "stasis") {
+      drawSkillAtlasFrame(ctx, atlas, 6, impact.x, impact.y + 4, 94 + progress * 12, (1 - progress) * 0.4, game.elapsed * 0.12);
+      drawSkillAtlasFrame(ctx, atlas, 5, impact.x, impact.y - 42, 34 + progress * 8, (1 - progress) * 0.82);
+    } else {
+      const frame = 4 + Math.min(2, Math.floor(progress * 4));
+      drawSkillAtlasFrame(ctx, atlas, frame, impact.x, impact.y, 88 + progress * 24, 0.82 * (1 - progress));
+      if (impact.hit) {
+        const companionSprite = artwork.companions[impact.companion];
+        const row = 1 + Math.floor((game.elapsed - impact.at) * 13) % 3;
+        if (companionSprite?.complete && companionSprite.naturalWidth > 0) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, (1 - progress) * 1.3);
+          drawSpriteFrame(
+            ctx, companionSprite, impact.companion, impact.direction, row,
+            impact.x, impact.y, 72, 80,
+          );
+          ctx.restore();
+        }
+      }
+    }
+  }
+  game.skillImpacts = game.skillImpacts.filter((impact) => game.elapsed - impact.at < impact.duration);
+  if (jev.freezeReactionTimer > 0) {
+    const runnerSkin = skinForRole("runner");
+    const atlas = runnerSkin.company === "Anthropic" ? "stasisAnthropic" : "stasisOpenAI";
+    const accent = runnerSkin.company === "Anthropic" ? "#f6b47f" : "#8ae8ff";
+    const remaining = clamp(jev.freezeReactionTimer / RUNNER_STASIS_DURATION, 0, 1);
+    const pulse = 0.78 + Math.sin(game.elapsed * 19) * 0.1;
+    ctx.save();
+    ctx.globalAlpha = pulse * remaining;
+    ctx.strokeStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.ellipse(jev.x, jev.y + 10, 43, 31, 0, game.elapsed * 0.8, game.elapsed * 0.8 + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#e7fbff";
+    for (let shard = 0; shard < 4; shard += 1) {
+      const angle = game.elapsed * 0.8 + shard * Math.PI / 2;
+      const x = jev.x + Math.cos(angle) * 42;
+      const y = jev.y + 10 + Math.sin(angle) * 29;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 4);
+      ctx.lineTo(x + 3, y);
+      ctx.lineTo(x, y + 4);
+      ctx.lineTo(x - 3, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    drawSkillAtlasFrame(ctx, atlas, 5, jev.x, jev.y - 48, 31, 0.84 * remaining, game.elapsed * 0.18);
+  }
+  if (jev.ramReactionTimer > 0) {
+    const runnerSkin = skinForRole("runner");
+    const atlas = runnerSkin.company === "Anthropic" ? "mascotClaude" : "mascotCodex";
+    const remaining = clamp(jev.ramReactionTimer / MASCOT_CHARGE_REACTION, 0, 1);
+    drawSkillAtlasFrame(ctx, atlas, 1, jev.x, jev.y + 6, 108, 0.22 + remaining * 0.16, -game.elapsed * 0.42);
+    ctx.save();
+    ctx.globalAlpha = remaining * (0.7 + Math.sin(game.elapsed * 23) * 0.14);
+    ctx.strokeStyle = runnerSkin.company === "Anthropic" ? "#ffb16e" : "#79eaff";
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 6]);
+    ctx.beginPath();
+    ctx.ellipse(jev.x, jev.y + 11, 48, 35, 0, -game.elapsed * 1.4, -game.elapsed * 1.4 + Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (jev.blastPhase === "windup" && jev.blastTarget) {
+    const skin = skinForRole("chaser");
+    const progress = 1 - jev.blastTimer / POWER_BLAST_WINDUP;
+    ctx.save();
+    ctx.globalAlpha = 0.24 + progress * 0.24;
+    ctx.strokeStyle = skin.accent;
+    ctx.shadowColor = skin.accent;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 2 + progress * 2;
+    ctx.setLineDash([9, 7]);
+    ctx.beginPath();
+    ctx.moveTo(jev.x, jev.y - 6);
+    ctx.lineTo(jev.blastTarget.x, jev.blastTarget.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawTacticalEffects(ctx) {
   drawContactStrike(ctx);
   const jev = game.jev;
@@ -7068,69 +7587,6 @@ function drawTacticalEffects(ctx) {
     ctx.stroke();
     ctx.restore();
   }
-  if (jev.riftRushPhase === "windup" && jev.riftRushTarget) {
-    const pulse = 0.36 + Math.sin(game.elapsed * 30) * 0.12;
-    const skin = skinForRole("chaser");
-    const anthropic = skin.company === "Anthropic";
-    ctx.save();
-    ctx.globalAlpha = pulse;
-    ctx.strokeStyle = anthropic ? "#f29a68" : "#79e4cf";
-    ctx.fillStyle = anthropic ? "rgb(242 154 104 / 10%)" : "rgb(121 228 207 / 10%)";
-    ctx.lineWidth = 2.5;
-    const rushDx = jev.riftRushTarget.x - jev.x;
-    const rushDy = jev.riftRushTarget.y - jev.y;
-    const rushLength = Math.hypot(rushDx, rushDy) || 1;
-    const normalX = -rushDy / rushLength;
-    const normalY = rushDx / rushLength;
-    for (const rail of anthropic ? [-0.07, 0, 0.07] : [-0.045, 0, 0.045]) {
-      const endX = jev.riftRushTarget.x + normalX * rushLength * rail;
-      const endY = jev.riftRushTarget.y + normalY * rushLength * rail;
-      ctx.beginPath();
-      ctx.moveTo(jev.x, jev.y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 28, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = anthropic ? "#fff0d9" : "#e4fff6";
-    ctx.beginPath();
-    ctx.arc(jev.riftRushTarget.x, jev.riftRushTarget.y, 8, 0, Math.PI * 2);
-    ctx.fill();
-    drawCompanyMark(ctx, skin, jev.riftRushTarget.x, jev.riftRushTarget.y, 12);
-    ctx.restore();
-  } else if (jev.riftRushPhase === "charge") {
-    const skin = skinForRole("chaser");
-    const anthropic = skin.company === "Anthropic";
-    const trailStartX = jev.x - jev.riftRushVx * 0.34;
-    const trailStartY = jev.y - jev.riftRushVy * 0.34;
-    const rushSpeed = Math.hypot(jev.riftRushVx, jev.riftRushVy) || 1;
-    const normalX = -jev.riftRushVy / rushSpeed;
-    const normalY = jev.riftRushVx / rushSpeed;
-    ctx.save();
-    ctx.globalAlpha = 0.68;
-    ctx.strokeStyle = skin.accent;
-    ctx.shadowColor = skin.accent;
-    ctx.shadowBlur = 19;
-    ctx.lineCap = "round";
-    ctx.lineWidth = 13;
-    ctx.beginPath();
-    ctx.moveTo(trailStartX, trailStartY);
-    ctx.lineTo(jev.x, jev.y);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    for (const offset of anthropic ? [-10, 0, 10] : [-8, 0, 8]) {
-      ctx.globalAlpha = offset === 0 ? 0.92 : 0.62;
-      ctx.strokeStyle = anthropic ? (offset === 0 ? "#fff0d9" : "#f29a68") : (offset === 0 ? "#e4fff6" : "#79e4cf");
-      ctx.lineWidth = offset === 0 ? 2.5 : 1.6;
-      ctx.beginPath();
-      ctx.moveTo(trailStartX + normalX * offset, trailStartY + normalY * offset);
-      ctx.lineTo(jev.x + normalX * offset * 0.38, jev.y + normalY * offset * 0.38);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
   if (jev.rendPhase === "windup") {
     const pulse = 0.72 + Math.sin(game.elapsed * 25) * 0.12;
     const startAngle = jev.rendAngle - RIFT_REND_HALF_ANGLE;
@@ -7180,52 +7636,11 @@ function drawTacticalEffects(ctx) {
       ctx.restore();
     }
   }
-  if (jev.blastPhase === "windup" && jev.blastTarget) {
-    const pulse = 0.66 + Math.sin(game.elapsed * 28) * 0.2;
-    const skin = skinForRole("chaser");
-    const anthropic = skin.company === "Anthropic";
-    ctx.save();
-    ctx.globalAlpha = pulse;
-    ctx.strokeStyle = skin.accent;
-    ctx.shadowColor = skin.accent;
-    ctx.shadowBlur = 12;
-    ctx.lineCap = "round";
-    ctx.lineWidth = anthropic ? 6 : 4;
-    ctx.beginPath();
-    ctx.moveTo(jev.x, jev.y - 5);
-    ctx.lineTo(jev.blastTarget.x, jev.blastTarget.y);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    const targetRadius = 25 + Math.sin(game.elapsed * 28) * 3;
-    ctx.fillStyle = anthropic ? "rgb(242 154 104 / 17%)" : "rgb(121 228 207 / 17%)";
-    ctx.strokeStyle = anthropic ? "#ffd29e" : "#c8fff0";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(jev.blastTarget.x, jev.blastTarget.y, targetRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    if (anthropic) {
-      for (let ray = 0; ray < 9; ray += 1) {
-        const angle = ray * Math.PI * 2 / 9 + game.elapsed * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(jev.blastTarget.x + Math.cos(angle) * targetRadius, jev.blastTarget.y + Math.sin(angle) * targetRadius);
-        ctx.lineTo(jev.blastTarget.x + Math.cos(angle) * (targetRadius + (ray % 3 === 0 ? 10 : 5)), jev.blastTarget.y + Math.sin(angle) * (targetRadius + (ray % 3 === 0 ? 10 : 5)));
-        ctx.stroke();
-      }
-    } else {
-      for (let node = 0; node < 4; node += 1) {
-        const angle = node * Math.PI / 2 + game.elapsed * 0.55;
-        const nodeX = jev.blastTarget.x + Math.cos(angle) * targetRadius;
-        const nodeY = jev.blastTarget.y + Math.sin(angle) * targetRadius;
-        ctx.fillStyle = "#e4fff6";
-        ctx.fillRect(nodeX - 2.5, nodeY - 2.5, 5, 5);
-      }
-    }
-    ctx.restore();
-  }
   if (jev.salvoPhase === "windup" && jev.salvoTarget) {
     const pulse = 0.56 + Math.sin(game.elapsed * 24) * 0.16;
-    const centerAngle = Math.atan2(jev.salvoTarget.y - jev.y, jev.salvoTarget.x - jev.x);
+    const origin = { x: jev.x, y: jev.y - 6 };
+    const centerAngle = Math.atan2(jev.salvoTarget.y - origin.y, jev.salvoTarget.x - origin.x);
+    const reach = Math.min(distance(origin, jev.salvoTarget), SOUL_SALVO_SPEED * 1.9);
     const skin = skinForRole("chaser");
     const anthropic = skin.company === "Anthropic";
     ctx.save();
@@ -7235,17 +7650,15 @@ function drawTacticalEffects(ctx) {
     ctx.shadowBlur = 12;
     ctx.lineCap = "round";
     ctx.lineWidth = 2.5;
-    for (const offset of anthropic ? [-0.27, 0, 0.27] : [-0.21, 0, 0.21]) {
+    for (const offset of [-SOUL_SALVO_FAN_ANGLE, 0, SOUL_SALVO_FAN_ANGLE]) {
       const angle = centerAngle + offset;
       ctx.beginPath();
-      ctx.moveTo(jev.x, jev.y - 5);
-      ctx.lineTo(jev.x + Math.cos(angle) * 760, jev.y + Math.sin(angle) * 760);
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(origin.x + Math.cos(angle) * reach, origin.y + Math.sin(angle) * reach);
       ctx.stroke();
-    }
-    for (const angle of [centerAngle - 0.21, centerAngle, centerAngle + 0.21]) {
       ctx.fillStyle = anthropic ? "#fff0d9" : "#e4fff6";
       ctx.beginPath();
-      ctx.arc(jev.x + Math.cos(angle) * 30, jev.y + Math.sin(angle) * 30 - 5, 2.8, 0, Math.PI * 2);
+      ctx.arc(origin.x + Math.cos(angle) * reach, origin.y + Math.sin(angle) * reach, 4, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -7385,8 +7798,8 @@ function drawJev(ctx) {
   if (chaserSprite?.complete && chaserSprite.naturalWidth > 0) {
     const modeColors = {
       pursue: "#f27d68", intercept: "#f4c774", flank: "#d69df0", ambush: "#a9dec8",
-      rift_rend: "#ff7768", power_blast: "#ffc977", rift_mine: "#d69df0", rift_rush: "#dfa7ff",
-      shadow_dodge: "#8fead3", soul_salvo: "#ff9c73", rift_aegis: "#9ceaf0",
+      rift_rend: "#ff7768", power_blast: "#ffc977", rift_mine: "#d69df0",
+      shadow_dodge: "#8fead3", soul_salvo: "#ff9c73", signal_tether: chaserSkin.accent, rift_aegis: "#9ceaf0",
     };
     const direction = contactActive ? contactFacing(jev.contactStrike.angle) : spriteDirectionFor(jev);
     const speed = Math.hypot(jev.vx, jev.vy);
@@ -7403,7 +7816,8 @@ function drawJev(ctx) {
     ctx.beginPath();
     ctx.ellipse(0, 23, 30, 12, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = jev.stunned > 0 ? "#ffe08a" : jev.hurtTimer > 0 ? "#e3fff6" : modeColors[jev.mode] || modeColors.pursue;
+    ctx.strokeStyle = jev.freezeReactionTimer > 0 ? "#c7f3ff" : jev.ramReactionTimer > 0 ? "#ffd0a1"
+      : jev.stunned > 0 ? "#ffe08a" : jev.hurtTimer > 0 ? "#e3fff6" : modeColors[jev.mode] || modeColors.pursue;
     ctx.lineWidth = jev.stunned > 0 ? 3 : 2;
     ctx.globalAlpha = jev.stunned > 0 || jev.hurtTimer > 0 ? 0.95 : 0.66;
     ctx.beginPath();
@@ -7421,7 +7835,19 @@ function drawJev(ctx) {
     }
     ctx.restore();
     const spriteY = jev.y;
-    if (!drawProfileRunFrame(ctx, chaserSkin.id, direction, runPose, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT, isRunning)) {
+    const reactionDuration = jev.freezeReactionTimer > 0 ? RUNNER_STASIS_DURATION : MASCOT_CHARGE_REACTION;
+    const reactionTimer = jev.freezeReactionTimer > 0 ? jev.freezeReactionTimer : jev.ramReactionTimer;
+    const reactionAtlas = jev.freezeReactionTimer > 0
+      ? chaserSkin.id === "dario" ? "stasisReactionDario" : "stasisReactionSam"
+      : "mascotReaction" + (chaserSkin.id === "dario" ? "Dario" : "Sam");
+    const reactionFrame = Math.min(7, Math.floor((1 - clamp(reactionTimer / reactionDuration, 0, 1)) * 8));
+    const reactionFlip = reactionAtlas.startsWith("mascotReaction")
+      ? jev.ramReactionFacing === "left"
+      : direction === "left";
+    const reactionDrawn = reactionTimer > 0 && drawSkillAtlasFrame(
+      ctx, reactionAtlas, reactionFrame, drawX, spriteY, Math.max(CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT), 1, 0, reactionFlip,
+    );
+    if (!reactionDrawn && !drawProfileRunFrame(ctx, chaserSkin.id, direction, runPose, drawX, spriteY, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT, isRunning)) {
       drawSpriteFrame(ctx, chaserSprite, chaserSkin.id, direction, row, drawX, spriteY + bob, CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT);
     }
     if (jev.riftAegisTimer > 0 && jev.riftAegisCharges > 0) {
@@ -7462,8 +7888,8 @@ function drawJev(ctx) {
     rift_rend: "#ff7768",
     power_blast: "#ffc977",
     rift_mine: "#d69df0",
-    rift_rush: "#dfa7ff",
     shadow_dodge: "#8fead3",
+    signal_tether: chaserSkin.accent,
   };
   ctx.strokeStyle = jev.stunned > 0 ? "#ffe08a" : modeColors[jev.mode] || modeColors.pursue;
   ctx.lineWidth = 2;
@@ -7572,7 +7998,25 @@ function drawPlayer(ctx) {
     ctx.save();
     ctx.globalAlpha = 1;
     const spriteY = player.y;
-    if (!drawProfileRunFrame(ctx, runnerSkin.id, direction, runPose, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch, isRunning)) {
+    const reactionAtlas = runnerSkin.id === "dario" ? "signalDario" : "signalSam";
+    const reactionProgress = 1 - clamp(player.signalTetherReactionTimer / 0.72, 0, 1);
+    const reactionDrawn = player.signalTetherReactionTimer > 0 && drawSkillAtlasFrame(
+      ctx,
+      reactionAtlas,
+      4 + Math.min(3, Math.floor(reactionProgress * 4)),
+      player.x,
+      spriteY - 10,
+      106,
+      clamp(player.signalTetherReactionTimer / 0.24, 0.7, 1),
+      0,
+      direction === "left",
+    );
+    const castAtlas = runnerSkin.id === "dario" ? "stasisCastDario" : "stasisCastSam";
+    const castFrame = clamp(Math.floor((1 - player.stasisTimer / RUNNER_STASIS_WINDUP) * 4), 0, 3);
+    const castDrawn = !reactionDrawn && player.stasisPhase === "charging" && drawSkillAtlasFrame(
+      ctx, castAtlas, castFrame, player.x, spriteY, Math.max(CHARACTER_SPRITE_WIDTH, CHARACTER_SPRITE_HEIGHT), 1, 0, player.facing < 0,
+    );
+    if (!reactionDrawn && !castDrawn && !drawProfileRunFrame(ctx, runnerSkin.id, direction, runPose, player.x, spriteY, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch, isRunning)) {
       drawSpriteFrame(ctx, runnerSprite, runnerSkin.id, direction, row, player.x, spriteY + Math.sin(game.elapsed * 9) * 1.5, CHARACTER_SPRITE_WIDTH * stretch, CHARACTER_SPRITE_HEIGHT / stretch);
     }
     ctx.restore();
@@ -7678,8 +8122,8 @@ function drawSkillCallouts(ctx) {
   for (const entry of game.skillCallouts) {
     const actor = entry.owner === "jev" ? game.jev : game.player;
     const skill = skillManual[entry.owner].find((item) => item.id === entry.abilityId);
-    const cell = skillIconCells[entry.abilityId];
-    if (!skill || !cell) continue;
+    const cell = skillIconCells[entry.abilityId] || [0, 0];
+    if (!skill) continue;
     const actorSkin = skinCatalog[entry.skinId] || skinForRole(entry.owner === "runner" ? "runner" : "chaser");
     const progress = clamp((game.elapsed - entry.at) / entry.duration, 0, 1);
     const alpha = Math.min(1, (1 - progress) * 4.2);
@@ -7706,12 +8150,7 @@ function drawSkillCallouts(ctx) {
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.stroke();
-    const iconSheet = artwork.skillIcons[actorSkin.id];
-    if (cell && iconSheet?.complete && iconSheet.naturalWidth > 0) {
-      const cellWidth = iconSheet.naturalWidth / 4;
-      const cellHeight = iconSheet.naturalHeight / 4;
-      ctx.drawImage(iconSheet, cell[0] * cellWidth, cell[1] * cellHeight, cellWidth, cellHeight, x + 4, y - 14, 26, 26);
-    }
+    drawSkillIcon(ctx, entry.abilityId, entry.owner, actorSkin, x + 4, y - 14, 26);
     ctx.fillStyle = "#fff5e8";
     ctx.textBaseline = "middle";
     ctx.fillText(skillName, x + 34, y - 1, boxWidth - 39);
@@ -7802,11 +8241,13 @@ function modeFallback() {
       game.jev.riftAegisCharges <= 0 && (isPlayerShotThreateningJev() || burstThreat)) return "rift_aegis";
   if (game.player.pulseTimer > 0 && gap < 165 && game.jev.shadowDodgeCooldown <= 0) return "shadow_dodge";
   if (game.jev.shadowDodgeCooldown <= 0 && isPlayerShotThreateningJev()) return "shadow_dodge";
+  if (game.jev.signalCooldown <= 0 && !game.jev.signalPhase && gap >= SIGNAL_TETHER_MIN_RANGE &&
+      gap <= SIGNAL_TETHER_MAX_RANGE && !game.player.echo && game.player.clones.length === 0 &&
+      !game.player.guardTimer && game.player.dashCooldown > 0 &&
+      isSignalTetherLaneClear(game.jev, predictedSignalTetherTarget())) return "signal_tether";
   if (game.jev.meteorCooldown <= 0 && game.meteors.length === 0 && gap >= 250 && gap <= 920) return "meteor_storm";
-  if (game.jev.summonCooldown <= 0 && game.minions.length === 0 && gap > 260) return "summon_wraiths";
-  if (game.jev.blastCooldown <= 0 && gap >= 175 && gap <= 490 && isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())) return "power_blast";
+  if (game.jev.blastCooldown <= 0 && gap >= 174 && gap <= 475 && isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget())) return "power_blast";
   if (game.jev.salvoCooldown <= 0 && gap >= 240 && gap <= 820 && isSoulSalvoLaneClear(game.jev, predictedSoulSalvoTarget())) return "soul_salvo";
-  if (game.jev.riftRushCooldown <= 0 && gap >= 245 && gap <= 520) return "rift_rush";
   if (game.jev.mineCooldown <= 0 && !game.activeMine && gap < 340 && game.elapsed % 13 > 10) return "rift_mine";
   if (game.routeProfile.revisitedCells > 5) return "flank";
   if (Math.hypot(game.player.vx, game.player.vy) > 120) return "intercept";
@@ -7826,6 +8267,10 @@ function playerModeFallback() {
   if (game.player.echoCooldown <= 0 && !game.player.echo && (threatened || jevGap < 400)) return "mirror_echo";
   if (game.player.hookCooldown <= 0 && (jevGap < 260 || distance(game.player, objective) > 500)) return "rift_hook";
   if (game.player.pulseCooldown <= 0 && distance(game.player, objective) < 145) return "soul_burst";
+  if (!threatened && game.player.mascotChargeCooldown <= 0 && findMascotChargeHeading()) return "mascot_charge";
+  const stasisBuffer = secondsToGhostSafeGap(game.player, game.player, game.jev);
+  if (!threatened && game.player.stasisCooldown <= 0 && !game.player.stasisPhase && jevGap > 320 &&
+      (stasisBuffer === null || stasisBuffer > 1.7) && isStasisLaneClear()) return "stasis_cast";
   if (game.anchors.some((anchor) => anchor.health > 0)) {
     if (threatened || jevGap < GHOST_SAFE_GAP) return "evade_warning";
     if (distance(game.player, objective) <= 690 && isLaneClear(game.player, objective, 8)) return "fire_anchors";
@@ -7844,6 +8289,11 @@ function setGhostTactic(tactic) {
       : "advance_anchor";
   } else if (!anchorsRemain && (tactic === "advance_anchor" || tactic === "fire_anchors")) {
     tactic = "kite_and_shoot";
+  }
+  if (tactic === "stasis_cast" && (game.player.stasisCooldown > 0 || !isStasisLaneClear() ||
+      isJevAttackThreateningPlayer() || distance(game.player, game.jev) <= 310)) tactic = playerModeFallback();
+  if (tactic === "mascot_charge" && (game.player.mascotChargeCooldown > 0 || !findMascotChargeHeading())) {
+    tactic = playerModeFallback();
   }
   game.player.aiTactic = tactic;
   game.player.aiHistory.push({ tactic, at: game.elapsed });
@@ -7951,6 +8401,11 @@ function getJevState() {
       guard_ready: player.guardCooldown <= 0,
       guard_active: player.guardTimer > 0,
       guard_adapting: game.elapsed < player.guardAdaptUntil,
+      stasis_ready: player.stasisCooldown <= 0 && !player.stasisPhase,
+      stasis_lane_clear: isStasisLaneClear(),
+      stasis_channeling: player.stasisPhase === "charging",
+      mascot_charge_ready: player.mascotChargeCooldown <= 0 && !game.mascotCharge,
+      mascot_charge_lane_clear: Boolean(findMascotChargeHeading()),
       echo: player.echo ? { x: Math.round(player.echo.x), y: Math.round(player.echo.y), seconds_left: Math.round(player.echo.life * 10) / 10 } : null,
       clones: player.clones.slice(0, 3).map((clone) => ({
         x: Math.round(clone.x), y: Math.round(clone.y), seconds_left: Math.round(clone.life * 10) / 10,
@@ -7995,8 +8450,7 @@ function getJevState() {
       recovery_active: Boolean(player.recoveryTarget),
       distance_to_objective: Math.round(distance(player, objectiveTarget)),
       objective_lane_clear: isLaneClear(player, objectiveTarget, 8),
-      burst_target_in_range: distance(player, objectiveTarget) < 145 ||
-        game.minions.some((wraith) => distance(player, wraith) < 145),
+      burst_target_in_range: distance(player, objectiveTarget) < 145,
     },
     jev: {
       x: Math.round(jev.x), y: Math.round(jev.y),
@@ -8025,10 +8479,11 @@ function getJevState() {
       rend_lane_clear: isLaneClear(jev, game.player, jev.radius),
       rend_arc_threatening: isJevRiftRendThreateningPlayer(),
       rend_phase: jev.rendPhase || "ready",
-      blast_ready: jev.blastCooldown <= 0,
-      blast_lane_clear: isPowerBlastLaneClear(jev, predictedPowerBlastTarget()),
+      power_blast_ready: jev.blastCooldown <= 0 && !jev.blastPhase,
+      power_blast_lane_clear: distance(combatTarget(), jev) >= 174 && distance(combatTarget(), jev) <= 475 &&
+        isPowerBlastLaneClear(jev, predictedPowerBlastTarget()),
+      power_blast_phase: jev.blastPhase || "ready",
       salvo_lane_clear: isSoulSalvoLaneClear(jev, predictedSoulSalvoTarget()),
-      blast_phase: jev.blastPhase || "ready",
       mine_ready: jev.mineCooldown <= 0 && !game.activeMine,
       active_mine: game.activeMine ? {
         x: Math.round(game.activeMine.x), y: Math.round(game.activeMine.y),
@@ -8036,9 +8491,6 @@ function getJevState() {
         warning_seconds_left: Math.round(Math.max(0, game.activeMine.warning) * 10) / 10,
         radius: game.activeMine.radius,
       } : null,
-      rift_rush_ready: jev.riftRushCooldown <= 0,
-      rift_rush_lane_clear: Boolean(riftRushDestination()),
-      rift_rush_phase: jev.riftRushPhase || "ready",
       rift_aegis_ready: game.anchors.every((anchor) => anchor.health <= 0) &&
         jev.riftAegisCooldown <= 0 && jev.riftAegisTimer <= 0 && jev.riftAegisCharges <= 0,
       rift_aegis_active_seconds: Math.round(jev.riftAegisTimer * 10) / 10,
@@ -8049,11 +8501,10 @@ function getJevState() {
       shadow_dodge_phase: jev.shadowDodgePhase || "ready",
       soul_salvo_ready: jev.salvoCooldown <= 0,
       soul_salvo_phase: jev.salvoPhase || "ready",
-      summon_ready: jev.summonCooldown <= 0,
+      signal_tether_ready: jev.signalCooldown <= 0 && !jev.signalPhase,
+      signal_tether_lane_clear: isSignalTetherLaneClear(jev, predictedSignalTetherTarget()),
+      signal_tether_phase: jev.signalPhase || "ready",
       meteor_ready: jev.meteorCooldown <= 0 && game.meteors.length === 0,
-      wraithlings: game.minions.slice(0, 3).map((wraith) => ({
-        x: Math.round(wraith.x), y: Math.round(wraith.y), health: 1, seconds_left: Math.round(wraith.life * 10) / 10,
-      })),
       meteors: game.meteors.slice(0, 3).map((meteor) => ({
         x: Math.round(meteor.x), y: Math.round(meteor.y), radius: meteor.radius, seconds_to_impact: Math.round(meteor.delay * 10) / 10,
       })),
@@ -8270,6 +8721,8 @@ function handleKeyDown(event) {
     if (key === "q") useMirrorEcho();
     if (key === "e") useRiftHook();
     if (key === "c" || key === "shift") useLanternGuard();
+    if (key === "r") useStasisCast();
+    if (key === "g") useMascotCharge();
   }
 }
 
@@ -8333,6 +8786,8 @@ ui.pulseTouch.addEventListener("pointerdown", (event) => { event.preventDefault(
 ui.echoTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useMirrorEcho(); });
 ui.hookTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useRiftHook(); });
 ui.guardTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useLanternGuard(); });
+ui.stasisTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useStasisCast(); });
+ui.mascotTouch.addEventListener("pointerdown", (event) => { event.preventDefault(); useMascotCharge(); });
 ui.stickZone.addEventListener("pointerdown", (event) => {
   if (stick.pointer !== null) return;
   event.preventDefault();
@@ -8365,7 +8820,692 @@ ui.canvas.addEventListener("pointerup", endPlayerFire);
 ui.canvas.addEventListener("pointercancel", endPlayerFire);
 
 if (new URLSearchParams(window.location.search).get("qa") === "1") {
+  function findRunnerSkillsFixture(targetHorizontalDirection = 1) {
+    const directions = [
+      { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
+      { x: 0.707, y: 0.707 }, { x: -0.707, y: 0.707 }, { x: -0.707, y: -0.707 }, { x: 0.707, y: -0.707 },
+    ];
+    for (const gap of [420, 500, 330]) {
+      for (let y = 150; y < WORLD.height - 150; y += 64) {
+        for (let x = 150; x < WORLD.width - 150; x += 64) {
+          for (const direction of directions) {
+            if (targetHorizontalDirection &&
+                (Math.abs(direction.x) < 0.7 || Math.sign(direction.x) !== targetHorizontalDirection)) continue;
+            const runner = { x, y };
+            const chaser = { x: x + direction.x * gap, y: y + direction.y * gap };
+            if (blocked(runner.x, runner.y, game.player.radius) || blocked(chaser.x, chaser.y, game.jev.radius)) continue;
+            if (!isProjectileLaneClear({ x: runner.x, y: runner.y - 6 }, chaser, 12)) continue;
+            const originalPositions = {
+              runner: { x: game.player.x, y: game.player.y, vx: game.player.vx, vy: game.player.vy },
+              chaser: { x: game.jev.x, y: game.jev.y, vx: game.jev.vx, vy: game.jev.vy },
+            };
+            Object.assign(game.player, runner, { vx: 0, vy: 0 });
+            Object.assign(game.jev, chaser, { vx: 0, vy: 0 });
+            const mascotHeading = findMascotChargeHeading();
+            const shoveEnd = mascotHeading ? {
+              x: game.jev.x + mascotHeading.x * 42,
+              y: game.jev.y + mascotHeading.y * 42,
+            } : null;
+            const bothSkillLanesClear = isStasisLaneClear() && Boolean(mascotHeading) &&
+              !blocked(shoveEnd.x, shoveEnd.y, game.jev.radius) && isLaneClear(game.jev, shoveEnd, game.jev.radius);
+            Object.assign(game.player, originalPositions.runner);
+            Object.assign(game.jev, originalPositions.chaser);
+            if (!bothSkillLanesClear) continue;
+            return { runner, chaser, gap, mascotHeading };
+          }
+        }
+      }
+    }
+    throw new Error('No clear lane for runner skill validation was found.');
+  }
+
+  function prepareRunnerSkillsFixture(skinId = 'sam', targetHorizontalDirection = 1) {
+    if (!game?.running) throw new Error('Start a match before preparing a test fixture.');
+    if (!Object.hasOwn(skinCatalog, skinId)) throw new Error('Unknown test skin.');
+    game.paused = true;
+    game.mode = 'human';
+    game.skinLoadout = { runner: skinId, chaser: skinId === 'sam' ? 'dario' : 'sam' };
+    const fixture = findRunnerSkillsFixture(targetHorizontalDirection);
+    Object.assign(game.player, {
+      ...fixture.runner, vx: 0, vy: 0, health: 4, invulnerable: 0, hurtTimer: 0,
+      guardTimer: 0, guardCooldown: 0, dashTimer: 0, dashCooldown: 0,
+      stasisCooldown: 0, stasisPhase: '', stasisTimer: 0, stasisTarget: null,
+      mascotChargeCooldown: 0, clones: [], echo: null, aiInput: { x: 0, y: 0 }, fireHeld: false,
+    });
+    Object.assign(game.jev, {
+      ...fixture.chaser, vx: 0, vy: 0, stunned: 0, blastCooldown: 0, blastPhase: '',
+      rendPhase: '', salvoPhase: '', ramKnockbackTimer: 0, ramReactionTimer: 0,
+      ramKnockbackVx: 0, ramKnockbackVy: 0, ramReactionFacing: "right",
+      freezeReactionTimer: 0, slowTimer: 0, riftAegisTimer: 0, riftAegisCharges: 0,
+    });
+    game.anchors.forEach((anchor) => { anchor.health = anchor.maxHealth; anchor.hitFlash = 0; });
+    stick.x = 0;
+    stick.y = 0;
+    game.elapsed = 0;
+    game.projectiles = [];
+    game.mascotCharge = null;
+    game.skillImpacts = [];
+    game.actionTimeline = [];
+    game.skillCallouts = [];
+    particles = [];
+    screenShake = 0;
+    cameraState.ready = false;
+    keys.clear();
+    drawWorld();
+    return {
+      map: game.level.id,
+      runnerSkin: skinForRole('runner').id,
+      chaserSkin: skinForRole('chaser').id,
+      mascot: companionForRole('runner'),
+      runner: { x: game.player.x, y: game.player.y },
+      chaser: { x: game.jev.x, y: game.jev.y },
+      chaserHealth: game.jev.health,
+      gap: fixture.gap,
+      mascotHeading: fixture.mascotHeading,
+      stasisLaneClear: isStasisLaneClear(),
+      mascotLaneClear: Boolean(findMascotChargeHeading()),
+      skillArt: Object.fromEntries(Object.entries(artwork.skillAtlases).map(([id, atlas]) => [id, {
+        loaded: Boolean(atlas?.image?.complete && atlas.image.naturalWidth > 0),
+        width: atlas?.image?.naturalWidth || 0,
+        height: atlas?.image?.naturalHeight || 0,
+        nonemptyFrames: atlas?.bounds?.filter(Boolean).length || 0,
+        frameBounds: atlas?.bounds?.map((bounds) => bounds
+          ? { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+          : null) || [],
+      }])),
+      skillIcons: {
+        loaded: Boolean(artwork.runnerSkillIcons?.complete && artwork.runnerSkillIcons.naturalWidth > 0),
+        width: artwork.runnerSkillIcons?.naturalWidth || 0,
+        height: artwork.runnerSkillIcons?.naturalHeight || 0,
+      },
+    };
+  }
+
+  function findSignalTetherFixture(requireMovingRoute = false) {
+    const standard = findRunnerSkillsFixture();
+    const original = {
+      runner: { x: game.player.x, y: game.player.y, vx: game.player.vx, vy: game.player.vy },
+      chaser: { x: game.jev.x, y: game.jev.y, vx: game.jev.vx, vy: game.jev.vy },
+    };
+    const directions = [0, Math.PI / 4, Math.PI / 2, Math.PI * 3 / 4, Math.PI, -Math.PI / 4, -Math.PI / 2, -Math.PI * 3 / 4];
+    function* candidates() {
+      yield standard;
+      for (const gap of [420, 520, 620, 330]) {
+        for (let y = 170; y < WORLD.height - 170; y += 120) {
+          for (let x = 170; x < WORLD.width - 170; x += 120) {
+            for (const angle of directions) {
+              yield {
+                runner: { x: x + Math.cos(angle) * gap, y: y + Math.sin(angle) * gap },
+                chaser: { x, y }, gap,
+              };
+            }
+          }
+        }
+      }
+    }
+    for (const candidate of candidates()) {
+      if (blocked(candidate.runner.x, candidate.runner.y, game.player.radius) ||
+          blocked(candidate.chaser.x, candidate.chaser.y, game.jev.radius)) continue;
+      Object.assign(game.player, candidate.runner, { vx: 0, vy: 0 });
+      Object.assign(game.jev, candidate.chaser, { vx: 0, vy: 0 });
+      const clear = isSignalTetherLaneClear(game.jev, predictedSignalTetherTarget());
+      const movementInputs = clear && requireMovingRoute ? signalTetherClearMotionInputs(1.25) : [];
+      Object.assign(game.player, original.runner);
+      Object.assign(game.jev, original.chaser);
+      if (clear && (!requireMovingRoute || movementInputs.length)) {
+        return { ...candidate, ...(movementInputs.length ? { movementInput: movementInputs[0] } : {}) };
+      }
+    }
+    throw new Error("No clear Signal Tether test lane was found in this arena.");
+  }
+
+  function prepareSignalTetherFixture(runnerSkinId = "sam", chaserSkinId = "dario", requireMovingRoute = false) {
+    if (!game?.running) throw new Error("Start a match before preparing a test fixture.");
+    if (!Object.hasOwn(skinCatalog, runnerSkinId) || !Object.hasOwn(skinCatalog, chaserSkinId)) {
+      throw new Error("Unknown test skin.");
+    }
+    game.paused = true;
+    game.mode = "human";
+    keys.clear();
+    stick.x = 0;
+    stick.y = 0;
+    const fixture = findSignalTetherFixture(requireMovingRoute);
+    game.skinLoadout = { runner: runnerSkinId, chaser: chaserSkinId };
+    Object.assign(game.player, {
+      ...fixture.runner, vx: 0, vy: 0, health: 4, invulnerable: 0, hurtTimer: 0, snaredTimer: 0,
+      signalTetherReactionTimer: 0, guardTimer: 0, guardCooldown: 0, dashTimer: 0, dashCooldown: 3,
+      clones: [], echo: null, aiInput: { x: 0, y: 0 },
+    });
+    Object.assign(game.jev, {
+      ...fixture.chaser, vx: 0, vy: 0, mode: "pursue", stunned: 0,
+      parryRecoveryUntil: 0,
+      signalCooldown: 0, signalPhase: "", signalTimer: 0, signalTarget: null,
+      rendPhase: "", blastPhase: "", salvoPhase: "", shadowDodgePhase: "",
+    });
+    game.projectiles = [];
+    game.skillImpacts = [];
+    game.skillCallouts = [];
+    game.actionTimeline = [];
+    game.history = [];
+    particles = [];
+    screenShake = 0;
+    cameraState.ready = false;
+    game.elapsed = 0;
+    drawWorld();
+    return {
+      map: game.level.id,
+      runnerSkin: skinForRole("runner").id,
+      chaserSkin: skinForRole("chaser").id,
+      runnerCompany: skinForRole("runner").company,
+      chaserCompany: skinForRole("chaser").company,
+      runner: { x: game.player.x, y: game.player.y },
+      chaser: { x: game.jev.x, y: game.jev.y },
+      gap: distance(game.player, game.jev),
+      movementInput: fixture.movementInput,
+      laneClear: isSignalTetherLaneClear(game.jev, predictedSignalTetherTarget()),
+      skillArt: Object.fromEntries(Object.entries(artwork.skillAtlases)
+        .filter(([id]) => id.startsWith("signal"))
+        .map(([id, atlas]) => [id, {
+          loaded: Boolean(atlas?.image?.complete && atlas.image.naturalWidth > 0),
+          width: atlas?.image?.naturalWidth || 0,
+          height: atlas?.image?.naturalHeight || 0,
+          nonemptyFrames: atlas?.bounds?.filter(Boolean).length || 0,
+          frameBounds: atlas?.bounds?.map((bounds) => bounds
+            ? { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+            : null) || [],
+        }])),
+      icons: Object.fromEntries(Object.entries(artwork.signalSkillIcons).map(([company, image]) => [company, {
+        loaded: Boolean(image.complete && image.naturalWidth > 0),
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      }])),
+    };
+  }
+
+  function chooseSignalTether(input = { x: 0, y: 0 }) {
+    keys.clear();
+    stick.x = input.x;
+    stick.y = input.y;
+    setMode("signal_tether", 0.9, "qa");
+    drawWorld();
+    return {
+      mode: game.jev.mode,
+      phase: game.jev.signalPhase,
+      timer: game.jev.signalTimer,
+      cooldown: game.jev.signalCooldown,
+      target: game.jev.signalTarget ? { ...game.jev.signalTarget } : null,
+      events: game.actionTimeline.map((entry) => entry.event),
+      callouts: game.skillCallouts.map(({ owner, abilityId, skillName }) => ({ owner, abilityId, skillName })),
+    };
+  }
+
+  function signalTetherClearMotionInputs(seconds = 1) {
+    const candidates = [
+      { label: "east", x: 1, y: 0 },
+      { label: "south-east", x: Math.SQRT1_2, y: Math.SQRT1_2 },
+      { label: "south", x: 0, y: 1 },
+      { label: "south-west", x: -Math.SQRT1_2, y: Math.SQRT1_2 },
+      { label: "west", x: -1, y: 0 },
+      { label: "north-west", x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+      { label: "north", x: 0, y: -1 },
+      { label: "north-east", x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+    ];
+    const step = 1 / 30;
+    return candidates.filter((input) => {
+      let point = { x: game.player.x, y: game.player.y };
+      for (let elapsed = 0; elapsed < seconds; elapsed += step) {
+        if (game.hazards.some((hazard) => touchesHazard({ ...point, radius: game.player.radius }, hazard))) return false;
+        const terrain = environmentEffects(point);
+        if (terrain.speed < 0.999 || Math.abs(terrain.flowX) + Math.abs(terrain.flowY) > 0.01) return false;
+        const duration = Math.min(step, seconds - elapsed);
+        const next = {
+          x: point.x + input.x * game.player.speed * duration,
+          y: point.y + input.y * game.player.speed * duration,
+        };
+        if (blocked(next.x, next.y, game.player.radius) || !isLaneClear(point, next, game.player.radius)) return false;
+        point = next;
+      }
+      const priorInput = { x: stick.x, y: stick.y };
+      stick.x = input.x;
+      stick.y = input.y;
+      const target = predictedSignalTetherTarget();
+      stick.x = priorInput.x;
+      stick.y = priorInput.y;
+      return isSignalTetherLaneClear(game.jev, target);
+    });
+  }
+
+  function advanceSignalTether(seconds, input = { x: 0, y: 0 }, stopOnEvent = "") {
+    keys.clear();
+    stick.x = input.x;
+    stick.y = input.y;
+    let remaining = Math.max(0, seconds);
+    let advanced = 0;
+    let runnerTravel = 0;
+    while (remaining > 0) {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      const runnerBefore = { x: game.player.x, y: game.player.y };
+      updatePlayer(dt);
+      runnerTravel += distance(runnerBefore, game.player);
+      if (game.jev.signalPhase === "windup" || game.jev.stunned > 0) updateJev(dt);
+      updateProjectiles(dt);
+      remaining -= dt;
+      advanced += dt;
+      if (stopOnEvent && game.actionTimeline.some((entry) => entry.event === stopOnEvent)) break;
+    }
+    stick.x = 0;
+    stick.y = 0;
+    drawWorld();
+    return {
+      advanced,
+      runnerTravel,
+      phase: game.jev.signalPhase,
+      runner: { x: game.player.x, y: game.player.y },
+      runnerHealth: game.player.health,
+      runnerSnared: game.player.snaredTimer,
+      runnerReaction: game.player.signalTetherReactionTimer,
+      chaserStunned: game.jev.stunned,
+      projectiles: game.projectiles.map(({ kind, owner, x, y, vx, vy, life }) => ({ kind, owner, x, y, vx, vy, life })),
+      events: game.actionTimeline.map((entry) => entry.event),
+      callouts: game.skillCallouts.map(({ owner, abilityId, skillName }) => ({ owner, abilityId, skillName })),
+    };
+  }
+
+  function setSignalTetherGuard() {
+    game.player.guardTimer = 0.8;
+  }
+
+  function setSignalTetherDash() {
+    game.player.invulnerable = 0.8;
+  }
+
+  function setSignalTetherDecoy() {
+    const clone = {
+      x: game.player.x, y: game.player.y, radius: game.player.radius,
+      companion: companionForRole("runner"), life: 2.4,
+    };
+    game.player.clones = [clone];
+    game.player.echo = clone;
+  }
+
+  function prepareSignalTetherBlockedLane() {
+    for (const block of game.level.blocks) {
+      const candidates = [
+        [{ x: block.x - 130, y: block.y + block.h / 2 }, { x: block.x + block.w + 130, y: block.y + block.h / 2 }],
+        [{ x: block.x + block.w / 2, y: block.y - 130 }, { x: block.x + block.w / 2, y: block.y + block.h + 130 }],
+      ];
+      for (const [runner, chaser] of candidates) {
+        const gap = distance(runner, chaser);
+        if (gap < SIGNAL_TETHER_MIN_RANGE || gap > SIGNAL_TETHER_MAX_RANGE ||
+            blocked(runner.x, runner.y, game.player.radius) || blocked(chaser.x, chaser.y, game.jev.radius)) continue;
+        Object.assign(game.player, runner, { vx: 0, vy: 0 });
+        Object.assign(game.jev, chaser, { vx: 0, vy: 0, signalCooldown: 0, signalPhase: "", stunned: 0 });
+        if (!isSignalTetherLaneClear(game.jev, predictedSignalTetherTarget())) {
+          drawWorld();
+          return { runner, chaser, gap, laneClear: false };
+        }
+      }
+    }
+    throw new Error("No valid blocked Signal Tether lane was found.");
+  }
+
+  function interruptSignalTether() {
+    const started = startSignalTether();
+    if (started) {
+      game.jev.stunned = 0.3;
+      game.elapsed += 1 / 120;
+      updateJev(1 / 120);
+    }
+    drawWorld();
+    return {
+      started,
+      phase: game.jev.signalPhase,
+      events: game.actionTimeline.map((entry) => entry.event),
+      projectiles: game.projectiles.length,
+    };
+  }
+
+  function advanceStasisCast(seconds) {
+    let remaining = Math.max(0, seconds);
+    while (remaining > 0) {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      updateStasisCast(dt);
+      updateProjectiles(dt);
+      remaining -= dt;
+    }
+    drawWorld();
+    return {
+      phase: game.player.stasisPhase,
+      timer: game.player.stasisTimer,
+      playerPosition: { x: game.player.x, y: game.player.y },
+      chaserPosition: { x: game.jev.x, y: game.jev.y },
+      chaserHealth: game.jev.health,
+      stunned: game.jev.stunned,
+      frozenVisualSeconds: game.jev.freezeReactionTimer,
+      cooldown: game.player.stasisCooldown,
+      projectiles: game.projectiles.map(({ kind, owner, x, y, vx, vy, life }) => ({ kind, owner, x, y, vx, vy, life })),
+      events: game.actionTimeline.map((entry) => entry.event),
+      callouts: game.skillCallouts.map(({ owner, abilityId, skillName }) => ({ owner, abilityId, skillName })),
+    };
+  }
+
+  function interruptStasisCast() {
+    const started = useStasisCast();
+    if (!started) return { started: false, interrupted: false };
+    updateStasisCast(0.18);
+    const before = game.player.health;
+    damagePlayer('lava_hit', 0, 0, 1, true, false);
+    drawWorld();
+    return {
+      started,
+      interrupted: game.player.stasisPhase === '',
+      healthLost: before - game.player.health,
+      events: game.actionTimeline.map((entry) => entry.event),
+    };
+  }
+
+  function shieldStasisCast() {
+    game.anchors.forEach((anchor) => { anchor.health = 0; });
+    game.jev.riftAegisTimer = 2;
+    game.jev.riftAegisCharges = 2;
+    const started = useStasisCast();
+    const result = advanceStasisCast(RUNNER_STASIS_WINDUP + 0.8);
+    return { started, chargesLeft: game.jev.riftAegisCharges, stunned: game.jev.stunned, events: result.events };
+  }
+
+  function advanceMascotCharge(seconds = 0.8) {
+    let remaining = Math.max(0, seconds);
+    while (remaining > 0 && game.mascotCharge) {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      updateMascotCharge(dt);
+      remaining -= dt;
+    }
+    if (game.jev.ramKnockbackTimer > 0) updateJev(0.1);
+    drawWorld();
+    return {
+      active: Boolean(game.mascotCharge),
+      mascot: companionForRole('runner'),
+      runnerCompany: skinForRole('runner').company,
+      chaserPosition: { x: game.jev.x, y: game.jev.y },
+      chaserHealth: game.jev.health,
+      chaserSlow: game.jev.slowTimer,
+      knockbackTimer: game.jev.ramKnockbackTimer,
+      ramReactionTimer: game.jev.ramReactionTimer,
+      ramKnockbackVx: game.jev.ramKnockbackVx,
+      ramReactionFacing: game.jev.ramReactionFacing,
+      events: game.actionTimeline.map((entry) => entry.event),
+      callouts: game.skillCallouts.map(({ owner, abilityId, skillName }) => ({ owner, abilityId, skillName })),
+    };
+  }
+
+  function validateMascotCharge() {
+    const start = { x: game.jev.x, y: game.jev.y };
+    const health = game.jev.health;
+    const started = useMascotCharge();
+    const mascot = game.mascotCharge?.companion || null;
+    const travel = advanceMascotCharge(0.8);
+    return {
+      started,
+      mascot,
+      expectedMascot: companionForRole('runner'),
+      expectedCompany: skinForRole('runner').company,
+      noDamage: game.jev.health === health,
+      movedChaser: distance(start, game.jev) > 1,
+      slowedChaser: game.jev.slowTimer > 0,
+      ramReactionTimer: game.jev.ramReactionTimer,
+      ...travel,
+    };
+  }
+
+  function preparePowerBlastFixture(chaserSkinId = "dario") {
+    if (!Object.hasOwn(skinCatalog, chaserSkinId)) throw new Error("Unknown test skin.");
+    const runnerSkinId = chaserSkinId === "sam" ? "dario" : "sam";
+    const fixture = prepareRunnerSkillsFixture(runnerSkinId);
+    game.skinLoadout = { runner: runnerSkinId, chaser: chaserSkinId };
+    Object.assign(game.jev, { blastCooldown: 0, blastPhase: "", blastTimer: 0, blastTarget: null });
+    drawWorld();
+    return {
+      ...fixture,
+      runnerSkin: skinForRole("runner").id,
+      chaserSkin: skinForRole("chaser").id,
+      blastLaneClear: isPowerBlastLaneClear(game.jev, predictedPowerBlastTarget()),
+    };
+  }
+
+  function advancePowerBlast(seconds) {
+    let remaining = Math.max(0, seconds);
+    while (remaining > 0) {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      updateJev(dt);
+      updateProjectiles(dt);
+      remaining -= dt;
+    }
+    drawWorld();
+    return {
+      phase: game.jev.blastPhase,
+      timer: game.jev.blastTimer,
+      runnerHealth: game.player.health,
+      projectiles: game.projectiles.map(({ kind, owner, x, y, vx, vy, life }) => ({ kind, owner, x, y, vx, vy, life })),
+      events: game.actionTimeline.map((entry) => entry.event),
+      callouts: game.skillCallouts.map(({ owner, abilityId, skillName }) => ({ owner, abilityId, skillName })),
+    };
+  }
+
+  function findSoulSalvoFixture(movingRunner = false) {
+    const positionOffsets = [];
+    for (let y = -720; y <= 720; y += 80) {
+      for (let x = -1200; x <= 1200; x += 80) positionOffsets.push({ x, y, score: x * x + y * y });
+    }
+    positionOffsets.sort((left, right) => left.score - right.score);
+    const directions = [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2, Math.PI, 3 * Math.PI / 4, -3 * Math.PI / 4];
+    for (const { x: offsetX, y: offsetY } of positionOffsets) {
+      for (const gap of [520, 600, 680, 440]) {
+        for (const direction of directions) {
+          const chaser = {
+            x: WORLD.width / 2 - Math.cos(direction) * gap / 2 + offsetX,
+            y: WORLD.height / 2 - Math.sin(direction) * gap / 2 + offsetY,
+          };
+          const runner = {
+            x: chaser.x + Math.cos(direction) * gap,
+            y: chaser.y + Math.sin(direction) * gap,
+          };
+          if (blocked(chaser.x, chaser.y, game.jev.radius) || blocked(runner.x, runner.y, game.player.radius)) continue;
+          const origin = { x: chaser.x, y: chaser.y - 6 };
+          const baseDirection = { x: -Math.sin(direction), y: Math.cos(direction) };
+          const movementOptions = movingRunner
+            ? [baseDirection, { x: -baseDirection.x, y: -baseDirection.y }]
+            : [{ x: 0, y: 0 }];
+          for (const runnerInput of movementOptions) {
+            const velocity = {
+              vx: runnerInput.x * game.player.speed,
+              vy: runnerInput.y * game.player.speed,
+            };
+            const flightTime = estimateInterceptTime(
+              origin,
+              { ...runner, ...velocity },
+              SOUL_SALVO_SPEED,
+              SOUL_SALVO_WINDUP,
+              1.8,
+            );
+            const aim = {
+              x: runner.x + velocity.vx * (SOUL_SALVO_WINDUP + flightTime),
+              y: runner.y + velocity.vy * (SOUL_SALVO_WINDUP + flightTime),
+            };
+            if (movingRunner && (blocked(aim.x, aim.y, game.player.radius) ||
+                !isLaneClear(runner, aim, game.player.radius))) continue;
+            const centerAngle = Math.atan2(aim.y - origin.y, aim.x - origin.x);
+            const reach = Math.min(distance(origin, aim), SOUL_SALVO_SPEED * 1.9);
+            const clearFan = [-SOUL_SALVO_FAN_ANGLE, 0, SOUL_SALVO_FAN_ANGLE].every((angleOffset) => {
+              const angle = centerAngle + angleOffset;
+              const endpoint = { x: origin.x + Math.cos(angle) * reach, y: origin.y + Math.sin(angle) * reach };
+              return isProjectileLaneClear(origin, endpoint, 13);
+            });
+            if (clearFan) return { chaser, runner, gap, runnerInput, direction };
+          }
+        }
+      }
+    }
+    throw new Error("No clear Soul Salvo test lane was found in this arena.");
+  }
+
+  function prepareSoulSalvoFixture(skinId = "dario", movingRunner = false) {
+    if (!game?.running) throw new Error("Start a match before preparing a test fixture.");
+    if (!Object.hasOwn(skinCatalog, skinId)) throw new Error("Unknown test skin.");
+    game.paused = true;
+    game.mode = "human";
+    game.skinLoadout.chaser = skinId;
+    const fixture = findSoulSalvoFixture(movingRunner);
+    Object.assign(game.player, {
+      x: fixture.runner.x, y: fixture.runner.y, vx: 0, vy: 0, health: 4,
+      invulnerable: 0, hurtTimer: 0, guardTimer: 0, dashTimer: 0,
+      clones: [], echo: null, aiInput: { x: 0, y: 0 },
+    });
+    Object.assign(game.jev, {
+      x: fixture.chaser.x, y: fixture.chaser.y, vx: 0, vy: 0, stunned: 0,
+      salvoCooldown: 0, salvoPhase: "", salvoTimer: 0, salvoTarget: null,
+      rendPhase: "", blastPhase: "", blastCooldown: 0,
+    });
+    game.elapsed = 0;
+    game.projectiles = [];
+    game.actionTimeline = [];
+    game.skillCallouts = [];
+    particles = [];
+    screenShake = 0;
+    cameraState.ready = false;
+    keys.clear();
+    stick.x = movingRunner ? fixture.runnerInput.x : 0;
+    stick.y = movingRunner ? fixture.runnerInput.y : 0;
+    startSoulSalvo();
+    game.elapsed = 0.13;
+    drawWorld();
+      return {
+        ...fixture, runnerInput: { x: stick.x, y: stick.y },
+        phase: game.jev.salvoPhase, warningSeconds: game.jev.salvoTimer,
+      };
+  }
+
+  function advanceSoulSalvo(seconds) {
+    let remaining = Math.max(0, seconds);
+    while (remaining > 0 && game?.jev.salvoPhase === "windup") {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      updatePlayer(dt);
+      updateJev(dt);
+      remaining -= dt;
+    }
+    drawWorld();
+    return {
+      phase: game?.jev.salvoPhase || "",
+      projectiles: game?.projectiles.map((projectile) => ({ ...projectile })) || [],
+      runner: game ? { x: game.player.x, y: game.player.y, vx: game.player.vx, vy: game.player.vy } : null,
+      events: game?.actionTimeline.map((entry) => entry.event) || [],
+      callouts: game?.skillCallouts.map((entry) => ({ ...entry })) || [],
+    };
+  }
+
+  function stepSoulSalvoProjectiles(seconds) {
+    let remaining = Math.max(0, seconds);
+    while (remaining > 0 && game?.running) {
+      const dt = Math.min(1 / 120, remaining);
+      game.elapsed += dt;
+      updatePlayer(dt);
+      updateProjectiles(dt);
+      remaining -= dt;
+    }
+    drawWorld();
+    return {
+      playerHealth: game?.player.health,
+      projectiles: game?.projectiles.map((projectile) => ({ ...projectile })) || [],
+      events: game?.actionTimeline.map((entry) => entry.event) || [],
+    };
+  }
+
+  function moveSoulSalvoTestRunner(distanceToMove = 220) {
+    const centerShot = game.projectiles.find((projectile) => projectile.kind === "salvo");
+    if (!centerShot) throw new Error("Fire Soul Salvo before moving the test runner.");
+    const angle = Math.atan2(centerShot.vy, centerShot.vx);
+    const perpendicular = { x: -Math.sin(angle), y: Math.cos(angle) };
+    for (const distanceToTry of [distanceToMove, distanceToMove + 80, distanceToMove + 160]) {
+      for (const direction of [1, -1]) {
+        const target = {
+          x: game.player.x + perpendicular.x * distanceToTry * direction,
+          y: game.player.y + perpendicular.y * distanceToTry * direction,
+        };
+        if (blocked(target.x, target.y, game.player.radius)) continue;
+        const outsideAllBolts = game.projectiles.every((projectile) => {
+          const speedSquared = projectile.vx ** 2 + projectile.vy ** 2;
+          const length = Math.max(1, projectile.maxDistance || Math.hypot(projectile.vx, projectile.vy) * 1.9);
+          const end = {
+            x: projectile.x + projectile.vx / Math.sqrt(speedSquared) * length,
+            y: projectile.y + projectile.vy / Math.sqrt(speedSquared) * length,
+          };
+          const dx = end.x - projectile.x;
+          const dy = end.y - projectile.y;
+          const projection = clamp(((target.x - projectile.x) * dx + (target.y - projectile.y) * dy) / (dx * dx + dy * dy), 0, 1);
+          const nearest = { x: projectile.x + dx * projection, y: projectile.y + dy * projection };
+          return distance(target, nearest) > game.player.radius + projectile.radius + 8;
+        });
+        if (!outsideAllBolts) continue;
+        game.player.x = target.x;
+        game.player.y = target.y;
+        cameraState.ready = false;
+        drawWorld();
+        return { x: target.x, y: target.y };
+      }
+    }
+    throw new Error("No safe perpendicular dodge position was found.");
+  }
+
+  function setSoulSalvoTestGuard() {
+    game.player.guardTimer = 0.8;
+  }
+
+  function setSoulSalvoTestDecoy() {
+    const clone = {
+      x: game.player.x, y: game.player.y, radius: game.player.radius,
+      companion: companionForRole("runner"), duration: 2.4,
+    };
+    game.player.clones = [clone];
+    game.player.echo = clone;
+  }
+
   window.__FRONTIER_QA__ = Object.freeze({
+    runnerSkillArtReady: () => Boolean(artwork.runnerSkillIcons?.complete && artwork.runnerSkillIcons.naturalWidth > 0 &&
+      artwork.runnerSkillIcons.naturalWidth % 2 === 0 && artwork.runnerSkillIcons.naturalHeight % 2 === 0 &&
+      Object.keys(skillAtlasFiles).every((key) => {
+      const atlas = artwork.skillAtlases[key];
+      return Boolean(atlas?.image?.complete && atlas.image.naturalWidth > 0 && atlas.bounds.filter(Boolean).length === 8);
+      })),
+    prepareRunnerSkillsFixture,
+    prepareSignalTetherFixture,
+    prepareSignalTetherBlockedLane,
+    chooseSignalTether,
+    signalTetherClearMotionInputs,
+    advanceSignalTether,
+    interruptSignalTether,
+    setSignalTetherGuard,
+    setSignalTetherDash,
+    setSignalTetherDecoy,
+    useStasisCast,
+    advanceStasisCast,
+    interruptStasisCast,
+    shieldStasisCast,
+    useMascotCharge,
+    advanceMascotCharge,
+    validateMascotCharge,
+    preparePowerBlastFixture,
+    startPowerBlast,
+    advancePowerBlast,
+    prepareSoulSalvoFixture,
+    advanceSoulSalvo,
+    stepSoulSalvoProjectiles,
+    moveSoulSalvoTestRunner,
+    setSoulSalvoTestGuard,
+    setSoulSalvoTestDecoy,
     snapshot: () => {
       if (!game) return null;
       const player = game.player;
@@ -8386,6 +9526,7 @@ if (new URLSearchParams(window.location.search).get("qa") === "1") {
         },
         elapsed: Math.round(game.elapsed * 100) / 100,
         remaining: Math.round(game.remaining * 100) / 100,
+        musicVolume: music.volume,
         camera: { x: cameraState.x, y: cameraState.y },
         running: game.running,
         paused: game.paused,
@@ -8406,6 +9547,11 @@ if (new URLSearchParams(window.location.search).get("qa") === "1") {
           guardCooldown: player.guardCooldown, echoCooldown: player.echoCooldown,
           shots: player.shotsFired, hits: player.hitsLanded,
         },
+        projectiles: game.projectiles.map((projectile) => ({
+          owner: projectile.owner, kind: projectile.kind, skinId: projectile.skinId,
+          x: projectile.x, y: projectile.y, vx: projectile.vx, vy: projectile.vy,
+          radius: projectile.radius, life: projectile.life,
+        })),
         jev: {
           x: jev.x, y: jev.y, vx: jev.vx, vy: jev.vy, health: jev.health,
           radius: jev.radius, clearanceRadius: jevMovementRadius,
@@ -8413,9 +9559,11 @@ if (new URLSearchParams(window.location.search).get("qa") === "1") {
           mode: jev.mode, plan: jev.plan, stuck: jev.stuckTimer,
           recoveryAttempts: jev.recoveryAttempts, recoveryTarget: jev.recoveryTarget,
           pathLength: jev.path.length, rendPhase: jev.rendPhase, blastPhase: jev.blastPhase,
+          blastTarget: jev.blastTarget ? { ...jev.blastTarget } : null,
+          blastCooldown: jev.blastCooldown, slowTimer: jev.slowTimer,
           target: jevTarget(), targetBlocked: blocked(jevTarget().x, jevTarget().y, jevMovementRadius),
           targetLaneClear: isLaneClear(jev, jevTarget(), jevMovementRadius),
-          salvoPhase: jev.salvoPhase, rushPhase: jev.riftRushPhase, aegisCharges: jev.riftAegisCharges,
+          salvoPhase: jev.salvoPhase, aegisCharges: jev.riftAegisCharges,
           parryRecoveryUntil: jev.parryRecoveryUntil,
           actionHistory: jev.actionHistory.map((action) => ({ ...action })),
         },

@@ -11,12 +11,11 @@ const maxRequestBytes = 32_000;
 
 const tactics = {
   rift_rend: "Close-range crescent slash. A visible 0.42s wind-up fixes a broad 96-degree arc. Use it to punish a committed route; a ready Lantern Guard can parry it, so first draw out or bypass the guard.",
-  power_blast: "Charged high-damage shot. Best when line of sight is clear at medium range.",
-  soul_salvo: "Three closely grouped lead bolts. Best against a moving runner in a clear lane.",
+  power_blast: "A 0.32s aimed wind-up launches a fast straight blast through a clear 174-475 unit lane. Lead the runner's motion; its warning gives a moving runner time to dodge.",
+  soul_salvo: "Three fast, straight bolts fan across a predicted lane. Use on a sustained route through clear space; avoid a fresh dash or decoy.",
   meteor_storm: "Call down aerial meteor bombardment. Best when the runner is hiding behind cover or kiting.",
   rift_mine: "Place an explosive void trap. Best when cutting off the runner's escape path or near an anchor.",
-  summon_wraiths: "Summon tracking wraithlings. Best to swarm and flush out an evasive runner.",
-  rift_rush: "After a visible wind-up, charge through a clear mid-range lane and stop short; wait out post-parry recovery.",
+  signal_tether: "Fire a visible signal line through a clear lane. It pulls and briefly slows the runner without damage; dash, guard, decoys, and cover can defeat it.",
   rift_aegis: "After all anchors fall, shield only against an incoming hit; keep pressure on the runner between threats.",
   shadow_dodge: "Quick evasive sidestep. Best when incoming fire or burst threatens the chaser.",
   pursue: "Relentless forward chase. Best to close in and corner the runner.",
@@ -47,11 +46,13 @@ const playerTactics = {
   fire_anchors: "Shoot the rift anchor from a safe angle, keeping 350+ distance from the chaser.",
   attack_jev: "Back away while firing from safe long range (keep 350+ distance). Never run toward the chaser.",
   evade_warning: "Move along a safe route when the chaser approaches or an area hazard is about to activate.",
-  lantern_guard: "Timed parry for close contact, incoming projectiles, Rift Rush, or the marked Rift Rend arc. Prefer Phase Dash when ready; use Guard as a deliberate counter when escape is unavailable, never repeatedly.",
+  lantern_guard: "Timed parry for close contact, incoming projectiles, or the marked Rift Rend arc. Prefer Phase Dash when ready; use Guard as a deliberate counter when escape is unavailable, never repeatedly.",
   phase_dash: "Burst through an imminent attack and leave an afterimage that misleads the chaser's aim.",
   mirror_echo: "Spawn mirror decoys to divert the chaser's attention and intercept attacks.",
   rift_hook: "Grapple across the arena to instantly escape the chaser or reach a far anchor.",
-  soul_burst: "Pulse only when within 145 units of an anchor, the chaser, or wraithlings.",
+  soul_burst: "Pulse only when within 145 units of an anchor or the chaser.",
+  stasis_cast: "Stand still and channel for 0.92s, then fire a fast freeze bolt. A hit stops the chaser for 1.55s. Choose it only with a clear 175-720 unit lane and time before contact; damage interrupts the channel.",
+  mascot_charge: "Launch your matching lab mascot through a clear lane up to 620 units. It deals no damage; a hit shoves the chaser and slows it for 1.8s. Use when the path crosses the chaser's predicted position.",
 };
 const arenas = {
   crossing: {
@@ -88,10 +89,14 @@ const arenas = {
 const gameEvents = new Set([
   "dash", "phase_dash", "lava_hit", "lava_evaded", "soul_burst", "burst_hit", "burst_missed", "shot_fired", "shot_hit", "shot_blocked",
   "player_hit", "mine_hit", "mine_placed", "mine_triggered", "mine_evaded", "rift_rend_windup", "rift_rend_fired", "rift_rend_hit", "rift_rend_missed", "rift_rend_evaded", "rift_rend_interrupted",
-  "power_blast_fired", "blast_hit", "blast_missed", "blast_dodged", "blast_blocked", "blast_canceled",
+  "power_blast_windup", "power_blast_fired", "blast_hit", "blast_missed", "blast_dodged", "blast_blocked", "blast_cover_blocked", "blast_guard_blocked", "blast_decoy_blocked", "blast_canceled",
+  "stasis_cast_started", "stasis_cast_fired", "stasis_interrupted", "freeze_hit", "freeze_missed", "freeze_shield_blocked",
+  "mascot_charge_launched", "mascot_charge_hit", "mascot_charge_missed", "mascot_charge_shielded",
   "salvo_hit", "salvo_missed", "salvo_dodged", "salvo_blocked",
-  "rift_rush_windup", "rift_rush_used", "rift_rush_canceled", "shadow_dodge_windup", "shadow_dodge_used", "shadow_dodge_canceled",
-  "meteor_storm_started", "meteor_hit", "meteor_evaded", "wraiths_summoned", "wraith_hit", "wraith_shot", "wraith_burst", "wraith_dash",
+  "shadow_dodge_windup", "shadow_dodge_used", "shadow_dodge_canceled",
+  "meteor_storm_started", "meteor_hit", "meteor_evaded",
+  "signal_tether_windup", "signal_tether_fired", "signal_tether_hit", "signal_tether_missed", "signal_tether_evaded",
+  "signal_tether_guard_blocked", "signal_tether_decoy_blocked", "signal_tether_cover_blocked", "signal_tether_canceled",
   "soul_salvo_windup", "soul_salvo_fired", "soul_salvo_canceled", "anchor_hit", "anchor_broken",
   "mirror_echo", "mirror_echo_broken", "rift_hook", "lantern_guard", "lantern_parry", "ward_blocked",
 ]);
@@ -182,18 +187,16 @@ function buildState(body) {
   const abilitiesOnCooldown = [];
   if (jev.rend_ready) readyAbilities.push("rift_rend");
   else abilitiesOnCooldown.push("rift_rend");
-  if (jev.blast_ready) readyAbilities.push("power_blast");
+  if (jev.power_blast_ready && jev.power_blast_lane_clear) readyAbilities.push("power_blast");
   else abilitiesOnCooldown.push("power_blast");
   if (jev.soul_salvo_ready) readyAbilities.push("soul_salvo");
   else abilitiesOnCooldown.push("soul_salvo");
-  if (jev.rift_rush_ready) readyAbilities.push("rift_rush");
-  else abilitiesOnCooldown.push("rift_rush");
   if (jev.shadow_dodge_ready) readyAbilities.push("shadow_dodge");
   else abilitiesOnCooldown.push("shadow_dodge");
   if (jev.mine_ready && !jev.active_mine) readyAbilities.push("rift_mine");
   else abilitiesOnCooldown.push("rift_mine");
-  if (jev.summon_ready) readyAbilities.push("summon_wraiths");
-  else abilitiesOnCooldown.push("summon_wraiths");
+  if (jev.signal_tether_ready && jev.signal_tether_lane_clear) readyAbilities.push("signal_tether");
+  else abilitiesOnCooldown.push("signal_tether");
   if (jev.meteor_ready) readyAbilities.push("meteor_storm");
   else abilitiesOnCooldown.push("meteor_storm");
 
@@ -222,7 +225,6 @@ function buildState(body) {
       range_bracket: rangeBracket,
       direct_rend_lane_clear: jev.rend_lane_clear === true,
       rift_rend_warning: jev.rend_arc_threatening === true,
-      direct_blast_lane_clear: jev.blast_lane_clear === true,
       ghost_status: player.afterimage_active ? "afterimage_decoy" : (player.echo?.seconds_left > 0 ? "mirror_echo_decoy" : (player.guard_active ? "shield_guard_active" : (player.slowed ? "slowed" : "exposed"))),
       ghost_health: boundedNumber(player.health, 0, 5, 5),
       demon_health: boundedNumber(jev.health, 0, 6, 6),
@@ -247,6 +249,11 @@ function buildState(body) {
         distance_to_demon: Math.round(distanceToPlayer),
         safe_distance_maintained: distanceToPlayer >= 350,
         demon_closing_in: distanceToPlayer < 350,
+        stasis_ready: player.stasis_ready === true,
+        stasis_lane_clear: player.stasis_lane_clear === true,
+        mascot_charge_ready: player.mascot_charge_ready === true,
+        mascot_charge_lane_clear: player.mascot_charge_lane_clear === true,
+        channel_safe: boundedNumber(jev.seconds_to_ghost_buffer, -10, 30, -1) > 1.7,
         ghost_defensive_ready: [
           ...(player.phase_dash_ready ? ["phase_dash"] : []),
           ...(player.guard_ready ? ["lantern_guard"] : []),
@@ -257,7 +264,11 @@ function buildState(body) {
     } : {}),
     npc_context: {
       rend_lane_clear: jev.rend_lane_clear === true,
+      power_blast_lane_clear: jev.power_blast_lane_clear === true,
       salvo_lane_clear: jev.salvo_lane_clear === true,
+      signal_tether_lane_clear: jev.signal_tether_lane_clear === true,
+      runner_dash_ready: player.phase_dash_ready === true,
+      runner_guard_active: player.guard_active === true,
       ghost_near_burst_threat: player.soul_burst_threat === true,
       active_decoy: player.afterimage_active ? "afterimage" : (player.echo?.seconds_left > 0 ? "mirror_echo" : "none"),
       ghost_defense_history: Array.isArray(player.action_timeline)
@@ -306,14 +317,18 @@ function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
       npc_tactic: {
         type: "choice",
         instructions: {
-          goal: "Choose one hunt action that fits range, lane, recent defenses, and attack results. Use Rift Rend at close range to punish a committed route; its 0.42s arc is dodgeable and a ready Lantern Guard can parry it. Avoid repeating into recent guards; change angle or skill after a miss or parry. Avoid decoys with single-target attacks. With anchors down, use Rift Aegis only for an imminent hit.",
+          goal: "Choose one hunt action using range, clear lanes, runner motion, defenses, and recent outcomes. Signal Tether is a non-damaging pull and slow: use it against a readable route only in range with a clear lane, and avoid it when dash, guard, decoys, or cover can counter it. Power Blast leads at mid-range but has a visible wind-up; Rift Rend punishes committed routes at close range. Change angle after a miss or parry. With anchors down, reserve Rift Aegis for an imminent hit.",
           attack_context: {
             recent_results: npcContext.recent_attack_results ?? [],
-            ghost_motion: npcContext.ghost_motion ?? { vx: 0, vy: 0, route: "open" },
+          ghost_motion: npcContext.ghost_motion ?? { vx: 0, vy: 0, route: "open" },
             active_decoy: npcContext.active_decoy ?? "none",
             ghost_defense_history: npcContext.ghost_defense_history ?? [],
             rend_lane_clear: npcContext.rend_lane_clear === true,
+            power_blast_lane_clear: npcContext.power_blast_lane_clear === true,
             salvo_lane_clear: npcContext.salvo_lane_clear === true,
+            signal_tether_lane_clear: npcContext.signal_tether_lane_clear === true,
+            runner_dash_ready: npcContext.runner_dash_ready === true,
+            runner_guard_active: npcContext.runner_guard_active === true,
             ghost_near_burst_threat: npcContext.ghost_near_burst_threat === true,
           },
         },
@@ -322,7 +337,7 @@ function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
       ...(gameMode === "auto" ? {
         player_tactic: {
           type: "choice",
-          instructions: "Break anchors, then defeat the chaser. During Rift Aegis, move or use decoys until it fades. When Rift Rend marks you, move out of the arc; prefer Phase Dash if ready, or time Lantern Guard to parry if escape is unavailable. Guard projectile wind-ups and near-contact, then punish the chaser's stun. Adapt after a parry instead of repeating it. Avoid Rift Rush's marked lane, keep firing through clear lanes, and avoid active hazards.",
+        instructions: "Break anchors, then defeat the chaser. During Rift Aegis, move or use decoys until it fades. Dodge the marked Power Blast lane while keeping an exit route. Use Stasis Cast only with a clear lane and time for its 0.92s stationary channel; a hit freezes the chaser for 1.55s, but damage interrupts the cast. Use Mascot Charge when its lane crosses the chaser; the mascot shoves and slows for 1.8s without damage. When Rift Rend marks you, leave the arc; prefer Phase Dash if ready, or time Lantern Guard if escape is unavailable. Keep firing through clear lanes and avoid active hazards.",
           criteria: playerTactics,
         },
       } : {}),

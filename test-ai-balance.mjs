@@ -39,7 +39,7 @@ const arenas = requestedArenas.length
 const traceMatch = process.env.TRACE_MATCH || "";
 if (!arenas.length) throw new Error("BALANCE_ARENAS did not include a known arena.");
 const attackModes = new Set([
-  "rift_rend", "power_blast", "soul_salvo", "rift_mine", "summon_wraiths", "meteor_storm", "rift_rush",
+  "rift_rend", "power_blast", "soul_salvo", "rift_mine", "signal_tether", "meteor_storm",
 ]);
 const existingReport = process.env.RESUME_BALANCE === "1" && fs.existsSync(outputPath)
   ? JSON.parse(fs.readFileSync(outputPath, "utf8"))
@@ -108,6 +108,7 @@ function makeReport() {
     baseUrl,
     decisionPolicy,
     runsPerArena,
+    pairing: "Adjacent runs share a deterministic seed while swapping runner and chaser skins.",
     completed: completed.filter(isVerifiedMatch).length,
     incomplete: completed.filter((match) => !isVerifiedMatch(match)).length,
     byArena,
@@ -125,7 +126,10 @@ async function runMatch(job) {
   const errors = [];
   let decisionCalls = 0;
   const arenaIndex = allArenas.indexOf(job.arena);
-  const seed = ((arenaIndex + 1) * 1_000_000 + job.run) >>> 0;
+  // Match adjacent role swaps on the same random sequence so level/seed variance
+  // does not masquerade as a runner or chaser advantage.
+  const seedPair = Math.ceil(job.run / 2);
+  const seed = ((arenaIndex + 1) * 1_000_000 + seedPair) >>> 0;
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("response", (response) => {
     if (response.url().includes("/api/decision") && response.status() >= 400) {
@@ -314,11 +318,21 @@ async function runMatch(job) {
       dodged: eventCounts.rift_rend_evaded || 0,
     },
     power_blast: {
+      started: eventCounts.power_blast_windup || 0,
       fired: eventCounts.power_blast_fired || 0,
       hit: eventCounts.blast_hit || 0,
       missed: eventCounts.blast_missed || 0,
-      blocked: (eventCounts.blast_blocked || 0) + (eventCounts.blast_cover_blocked || 0),
       dodged: eventCounts.blast_dodged || 0,
+      blocked: (eventCounts.blast_cover_blocked || 0) + (eventCounts.blast_guard_blocked || 0),
+      interrupted: eventCounts.blast_canceled || 0,
+    },
+    runner_skills: {
+      stasis_casts: eventCounts.stasis_cast_fired || 0,
+      freezes: eventCounts.freeze_hit || 0,
+      stasis_misses: eventCounts.freeze_missed || 0,
+      mascot_launches: eventCounts.mascot_charge_launched || 0,
+      mascot_hits: eventCounts.mascot_charge_hit || 0,
+      mascot_misses: eventCounts.mascot_charge_missed || 0,
     },
     soul_salvo: {
       fired: eventCounts.soul_salvo_fired || 0,
@@ -330,8 +344,8 @@ async function runMatch(job) {
   };
   const parryTimes = events.filter((event) => event.event === "lantern_parry").map((event) => event.at);
   const attackEvents = new Set([
-    "rift_rend_fired", "power_blast_fired", "soul_salvo_fired", "mine_placed",
-    "wraiths_summoned", "meteor_storm_started", "rift_rush_windup",
+    "rift_rend_fired", "power_blast_windup", "soul_salvo_fired", "mine_placed",
+    "signal_tether_fired", "meteor_storm_started",
   ]);
   const postParryAttackEvents = events.filter((event) => attackEvents.has(event.event) &&
     parryTimes.some((at) => event.at >= at && event.at < at + 3.8));
@@ -347,6 +361,7 @@ async function runMatch(job) {
     chaser,
     decisionPolicy,
     seed,
+    seedPair,
     decisionCalls,
     runnerCompany: runner === "sam" ? "OpenAI" : "Anthropic",
     chaserCompany: chaser === "sam" ? "OpenAI" : "Anthropic",

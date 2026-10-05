@@ -96,7 +96,7 @@
             </button>
             <div class="landing-controls" aria-label="Controls">
               <span><kbd>W A S D</kbd> move · click to fire · <kbd>SPACE</kbd> dash</span>
-              <span><kbd>SHIFT</kbd> parry · <kbd>Q</kbd> mirror · <kbd>E</kbd> hook · <kbd>F</kbd> burst</span>
+              <span><kbd>SHIFT</kbd> parry · <kbd>Q</kbd> mirror · <kbd>E</kbd> hook · <kbd>F</kbd> burst · <kbd>R</kbd> stasis · <kbd>G</kbd> mascot</span>
             </div>
           </div>
 
@@ -175,6 +175,8 @@
               <button class="touch-action dash-action" id="dash-touch" type="button" aria-label="Dash: Space">⤴</button>
               <button class="touch-action pulse-action" id="pulse-touch" type="button" aria-label="Soul burst: X">✦</button>
               <button class="touch-action skill-guard" id="guard-touch" type="button" aria-label="Lantern guard: C">◈</button>
+              <button class="touch-action skill-stasis" id="stasis-touch" type="button" aria-label="Stasis cast: R">❄</button>
+              <button class="touch-action skill-mascot" id="mascot-touch" type="button" aria-label="Mascot charge: G">✦</button>
             </div>
           </div>
 
@@ -186,7 +188,7 @@
               </header>
               <div class="settings-options">
                 <label class="setting-row" for="settings-music"><span>Music</span><input id="settings-music" type="checkbox" checked /></label>
-                <label class="setting-row volume-row" for="settings-volume"><span>Volume</span><input id="settings-volume" type="range" min="0" max="100" value="55" /><output id="settings-volume-value" for="settings-volume">55%</output></label>
+                <label class="setting-row volume-row" for="settings-volume"><span>Volume</span><input id="settings-volume" type="range" min="0" max="100" step="0.5" value="27.5" /><output id="settings-volume-value" for="settings-volume">27.5%</output></label>
                 <label class="setting-row" for="settings-difficulty"><span>Difficulty</span><select id="settings-difficulty"><option value="calm">Calm</option><option value="standard" selected>Standard</option><option value="nightmare">Nightmare</option></select></label>
               </div>
               <section class="hotkey-manual" aria-labelledby="hotkey-title">
@@ -208,6 +210,8 @@
                   <div><dt>Q</dt><dd>Mirror Echo</dd></div>
                   <div><dt>E</dt><dd>Rift Hook</dd></div>
                   <div><dt>F / X</dt><dd>Soul Burst</dd></div>
+                  <div><dt>R</dt><dd>Stasis Cast</dd></div>
+                  <div><dt>G</dt><dd>Mascot Charge</dd></div>
                 </dl>
               </section>
               <button class="button button-primary settings-resume" id="settings-resume" type="button">Resume <span aria-hidden="true">↗</span></button>

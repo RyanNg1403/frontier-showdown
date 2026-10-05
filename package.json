@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.mjs",
     "test:simulation": "node test-simulation.mjs",
-    "test:balance": "node test-ai-balance.mjs"
+    "test:balance": "node test-ai-balance.mjs",
+    "test:signal-tether": "node test-signal-tether.mjs",
+    "test:soul-salvo": "node test-soul-salvo.mjs",
+    "test:runner-skills": "node test-runner-skills.mjs"
   }
 }
