@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 async function loadPlaywright() {
   for (const specifier of [
@@ -20,8 +20,7 @@ async function loadPlaywright() {
 }
 
 const { chromium } = await loadPlaywright();
-const projectRoot = path.dirname(fileURLToPath(import.meta.url));
-const screenshotDirectory = process.env.SCREENSHOT_DIR || path.join(projectRoot, "docs", "screenshots");
+const screenshotDirectory = process.env.SCREENSHOT_DIR || path.join(os.tmpdir(), "frontier-runner-skill-audit");
 const baseUrl = process.env.GAME_URL || "http://127.0.0.1:4173";
 const origin = new URL(baseUrl).origin;
 const arenas = [
@@ -326,12 +325,12 @@ try {
     decisionApiStubs: network.decisionStubs,
     externalRequests: network.externalRequests.length,
     screenshots: [
-      "docs/screenshots/runner-skills.png",
-      "docs/screenshots/runner-skills-anthropic.png",
-      "docs/screenshots/runner-stasis.png",
-      "docs/screenshots/runner-mascot-charge-hit.png",
-      "docs/screenshots/runner-mascot-charge-hit-anthropic.png",
-    ],
+      "runner-skills.png",
+      "runner-skills-anthropic.png",
+      "runner-stasis.png",
+      "runner-mascot-charge-hit.png",
+      "runner-mascot-charge-hit-anthropic.png",
+    ].map((filename) => path.join(screenshotDirectory, filename)),
   }, null, 2));
 } finally {
   await context.close();

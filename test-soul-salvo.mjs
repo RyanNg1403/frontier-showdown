@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 async function loadPlaywright() {
   for (const specifier of [
@@ -20,10 +20,9 @@ async function loadPlaywright() {
 }
 
 const { chromium } = await loadPlaywright();
-const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const baseUrl = process.env.GAME_URL || "http://127.0.0.1:4173";
 const origin = new URL(baseUrl).origin;
-const screenshots = path.join(projectRoot, "docs", "screenshots");
+const screenshots = process.env.SCREENSHOT_DIR || path.join(os.tmpdir(), "frontier-soul-salvo-audit");
 const arenas = [
   ["crossing", "OpenAI Glass Atrium"],
   ["cinder", "OpenAI Compute Studio"],
@@ -238,7 +237,7 @@ try {
     movingTargetMissDistance: Number(movingAimError.toFixed(2)),
     decisionApiStubs: network.decisionStubs,
     externalRequests: network.blockedExternal.length,
-    screenshots: ["docs/screenshots/arena-combat.png", "docs/screenshots/soul-salvo.png"],
+    screenshots: ["arena-combat.png", "soul-salvo.png"].map((filename) => path.join(screenshots, filename)),
   }, null, 2));
 } finally {
   await context.close();
