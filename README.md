@@ -9,19 +9,19 @@ POV: the office tour went hostile. Pick a runner, pick a chaser, crack three anc
 
 ## Run
 
-Requires Node.js 20+.
+Requires Node.js 22+.
 
 ```sh
 cp .env.example .env
-# Add JEV_API_KEY to .env, then:
+# Configure DECISION_PROVIDER and its API key in .env, then:
 npm start
 ```
 
-Or set `JEV_ENV_FILE` to an existing key file. Open [localhost:4173](http://127.0.0.1:4173). No key? The local tactical fallback still plays.
+The start-page **Choice model** toggle selects Jev or OpenAI for the match. Its initial selection comes from `DECISION_PROVIDER` in `.env`, which defaults to `openai` when unset. The server reads provider keys such as `OPENAI_API_KEY` without exposing them to the browser. `JEV_ENV_FILE` can point to a separate environment file. Open [localhost:4173](http://127.0.0.1:4173). Without a configured provider key, the local tactical fallback still plays.
 
 ## Play
 
-Choose **Manual** or **Auto Mode**. Auto Mode lets System One call the plays for both fighters; Manual puts you in the driver’s seat. Stasis Cast pins you in place while it charges. Mascot Charge sends your lab mascot down a lane to shove the chaser back.
+The game starts in **Auto Mode**, where the configured decision provider calls the plays for both fighters. Switch to **Manual** to control the runner yourself. Stasis Cast pins you in place while it charges. Mascot Charge sends your lab mascot down a lane to shove the chaser back.
 
 - Move: **WASD** or arrows · Aim/fire: **pointer** or **Z**
 - Phase Dash: **Space** · Mirror Echo: **Q** · Rift Hook: **E**

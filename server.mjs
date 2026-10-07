@@ -2,12 +2,17 @@ import { createServer } from "node:http";
 import { readFile, readFileSync } from "node:fs";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import OpenAI from "openai";
+import { decisionProviders, resolveDecisionProvider } from "./decision-providers.mjs";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "127.0.0.1";
-const apiUrl = "https://api.typesafe.ai/v1/systemone";
-const maxRequestBytes = 32_000;
+const maxRequestBytes = 1_500_000;
+const localConfigNames = new Set([
+  "DECISION_PROVIDER",
+  ...Object.values(decisionProviders).flatMap((provider) => provider.keyNames),
+]);
 
 const tactics = {
   rift_rend: "Close-range crescent slash. A visible 0.42s wind-up fixes a broad 96-degree arc. Use it to punish a committed route; a ready Lantern Guard can parry it, so first draw out or bypass the guard.",
@@ -101,33 +106,56 @@ const gameEvents = new Set([
   "mirror_echo", "mirror_echo_broken", "rift_hook", "lantern_guard", "lantern_parry", "ward_blocked",
 ]);
 
-function parseApiKeyFile(filePath) {
+function parseEnvironmentFile(filePath) {
+  const values = {};
   try {
     const file = readFileSync(filePath, "utf8");
     for (const line of file.split(/\r?\n/u)) {
-      const match = line.match(/^\s*(?:export\s+)?(JEV_API_KEY|TYPESAFE_API_KEY)\s*=\s*(.*?)\s*$/u);
-      if (!match) continue;
-      const value = match[2].replace(/^(["'])(.*)\1$/u, "$2").trim();
-      if (value && !value.startsWith("put-your-key-here")) return value;
+      const match = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/u);
+      if (!match || !localConfigNames.has(match[1])) continue;
+      const rawValue = match[2].trim();
+      const quote = rawValue[0];
+      const value = (quote === "\"" || quote === "'") && rawValue.at(-1) === quote
+        ? rawValue.slice(1, -1).trim()
+        : rawValue;
+      if (value) values[match[1]] = value;
     }
   } catch {
-    return undefined;
+    return values;
+  }
+  return values;
+}
+
+function getConfiguredValue(name) {
+  const environmentValue = process.env[name]?.trim();
+  if (environmentValue) return environmentValue;
+
+  const paths = [
+    process.env.JEV_ENV_FILE ? resolve(projectRoot, process.env.JEV_ENV_FILE) : null,
+    join(projectRoot, ".env"),
+    join(projectRoot, "..", ".env"),
+  ].filter(Boolean);
+  for (const path of paths) {
+    const value = parseEnvironmentFile(path)[name];
+    if (value) return value;
   }
   return undefined;
 }
 
-function getApiKey() {
-  if (process.env.JEV_API_KEY) return process.env.JEV_API_KEY;
-  if (process.env.TYPESAFE_API_KEY) return process.env.TYPESAFE_API_KEY;
+function getDecisionProvider(requestedProvider) {
+  const configuredProvider = typeof requestedProvider === "string" && requestedProvider.trim()
+    ? requestedProvider
+    : getConfiguredValue("DECISION_PROVIDER");
+  return resolveDecisionProvider(configuredProvider);
+}
 
-  if (process.env.JEV_ENV_FILE) {
-    const key = parseApiKeyFile(resolve(projectRoot, process.env.JEV_ENV_FILE));
-    if (key) return key;
+function getApiKey(provider) {
+  const config = decisionProviders[provider];
+  if (!config) return undefined;
+  for (const name of config.keyNames) {
+    const key = getConfiguredValue(name);
+    if (key && !key.toLowerCase().startsWith("put-your-")) return key;
   }
-  const localKey = parseApiKeyFile(join(projectRoot, ".env"));
-  if (localKey) return localKey;
-  const parentKey = parseApiKeyFile(join(projectRoot, "..", ".env"));
-  if (parentKey) return parentKey;
   return undefined;
 }
 
@@ -292,57 +320,61 @@ function buildState(body) {
   };
 }
 
-function buildDecisionPayload(state, gameMode, playerReadAge = 60) {
+function buildDecisionSpec(state, gameMode, playerReadAge = 60) {
   const refreshPlayerRead = playerReadAge >= 2.5;
   const refreshPlan = (state.demon_tactical_status?.plan_seconds_left ?? 0) <= 0.1;
-  const { npc_context: npcContext = {}, ...sharedState } = state;
-  return {
-    state: sharedState,
-    model: "jev-latest",
-    questions: {
-      ...(refreshPlayerRead ? {
-        player_read: {
-          type: "choice",
-          instructions: "Classify the runner's combat playstyle from their movement, kiting, and firing behavior.",
-          criteria: playerReads,
-        },
-      } : {}),
-      ...(refreshPlan ? {
-        strategic_plan: {
-          type: "choice",
-          instructions: "Choose the chaser's high-level hunting strategy for the next few seconds.",
-          criteria: plans,
-        },
-      } : {}),
-      npc_tactic: {
+  const npcContext = state.npc_context ?? {};
+  const questions = {
+    ...(refreshPlayerRead ? {
+      player_read: {
         type: "choice",
-        instructions: {
-          goal: "Choose one hunt action using range, clear lanes, runner motion, defenses, and recent outcomes. Signal Tether is a non-damaging pull and slow: use it against a readable route only in range with a clear lane, and avoid it when dash, guard, decoys, or cover can counter it. Power Blast leads at mid-range but has a visible wind-up; Rift Rend punishes committed routes at close range. Change angle after a miss or parry. With anchors down, reserve Rift Aegis for an imminent hit.",
-          attack_context: {
-            recent_results: npcContext.recent_attack_results ?? [],
-          ghost_motion: npcContext.ghost_motion ?? { vx: 0, vy: 0, route: "open" },
-            active_decoy: npcContext.active_decoy ?? "none",
-            ghost_defense_history: npcContext.ghost_defense_history ?? [],
-            rend_lane_clear: npcContext.rend_lane_clear === true,
-            power_blast_lane_clear: npcContext.power_blast_lane_clear === true,
-            salvo_lane_clear: npcContext.salvo_lane_clear === true,
-            signal_tether_lane_clear: npcContext.signal_tether_lane_clear === true,
-            runner_dash_ready: npcContext.runner_dash_ready === true,
-            runner_guard_active: npcContext.runner_guard_active === true,
-            ghost_near_burst_threat: npcContext.ghost_near_burst_threat === true,
-          },
-        },
-        criteria: tactics,
+        instructions: "Classify the runner's combat playstyle from their movement, kiting, and firing behavior.",
+        choices: playerReads,
       },
-      ...(gameMode === "auto" ? {
-        player_tactic: {
-          type: "choice",
-        instructions: "Break anchors, then defeat the chaser. During Rift Aegis, move or use decoys until it fades. Dodge the marked Power Blast lane while keeping an exit route. Use Stasis Cast only with a clear lane and time for its 0.92s stationary channel; a hit freezes the chaser for 1.55s, but damage interrupts the cast. Use Mascot Charge when its lane crosses the chaser; the mascot shoves and slows for 1.8s without damage. When Rift Rend marks you, leave the arc; prefer Phase Dash if ready, or time Lantern Guard if escape is unavailable. Keep firing through clear lanes and avoid active hazards.",
-          criteria: playerTactics,
+    } : {}),
+    ...(refreshPlan ? {
+      strategic_plan: {
+        type: "choice",
+        instructions: "Choose the chaser's high-level hunting strategy for the next few seconds.",
+        choices: plans,
+      },
+    } : {}),
+    npc_tactic: {
+      type: "choice",
+      instructions: {
+        goal: "Choose one hunt action using range, clear lanes, runner motion, defenses, and recent outcomes. Signal Tether is a non-damaging pull and slow: use it against a readable route only in range with a clear lane, and avoid it when dash, guard, decoys, or cover can counter it. Power Blast leads at mid-range but has a visible wind-up; Rift Rend punishes committed routes at close range. Change angle after a miss or parry. With anchors down, reserve Rift Aegis for an imminent hit.",
+        attack_context: {
+          recent_results: npcContext.recent_attack_results ?? [],
+          ghost_motion: npcContext.ghost_motion ?? { vx: 0, vy: 0, route: "open" },
+          active_decoy: npcContext.active_decoy ?? "none",
+          ghost_defense_history: npcContext.ghost_defense_history ?? [],
+          rend_lane_clear: npcContext.rend_lane_clear === true,
+          power_blast_lane_clear: npcContext.power_blast_lane_clear === true,
+          salvo_lane_clear: npcContext.salvo_lane_clear === true,
+          signal_tether_lane_clear: npcContext.signal_tether_lane_clear === true,
+          runner_dash_ready: npcContext.runner_dash_ready === true,
+          runner_guard_active: npcContext.runner_guard_active === true,
+          ghost_near_burst_threat: npcContext.ghost_near_burst_threat === true,
         },
-      } : {}),
+      },
+      choices: tactics,
     },
+    ...(gameMode === "auto" ? {
+      player_tactic: {
+        type: "choice",
+        instructions: "Break anchors, then defeat the chaser. During Rift Aegis, move or use decoys until it fades. Dodge the marked Power Blast lane while keeping an exit route. Use Stasis Cast only with a clear lane and time for its 0.92s stationary channel; a hit freezes the chaser for 1.55s, but damage interrupts the cast. Use Mascot Charge when its lane crosses the chaser; the mascot shoves and slows for 1.8s without damage. When Rift Rend marks you, leave the arc; prefer Phase Dash if ready, or time Lantern Guard if escape is unavailable. Keep firing through clear lanes and avoid active hazards.",
+        choices: playerTactics,
+      },
+    } : {}),
   };
+  return { state, game_mode: gameMode, questions };
+}
+
+function completeProbabilityMap(answer, options) {
+  return Object.fromEntries(options.map((option) => {
+    const probability = Number(answer?.probabilities?.[option]);
+    return [option, Number.isFinite(probability) ? probability : null];
+  }));
 }
 
 async function chooseResponse(request, response) {
@@ -362,58 +394,87 @@ async function chooseResponse(request, response) {
     return;
   }
 
-  const apiKey = getApiKey();
+  const provider = getDecisionProvider(body.provider);
+  const providerConfig = decisionProviders[provider];
+  if (!providerConfig) {
+    sendJson(response, 503, { error: "The configured decision provider is not supported." });
+    return;
+  }
+
+  const inputMode = provider === "openai" ? (body.input_mode ?? "text") : "text";
+  if (!["text", "vision_state", "vision_only"].includes(inputMode)) {
+    sendJson(response, 400, { error: "Choose a supported OpenAI input mode." });
+    return;
+  }
+  let vision;
+  if (inputMode !== "text") {
+    const imageUrl = body.vision?.image_url;
+    if (typeof imageUrl !== "string" || imageUrl.length > 1_400_000 ||
+        !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/u.test(imageUrl) ||
+        !imageUrl.startsWith("data:image/jpeg;base64,/9j/")) {
+      sendJson(response, 400, { error: "Vision mode requires an arena screenshot." });
+      return;
+    }
+    vision = { image_url: imageUrl };
+  }
+
+  const apiKey = getApiKey(provider);
   if (!apiKey) {
-    sendJson(response, 503, { error: "Opponent decisions are unavailable. Check the server's TypeSafe configuration." });
+    const error = provider === "openai"
+      ? "OpenAI Decisions is not configured. Add OPENAI_API_KEY to the server environment."
+      : "Jev decisions are unavailable. Check the server's TypeSafe configuration.";
+    sendJson(response, 503, { error });
     return;
   }
 
   try {
-    const upstream = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(buildDecisionPayload(
-        state,
-        body.game_mode,
-        boundedNumber(body.jev?.player_read_age, 0, 60, 60),
-      )),
-      signal: AbortSignal.timeout(15_000),
-    });
+    const playerReadAge = boundedNumber(body.jev?.player_read_age, 0, 60, 60);
+    const specification = buildDecisionSpec(inputMode === "vision_only" ? {} : state, body.game_mode, playerReadAge);
+    specification.input_mode = inputMode;
+    specification.vision = vision;
+    const payload = providerConfig.buildRequest(specification);
+    let upstreamData;
+    if (provider === "openai") {
+      const client = new OpenAI({ apiKey, timeout: 15_000, maxRetries: 0 });
+      upstreamData = await client.decisions.create(payload);
+    } else {
+      const upstream = await fetch(providerConfig.apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15_000),
+      });
 
-    if (!upstream.ok) {
-      const status = upstream.status === 401 ? 502 : 503;
-      const message = upstream.status === 401
-        ? "The opponent service could not authenticate its configured key."
-        : "The opponent could not make a decision right now. Please try again.";
-      sendJson(response, status, { error: message });
-      return;
+      if (!upstream.ok) {
+        const status = upstream.status === 401 ? 502 : 503;
+        const message = upstream.status === 401
+          ? "The Jev service could not authenticate its configured key."
+          : "The opponent could not make a decision right now. Please try again.";
+        sendJson(response, status, { error: message });
+        return;
+      }
+      upstreamData = await upstream.json();
     }
 
-    const result = await upstream.json();
-    const answer = result?.answers?.npc_tactic;
-    const readAnswer = result?.answers?.player_read;
-    const planAnswer = result?.answers?.strategic_plan;
-    const playerAnswer = result?.answers?.player_tactic;
+    const normalized = providerConfig.normalizeResponse(upstreamData);
+    const answers = normalized.answers;
+    const answer = answers.npc_tactic;
+    const readAnswer = answers.player_read;
+    const planAnswer = answers.strategic_plan;
+    const playerAnswer = answers.player_tactic;
     const mode = answer?.choice;
     if (answer?.type !== "choice" || !Object.hasOwn(tactics, mode)) {
       sendJson(response, 502, { error: "The opponent returned an unexpected response. Please try again." });
       return;
     }
 
-    const probabilities = {};
-    for (const option of Object.keys(tactics)) {
-      const value = Number(answer.probabilities?.[option]);
-      probabilities[option] = Number.isFinite(value) ? value : null;
-    }
-    const playerProbabilities = {};
-    for (const option of Object.keys(playerTactics)) {
-      const value = Number(playerAnswer?.probabilities?.[option]);
-      playerProbabilities[option] = Number.isFinite(value) ? value : null;
-    }
+    const probabilities = completeProbabilityMap(answer, Object.keys(tactics));
+    const playerProbabilities = completeProbabilityMap(playerAnswer, Object.keys(playerTactics));
     sendJson(response, 200, {
+      provider,
       mode,
       confidence: Number.isFinite(Number(answer.confidence)) ? Number(answer.confidence) : 0,
       ...(readAnswer?.type === "choice" && Object.hasOwn(playerReads, readAnswer.choice)
@@ -432,7 +493,15 @@ async function chooseResponse(request, response) {
       player_probabilities: playerAnswer?.type === "choice" ? playerProbabilities : undefined,
     });
   } catch (error) {
-    const timedOut = error?.name === "TimeoutError";
+    if (error instanceof OpenAI.APIError && error.status) {
+      sendJson(response, error.status === 401 ? 502 : 503, {
+        error: error.status === 401
+          ? "The OpenAI Decisions service could not authenticate its configured key."
+          : "The opponent could not make a decision right now. Please try again.",
+      });
+      return;
+    }
+    const timedOut = error?.name === "TimeoutError" || error instanceof OpenAI.APIConnectionTimeoutError;
     sendJson(response, 503, {
       error: timedOut
         ? "The opponent took too long to decide. Please try again."
@@ -490,7 +559,12 @@ function serveFile(request, response) {
 
 createServer((request, response) => {
   if (request.method === "GET" && request.url === "/api/health") {
-    sendJson(response, 200, { ready: Boolean(getApiKey()) });
+    const provider = getDecisionProvider();
+    sendJson(response, 200, {
+      ready: Boolean(getApiKey(provider)),
+      provider,
+      providers: Object.fromEntries(Object.keys(decisionProviders).map((name) => [name, Boolean(getApiKey(name))])),
+    });
     return;
   }
   if (request.method === "POST" && request.url === "/api/decision") {

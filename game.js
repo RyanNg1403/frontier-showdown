@@ -752,7 +752,11 @@ const playerModeLabels = {
   stasis_cast: "STASIS CAST",
   mascot_charge: "MASCOT CHARGE",
 };
-let selectedMode = "human";
+let selectedMode = "auto";
+let selectedDecisionProvider = "openai";
+let selectedOpenAIInput = "text";
+let decisionProviderSelectionTouched = false;
+let providerReadiness = null;
 
 const ui = {
   landing: document.querySelector("#landing-screen"),
@@ -818,6 +822,9 @@ const ui = {
   mascotTouch: document.querySelector("#mascot-touch"),
   modeHuman: document.querySelector("#mode-human"),
   modeAuto: document.querySelector("#mode-auto"),
+  providerJev: document.querySelector("#provider-jev"),
+  providerOpenAI: document.querySelector("#provider-openai"),
+  openAIInputPicker: document.querySelector("#openai-input-picker"),
   decisionToggle: document.querySelector("#decision-toggle"),
   decisionPanels: document.querySelector("#decision-panels"),
   chaserDecisionCard: document.querySelector("#chaser-decision-card"),
@@ -1800,6 +1807,17 @@ function setSelectedMode(mode) {
   ui.modeAuto.setAttribute("aria-pressed", String(selectedMode === "auto"));
 }
 
+function setSelectedDecisionProvider(provider) {
+  if (provider !== "jev" && provider !== "openai") return;
+  selectedDecisionProvider = provider;
+  ui.openAIInputPicker.hidden = provider !== "openai";
+  for (const button of [ui.providerJev, ui.providerOpenAI]) {
+    const selected = button.dataset.decisionProvider === provider;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
+
 function changeSelectedLevel(step) {
   selectedLevelIndex = clamp(selectedLevelIndex + step, 0, levels.length - 1);
   mapFeatureRevealed = true;
@@ -1810,7 +1828,11 @@ async function checkConnection() {
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
     const data = await response.json();
-    setConnection(Boolean(data.ready));
+    providerReadiness = data.providers && typeof data.providers === "object"
+      ? data.providers
+      : { [data.provider]: Boolean(data.ready) };
+    if (!decisionProviderSelectionTouched) setSelectedDecisionProvider(data.provider);
+    setConnection(Boolean(providerReadiness[selectedDecisionProvider] ?? data.ready));
   } catch {
     setConnection(false);
   }
@@ -5047,6 +5069,15 @@ function drawWorld() {
     (-cameraX + shakeX) * ratio * zoom,
     (-cameraY + shakeY) * ratio * zoom,
   );
+  drawArenaScene(ctx);
+  ctx.restore();
+  if (game.elapsed - lastMapDrawAt > 0.12) {
+    drawMapOverview();
+    lastMapDrawAt = game.elapsed;
+  }
+}
+
+function drawArenaScene(ctx) {
   drawFloor(ctx);
   drawHazards(ctx);
   drawWorldLighting(ctx);
@@ -5059,11 +5090,22 @@ function drawWorld() {
   drawSkillEffects(ctx);
   drawTacticalEffects(ctx);
   drawSkillCallouts(ctx);
-  ctx.restore();
-  if (game.elapsed - lastMapDrawAt > 0.12) {
-    drawMapOverview();
-    lastMapDrawAt = game.elapsed;
+}
+
+function captureDecisionFrame() {
+  const canvas = createAnimationCanvas(1280, 800);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(canvas.width / WORLD.width, canvas.height / WORLD.height);
+  drawArenaScene(ctx);
+  ctx.font = "bold 22px sans-serif";
+  ctx.textAlign = "center";
+  for (const [actor, label] of [[game.player, "RUNNER"], [game.jev, "CHASER"]]) {
+    ctx.fillStyle = "#171321";
+    ctx.fillRect(actor.x - 60, actor.y - 95, 120, 30);
+    ctx.fillStyle = "#fff0d5";
+    ctx.fillText(label, actor.x, actor.y - 73);
   }
+  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 function drawAnchors(ctx) {
@@ -8574,12 +8616,18 @@ async function requestJevDecision(urgent = false) {
   lastJevDecisionStartedAt = now;
   ui.intent.classList.add("is-thinking");
   commitPendingPlan();
-  const snapshot = getJevState();
   try {
+    const inputMode = selectedDecisionProvider === "openai" ? selectedOpenAIInput : "text";
+    const snapshot = inputMode === "vision_only"
+      ? { game_mode: game.mode }
+      : getJevState();
+    const vision = inputMode === "text" ? undefined : {
+      image_url: captureDecisionFrame(),
+    };
     const response = await fetch("/api/decision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify({ ...snapshot, provider: selectedDecisionProvider, input_mode: inputMode, vision }),
       signal: AbortSignal.timeout(14_000),
     });
     const result = await response.json();
@@ -8589,7 +8637,8 @@ async function requestJevDecision(urgent = false) {
         game.jev.playerRead = result.player_read;
         game.jev.playerReadAt = game.elapsed;
       }
-      setMode(result.mode, Number(result.confidence) || 0, "system_one");
+      const decisionSource = result.provider === "openai" ? "openai_decisions" : "system_one";
+      setMode(result.mode, Number(result.confidence) || 0, decisionSource);
       renderDecisionCard("jev", game.jev.mode, result.probabilities, result.mode);
       if (Object.hasOwn(planLabels, result.plan)) queuePlan(result.plan, Number(result.plan_confidence) || 0);
       if (game.mode === "auto") {
@@ -8752,6 +8801,21 @@ document.querySelectorAll(".skin-choice-input").forEach((control) => {
 ui.skinSwap.addEventListener("click", swapSkinRoles);
 ui.modeHuman.addEventListener("click", () => setSelectedMode("human"));
 ui.modeAuto.addEventListener("click", () => setSelectedMode("auto"));
+ui.providerJev.addEventListener("click", () => {
+  decisionProviderSelectionTouched = true;
+  setSelectedDecisionProvider("jev");
+  if (providerReadiness) setConnection(Boolean(providerReadiness.jev));
+});
+ui.providerOpenAI.addEventListener("click", () => {
+  decisionProviderSelectionTouched = true;
+  setSelectedDecisionProvider("openai");
+  if (providerReadiness) setConnection(Boolean(providerReadiness.openai));
+});
+ui.openAIInputPicker.addEventListener("change", (event) => {
+  if (["text", "vision_state", "vision_only"].includes(event.target.value)) {
+    selectedOpenAIInput = event.target.value;
+  }
+});
 ui.decisionToggle.addEventListener("click", () => {
   decisionsVisible = !decisionsVisible;
   ui.decisionPanels.classList.toggle("is-hidden", !decisionsVisible);

@@ -27,10 +27,25 @@
         <section class="landing" id="landing-screen" aria-labelledby="landing-title">
           <div class="landing-copy">
             <h1 id="landing-title">Break the<br /><em>frontier.</em></h1>
-            <div class="mode-picker" role="group" aria-label="Choose game mode">
-              <button class="mode-option is-selected" id="mode-human" type="button" data-mode="human" aria-pressed="true">Manual</button>
-              <button class="mode-option" id="mode-auto" type="button" data-mode="auto" aria-pressed="false">Auto Mode</button>
+            <div class="landing-choice-row">
+              <div class="mode-picker" role="group" aria-label="Choose game mode">
+                <button class="mode-option is-selected" id="mode-auto" type="button" data-mode="auto" aria-pressed="true">Auto Mode</button>
+                <button class="mode-option" id="mode-human" type="button" data-mode="human" aria-pressed="false">Manual</button>
+              </div>
+              <div class="mode-picker provider-picker" role="group" aria-label="Choose choice model">
+                <button class="mode-option" id="provider-jev" type="button" data-decision-provider="jev" aria-pressed="false">Jev</button>
+                <button class="mode-option is-selected" id="provider-openai" type="button" data-decision-provider="openai" aria-pressed="true">OpenAI</button>
+              </div>
             </div>
+
+            <fieldset class="input-picker" id="openai-input-picker">
+              <legend>OpenAI input</legend>
+              <div class="input-options">
+                <label class="input-option"><input type="radio" name="openai-input" value="text" checked /><span>Text only</span></label>
+                <label class="input-option"><input type="radio" name="openai-input" value="vision_state" /><span>Screenshot + state</span></label>
+                <label class="input-option"><input type="radio" name="openai-input" value="vision_only" /><span>Vision only</span></label>
+              </div>
+            </fieldset>
 
             <div class="skin-picker" role="group" aria-label="Choose the runner and chaser">
               <section class="skin-option" id="runner-skin-card" data-role="runner" data-skin="sam" aria-labelledby="runner-role-label">

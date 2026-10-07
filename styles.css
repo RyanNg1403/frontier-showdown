@@ -286,6 +286,23 @@ kbd {
 }
 .mode-option.is-selected { color: #221922; background: var(--gold); }
 .mode-option:focus-visible, .decision-toggle:focus-visible { outline: 2px solid #fff0b9; outline-offset: 3px; }
+.landing-choice-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
+.landing-choice-row .mode-picker { margin: 0; }
+.provider-picker { align-items: center; }
+.input-picker { min-width: 0; margin: 0 0 12px; padding: 0; border: 0; }
+.input-picker[hidden] { display: none; }
+.input-picker legend { padding: 0; margin-bottom: 5px; color: #b9adc3; font-size: 10px; font-weight: 650; }
+.input-options { display: inline-flex; max-width: 100%; padding: 3px; gap: 3px; border: 1px solid rgb(240 229 241 / 13%); border-radius: 6px; background: rgb(18 14 25 / 66%); }
+.input-option { position: relative; display: flex; min-width: 0; cursor: pointer; }
+.input-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.input-option span { display: grid; place-items: center; min-height: 32px; padding: 0 11px; border-radius: 4px; color: #b9adc3; font-size: 11px; font-weight: 650; text-align: center; }
+.input-option input:checked + span { color: #221922; background: var(--gold); }
+.input-option input:focus-visible + span { outline: 2px solid #fff0b9; outline-offset: 2px; }
+@media (max-width: 620px) {
+  .input-options { display: flex; }
+  .input-option { flex: 1; }
+  .input-option span { width: 100%; min-height: 44px; padding-inline: 7px; }
+}
 
 .skin-picker {
   width: min(100%, 370px);
@@ -621,6 +638,7 @@ main:has(.landing:not([hidden])) { min-height: 0; overflow: hidden; }
   .landing { width: calc(100% - 32px); height: 100%; padding: 8px 0; display: block; }
   .landing-copy { width: 100%; max-width: none; }
   .landing h1 { font-size: clamp(2.8rem, min(14vw, 9svh), 4.2rem); line-height: .8; }
+  .landing-choice-row { gap: 5px; margin-bottom: 7px; }
   .mode-picker { margin-bottom: 7px; }
   .skin-picker { margin-bottom: 7px; }
   .skin-option { min-height: 68px; padding: 4px; gap: 4px; }

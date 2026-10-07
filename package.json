@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "node server.mjs",
     "test:balance": "node test-ai-balance.mjs",
     "test:signal-tether": "node test-signal-tether.mjs",
     "test:soul-salvo": "node test-soul-salvo.mjs",
     "test:runner-skills": "node test-runner-skills.mjs"
+  },
+  "dependencies": {
+    "openai": "^7.30.0"
   }
 }
