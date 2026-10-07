@@ -3,6 +3,10 @@
 POV: the office tour went hostile. Pick a runner, pick a chaser, crack three anchors, and settle it across six research-lab arenas. Winner reaches AGI first.
 
 <p align="center">
+  <img src="docs/media/final-frontier-showdown.gif" alt="Final Frontier Showdown gameplay in a research-lab arena" width="640" />
+</p>
+
+<p align="center">
   <img src="docs/screenshots/arena-combat.png" alt="Frontier Showdown combat in the OpenAI Glass Atrium" width="49%" />
   <img src="docs/screenshots/runner-skills.png" alt="A runner launching its matching lab mascot to shove the chaser" width="49%" />
 </p>
