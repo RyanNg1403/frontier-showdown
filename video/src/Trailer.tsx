@@ -10,7 +10,7 @@ const ORANGE = '#ff7a3d';
 const BLUE = '#4aa3ff';
 
 // Scene lengths in frames (30fps)
-const S = {hook: 90, title: 120, pick: 120, game: 210, skills: 120, arenas: 120, cta: 120};
+const S = {hook: 90, title: 120, pick: 120, game: 300, skills: 120, arenas: 120, cta: 120};
 export const TRAILER_FRAMES = Object.values(S).reduce((a, b) => a + b, 0);
 
 const useFade = (dur: number, edge = 10) => {
@@ -105,7 +105,7 @@ const Game = () => {
   const o = useFade(S.game);
   return (
     <AbsoluteFill style={{background: INK, opacity: o}}>
-      <OffthreadVideo src={staticFile('gameplay.mp4')} muted style={{width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated'}} />
+      <OffthreadVideo src={staticFile('gameplay-atrium.mp4')} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
       <Vignette />
       <Shade side="bottom" h={360} />
       <div style={{position: 'absolute', bottom: 90, width: '100%'}}>
@@ -119,7 +119,7 @@ const Skills = () => {
   const o = useFade(S.skills);
   return (
     <AbsoluteFill style={{opacity: o}}>
-      <KenBurns src="runner-skills.png" dur={S.skills} from={1} to={1.1} />
+      <OffthreadVideo src={staticFile('gameplay-reading.mp4')} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
       <Vignette />
       <Shade side="bottom" />
       <div style={{position: 'absolute', bottom: 90, width: '100%', display: 'flex', flexDirection: 'column', gap: 20}}>
@@ -137,8 +137,8 @@ const Arenas = () => {
   const o = useFade(S.arenas);
   return (
     <AbsoluteFill style={{opacity: o}}>
-      <KenBurns src="arena-combat.png" dur={S.arenas} from={1.05} to={1.0} />
-      <AbsoluteFill style={{background: 'rgba(10,8,6,0.82)'}} />
+      <OffthreadVideo src={staticFile('gameplay-expo.mp4')} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+      <AbsoluteFill style={{background: 'rgba(10,8,6,0.58)'}} />
       <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', gap: 22}}>
         <Caption text="SIX RESEARCH-LAB ARENAS" size={50} color={BLUE} />
         {ARENAS.map((a, i) => {
