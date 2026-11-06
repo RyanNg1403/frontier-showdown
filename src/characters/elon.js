@@ -4,6 +4,7 @@ import { registerAirDive } from "../combat/mechanics/air-dive.js";
 import "../combat/mechanics/grabs.js";
 import "../combat/mechanics/guard-crush.js";
 import "../combat/mechanics/finisher-inputs.js";
+import "../combat/ai-kits/group-a.js";
 
 /**
  * "The Walrus" is jumping down+HP, a command normal the schema has no key for, so it is
@@ -163,11 +164,9 @@ export default defineCharacter({
   assists: { a: "not_a_flamethrower", b: "mechazilla_catch" },
   ai: {
     antiAir: "mechazilla_catch",
-    pressure: ["not_a_flamethrower:LP", "not_a_flamethrower:HP", "f_hk"],
-    punish: ["c_hp", "f_hk", "not_a_flamethrower:HP"],
-    cancel: ["not_a_flamethrower:LP", "not_a_flamethrower:HP"],
+    pressure: ["not_a_flamethrower:LP"],
+    punish: ["c_hp"],
     jumpIn: WALRUS,
-    evade: WALRUS,
     superRange: 200,
     projectileRange: [330, 520],
   },

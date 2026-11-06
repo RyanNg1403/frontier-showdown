@@ -279,10 +279,38 @@ export function drawPlaceholder(ctx, f) {
   ctx.beginPath();
   ctx.arc(headX - 2, headY - 3, 15.5, Math.PI * 0.95, Math.PI * 2.05);
   ctx.fill();
+  if (pal.hairStyle === "bangs") {
+    ctx.beginPath();
+    ctx.moveTo(headX - 6, headY - 15);
+    ctx.lineTo(headX + 15, headY - 9);
+    ctx.lineTo(headX + 14, headY - 4);
+    ctx.lineTo(headX + 6, headY - 6);
+    ctx.lineTo(headX - 4, headY - 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (pal.beard) {
+    ctx.fillStyle = pal.beard;
+    ctx.beginPath();
+    ctx.arc(headX + 1, headY + 1, 15, Math.PI * 0.02, Math.PI * 0.85);
+    ctx.lineTo(headX + 4, headY + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = pal.skin;
+    ctx.beginPath();
+    ctx.ellipse(headX + 8, headY + 5, 4.5, 2.2, 0, 0, TAU);
+    ctx.fill();
+  }
   if (pal.glasses) {
     ctx.strokeStyle = pal.glasses;
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(headX + 3, headY - 4, 10, 7);
+    ctx.lineWidth = pal.glassesStyle === "thick" ? 4 : pal.glassesStyle === "round" ? 1.8 : 2.5;
+    if (pal.glassesStyle === "round") {
+      ctx.beginPath();
+      ctx.arc(headX + 8, headY - 1, 5, 0, TAU);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(headX + 3, headY - 4, 10, 7);
+    }
     ctx.beginPath();
     ctx.moveTo(headX + 3, headY - 1);
     ctx.lineTo(headX - 8, headY - 2);

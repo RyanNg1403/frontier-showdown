@@ -22,12 +22,48 @@
  * `env.match` is the live Match: spawnProjectile, applyContact, emit, vfx, spawnEntity.
  * Entities (`match.spawnEntity({...})`) get update(match) -> false to remove, and optional
  * draw(ctx) in world space.
+ *
+ * Systems (match-level, `registerSystem(name, system, { order })`) run every frame for every
+ * fighter and read `mech` fields on moves and projectiles. They receive the shared runtime
+ * `ctx` (`match.mech.ctx`: objects, effects, statuses, schedule, spawnRaw; see
+ * `mechanics/index.js`) and run in ascending `order`, then registration order:
+ *   reset(ctx)                                    round start
+ *   preStep(ctx)                                  before fighters update
+ *   modsFor(ctx, fighter) -> [mods]               movement/guard modifiers (mechanics/mods.js)
+ *   update(ctx)                                   after hits resolve
+ *   onSpawnProjectile(ctx, owner, move, projs)    after the engine spawns projectiles
+ *   projectileTick(ctx, p) -> true if consumed    after a projectile moves
+ *   beforeContact(ctx, a, d, props, at, info) -> true to consume the contact; may edit props
+ *   onHit(ctx, a, d, props, info)                 after a clean hit
+ *   snapshot(ctx, out)                            adds fields to `state.mechanics`
+ * One name can carry fighter, move and system hooks; registering again merges them.
  */
 const registry = new Map();
+let registrations = 0;
+let systemsCache = null;
 
 export function registerMechanic(name, hooks) {
   if (!name || typeof hooks !== "object") throw new Error("registerMechanic(name, hooks)");
-  registry.set(name, Object.freeze({ name, ...hooks }));
+  const prev = registry.get(name);
+  registry.set(name, Object.freeze({ ...prev, name, ...hooks, seq: prev?.seq ?? registrations++ }));
+  if (hooks.system) systemsCache = null;
+}
+
+/** Register a match-level system (see above). Lower `order` runs first; the default is 100. */
+export function registerSystem(name, system, { order = system.order ?? 100 } = {}) {
+  if (!name || typeof system !== "object") throw new Error("registerSystem(name, system)");
+  registerMechanic(name, { system: Object.freeze({ name, ...system, order }) });
+}
+
+/** Registered systems in run order. */
+export function systems() {
+  if (!systemsCache) {
+    systemsCache = [...registry.values()]
+      .filter((m) => m.system)
+      .sort((a, b) => a.system.order - b.system.order || a.seq - b.seq)
+      .map((m) => m.system);
+  }
+  return systemsCache;
 }
 
 export function getMechanic(name) {

@@ -4,6 +4,7 @@ import "../combat/mechanics/rotation.js";
 import "../combat/mechanics/grabs.js";
 import "../combat/mechanics/advancing.js";
 import "../combat/mechanics/guard-crush.js";
+import "../combat/ai-kits/group-a.js";
 
 /**
  * Mark Zuckerberg, "Send Me Location" (roster doc 3.3). Grappler: a 360 command grab, a
@@ -89,10 +90,10 @@ export default defineCharacter({
   },
   specials: [
     {
-      id: "send_me_location", name: "Send Me Location", input: "HCB,F+P", priority: 2,
+      id: "send_me_location", name: "Send Me Location", input: "360+P", priority: 2,
       description: "Drops a blue map pin on the opponent (\"Location received\"), steps in and hits a double-leg takedown. Unblockable command grab; 360 or HCB,F + P. LP 160, HP 170 with more range but 2 frames slower. Scale Up: armored startup and +40 damage.",
       startup: 6, active: 2, recovery: 46, damage: 0, meterGain: 12, vfx: "special_meta",
-      velocity: [{ from: 1, to: 5, vx: 120 }], mechanicData: { rotation: true, hold: 24 },
+      velocity: [{ from: 1, to: 5, vx: 120 }], mechanicData: { hold: 24 },
       grab: { range: 82, damage: 160, knockback: { x: 120, y: 520 } },
       variants: {
         LP: {
@@ -152,7 +153,6 @@ export default defineCharacter({
     punish: ["send_me_location:HP", "move_fast", "c_hp"],
     evade: "hydrofoil_rush:HK",
     approach: ["hydrofoil_rush:LK", "hydrofoil_rush:HK"],
-    cancel: ["move_fast", "hydrofoil_rush:LK"],
     superRange: 95,
   },
   sharedSkills: ["dash", "run", "throw", "throw_tech", "block", "alignment_block", "guardrail", "scale_up", "rollback", "breakthrough", "tag", "assist", "swap_guard", "lab:meta"],

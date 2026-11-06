@@ -1,6 +1,7 @@
 import { BTN, RULES } from "./constants.js";
 import { mirrorDir, parseMotion } from "./input.js";
 import { createRng } from "./rng.js";
+import { kitFor } from "./ai-kits/index.js";
 
 export const DIFFICULTIES = Object.freeze({
   easy: { reaction: 26, block: 0.18, lowRead: 0.3, antiAir: 0.12, punish: 0.12, combo: 0.25, aggression: 0.3, zoning: 0.15, tech: 0.05, breaker: 0, mistake: 0.25, superUse: 0.3, assist: 0.002, tag: 0.002 },
@@ -154,17 +155,15 @@ export class CpuController {
 
     if (match.tagMode && this.tagLogic(match, side, self, team, dist)) return;
 
+    const kit = kitFor(self.id);
+    if (kit && kit(this, { match, side, self, team, opp, dist, seen, steps: motionSteps })) return;
+
     if (this.chance(p.mistake * 0.2)) {
       this.press(this.rng.pick([5, 2, 6]), this.rng.pick([BTN.LP, BTN.HP, BTN.LK, BTN.HK]));
       return;
     }
 
     const incoming = match.projectiles.find((pr) => pr.side !== side && Math.sign(self.x - pr.x) === Math.sign(pr.vx) && Math.abs(self.x - pr.x) < 360);
-    const evade = incoming && this.kit(self, "evade")[0];
-    if (evade && this.chance(p.punish * 0.6)) {
-      this.useMove(self, team, evade);
-      return;
-    }
     if (incoming) {
       const r = this.rng.next();
       if (r < p.block) this.guard(18);
@@ -173,7 +172,7 @@ export class CpuController {
       return;
     }
 
-    if (seen.airborne && !seen.lying && seen.state !== "juggle" && dist < 250 && seen.y < -40) {
+    if (seen.airborne && !seen.lying && dist < 250 && seen.y < -40) {
       if (this.chance(p.antiAir)) {
         this.antiAir(self, team);
         return;
@@ -205,8 +204,7 @@ export class CpuController {
     }
 
     const sup = def.super;
-    const superRange = def.ai?.superRange ?? (sup?.projectile ? 600 : 220);
-    if (sup && self.canSuper({ team }, sup) && dist < superRange && (!sup.grab || this.grabbable(opp)) && this.chance(p.superUse * 0.04)) {
+    if (sup && self.canSuper({ team }, sup) && dist < (sup.projectile ? 600 : 220) && this.chance(p.superUse * 0.04)) {
       this.push(motionSteps(sup.input));
       return;
     }
@@ -218,60 +216,6 @@ export class CpuController {
 
   projectileSpecial(self) {
     return self.def.specials.find((s) => s.projectile);
-  }
-
-  /**
-   * Moves listed under `key` in the character's `ai` hints, as `{ move, button }`. Entries are
-   * move ids, optionally with a button for specials with variants: "not_a_flamethrower:HP", or a
-   * normalized move object (for moves a mechanic starts, such as an air command normal).
-   */
-  kit(self, key) {
-    const raw = self.def.ai?.[key];
-    if (!raw) return [];
-    return (Array.isArray(raw) ? raw : [raw]).map((entry) => {
-      if (entry && typeof entry === "object") return entry.startup ? { move: entry, button: null } : null;
-      const [id, btn] = String(entry).split(":");
-      const move = self.def.moves.get(id);
-      return move ? { move, button: btn ? BTN[btn] : null } : null;
-    }).filter(Boolean);
-  }
-
-  /** Horizontal reach of a kit move, including its forward travel. */
-  reach(entry) {
-    const m = entry.move.variants?.[Object.keys(BTN).find((k) => BTN[k] === entry.button)] || entry.move;
-    if (m.grab) return m.grab.range;
-    if (m.projectile) return 9999;
-    const travel = m.velocity.reduce((t, v) => t + Math.max(0, v.vx ?? 0) * Math.max(0, Math.min(v.to, m.startup + m.active) - v.from + 1) / 60, 0);
-    return (m.hitbox ? m.hitbox.x + m.hitbox.w : 0) + travel;
-  }
-
-  /** No projectile of ours on screen, and the target inside the character's `ai.projectileRange`. */
-  projectileReady(match, self, proj, dist) {
-    const [min, max] = self.def.ai?.projectileRange || [0, Infinity];
-    return dist >= min && dist <= max && !match.projectiles.some((pr) => pr.ownerUid === self.uid);
-  }
-
-  inReach(self, key, dist) {
-    return this.kit(self, key).filter((e) => this.reach(e) >= dist);
-  }
-
-  useMove(self, team, entry) {
-    const m = entry.move;
-    if (m.category !== "normal") {
-      const steps = motionSteps(m.input, entry.button);
-      this.push(m.motion.charge && this.chargeReady(team, self, m.motion.charge.dir) ? steps.slice(1) : steps);
-      return true;
-    }
-    const dir = m.id.startsWith("c_") || m.id.startsWith("j_d") ? 2 : m.id.startsWith("f_") ? 6 : m.id.startsWith("b_") ? 4 : 5;
-    const btn = { lp: BTN.LP, hp: BTN.HP, lk: BTN.LK, hk: BTN.HK, _p: BTN.HP, _k: BTN.HK }[m.id.slice(-2)] ?? BTN.HP;
-    if (m.air) this.push([{ dir: 9, frames: 4 }, { dir: 5, frames: entry.delay ?? 14 }, { dir, buttons: btn, frames: 2 }, { dir: 5, frames: 12 }]);
-    else this.press(dir, btn);
-    return true;
-  }
-
-  /** Could a grab connect on this opponent right now (grounded, not stunned or blocking)? */
-  grabbable(opp) {
-    return !opp.airborne && !opp.isStunned && opp.state !== "blockstun" && !opp.isLying;
   }
 
   chargeReady(team, self, dir) {
@@ -299,15 +243,9 @@ export class CpuController {
       return;
     }
     const proj = this.projectileSpecial(self);
-    if (proj && this.projectileReady(match, self, proj, dist) && this.chance(p.zoning)) {
+    if (proj && !match.projectiles.some((pr) => pr.ownerUid === self.uid) && this.chance(p.zoning)) {
       this.doSpecial(self, team, proj);
       this.cooldown = 10;
-      return;
-    }
-    const approach = this.inReach(self, "approach", dist);
-    if (approach.length && this.chance(p.aggression * 0.25)) {
-      this.useMove(self, team, this.rng.pick(approach));
-      this.cooldown = 8;
       return;
     }
     const r = this.rng.next();
@@ -326,21 +264,13 @@ export class CpuController {
     const p = this.p;
     const r = this.rng.next();
     const proj = this.projectileSpecial(self);
-    if (proj && this.projectileReady(match, self, proj, dist) && r < p.zoning * 0.6) {
+    if (proj && !match.projectiles.some((pr) => pr.ownerUid === self.uid) && r < p.zoning * 0.6) {
       this.doSpecial(self, team, proj);
       this.cooldown = 8;
       return;
     }
-    const reachable = [...this.inReach(self, "pressure", dist), ...this.inReach(self, "approach", dist)];
-    if (reachable.length && r > 0.6 && this.chance(p.aggression * 0.3)) {
-      this.useMove(self, team, this.rng.pick(reachable));
-      this.cooldown = 6;
-      return;
-    }
     if (r < 0.18 * p.aggression + 0.05) {
-      const dive = this.kit(self, "jumpIn")[0];
-      if (dive && this.chance(0.6)) this.useMove(self, team, dive);
-      else this.push([{ dir: 9, frames: 4 }, { dir: 5, frames: 14 }, { dir: 5, frames: 2, buttons: this.chance(0.5) ? BTN.HK : BTN.HP }, { dir: 5, frames: 12 }]);
+      this.push([{ dir: 9, frames: 4 }, { dir: 5, frames: 14 }, { dir: 5, frames: 2, buttons: this.chance(0.5) ? BTN.HK : BTN.HP }, { dir: 5, frames: 12 }]);
       return;
     }
     if (dist < 240 && r < 0.45) {
@@ -369,13 +299,8 @@ export class CpuController {
       return;
     }
     const grab = self.def.specials.find((s) => s.grab);
-    if (grab && dist < grab.grab.range - 10 && r < (self.def.ai?.grabRate ?? 0.2) && this.grabbable(match.point(1 - self.side))) {
+    if (grab && dist < grab.grab.range - 10 && r < 0.2) {
       this.doSpecial(self, team, grab);
-      return;
-    }
-    const pressure = this.inReach(self, "pressure", dist);
-    if (pressure.length && r > 0.92 - p.aggression * 0.15) {
-      this.useMove(self, team, this.rng.pick(pressure));
       return;
     }
     if (r < 0.25 + p.aggression * 0.35) {
@@ -408,26 +333,16 @@ export class CpuController {
 
   planCancel(self, team, dist) {
     const sup = self.def.super;
-    if (sup && !sup.grab && self.canSuper({ team }, sup) && this.chance(this.p.superUse * 0.5)) {
+    if (sup && self.canSuper({ team }, sup) && this.chance(this.p.superUse * 0.5)) {
       this.push(motionSteps(sup.input));
       return;
     }
-    const preferred = this.inReach(self, "cancel", dist + 40);
-    if (preferred.length) {
-      this.useMove(self, team, this.rng.pick(preferred));
-      return;
-    }
-    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
+    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (s.hitbox || s.projectile) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
     const sp = options.find((s) => !s.projectile && s.velocity.length) || options[0];
     if (sp) this.doSpecial(self, team, sp);
   }
 
   antiAir(self, team) {
-    const hint = this.kit(self, "antiAir")[0];
-    if (hint) {
-      this.useMove(self, team, hint);
-      return;
-    }
     const dp = self.def.specials.find((s) => s.invuln && s.knockback.y > 0);
     if (dp && (!dp.motion.charge || this.chargeReady(team, self, dp.motion.charge.dir))) {
       this.doSpecial(self, team, dp);
@@ -437,11 +352,6 @@ export class CpuController {
   }
 
   punish(self, team, dist) {
-    const kit = this.inReach(self, "punish", dist);
-    if (kit.length && this.chance(0.7)) {
-      this.useMove(self, team, this.rng.pick(kit));
-      return;
-    }
     if (dist < 130 && this.chance(0.5)) {
       this.press(2, BTN.HP);
       return;

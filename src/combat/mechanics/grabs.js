@@ -1,4 +1,4 @@
-import { registerMechanic } from "../mechanics.js";
+import { registerMechanic, registerSystem } from "../mechanics.js";
 
 /**
  * Grab extensions (roster doc group A).
@@ -7,7 +7,8 @@ import { registerMechanic } from "../mechanics.js";
  *   { air: "only" | "also", range, groundRange, reach, damage, hold, lift, liftFrames, knockback }
  *   During the active frames it grabs an airborne opponent within `range` and `reach` px of
  *   the floor ("also": grounded ones within `groundRange` too), carries them up to `lift` px,
- *   holds them `hold` frames and drops them. Untechable; assists deal 70%.
+ *   holds them `hold` frames and drops them. Untechable; assists deal 70%. The move hook
+ *   seizes the victim; the "anti-air-grab" system carries them match-wide.
  * "grab-hold" (fighter-level): a built-in `grab` move with `mechanicData.hold` keeps the
  *   victim held that many frames before the release (for cinematic grabs and supers).
  */
@@ -53,19 +54,11 @@ function seize(f, d, move, env) {
   };
   match.emit("throw", { attacker: f.id, defender: d.id, side: f.side, moveId: move.id });
   match.vfx("throw", (f.x + d.x) / 2, d.y - 110, { facing: f.facing, side: f.side, tech: false });
-  const lift = g.lift ?? 30;
-  const liftFrames = g.liftFrames ?? 6;
-  match.spawnEntity({
-    side: f.side,
-    update() {
-      if (d.state === "thrown" && d.grab?.by === f) {
-        d.y = carryHeight(fromY, lift, liftFrames, d.stateFrame);
-        return true;
-      }
-      if (d.state === "juggle") d.y = Math.min(d.y, -lift);
-      return false;
-    },
-  });
+  carries(match.mech.ctx).push({ by: f, victim: d, fromY, lift: g.lift ?? 30, liftFrames: g.liftFrames ?? 6 });
+}
+
+function carries(ctx) {
+  return (ctx.state.grabCarries ??= []);
 }
 
 registerMechanic("anti-air-grab", {
@@ -78,6 +71,24 @@ registerMechanic("anti-air-grab", {
     if (d && d.state !== "thrown" && canGrab(f, d, move.mechanicData)) seize(f, d, move, env);
   },
 });
+
+/** After fighters move: carried victims follow the lift; on release they drop from the top. */
+registerSystem("anti-air-grab", {
+  reset(ctx) {
+    carries(ctx).length = 0;
+  },
+  update(ctx) {
+    ctx.state.grabCarries = carries(ctx).filter((c) => {
+      const d = c.victim;
+      if (d.state === "thrown" && d.grab?.by === c.by) {
+        d.y = carryHeight(c.fromY, c.lift, c.liftFrames, d.stateFrame);
+        return true;
+      }
+      if (d.state === "juggle") d.y = Math.min(d.y, -c.lift);
+      return false;
+    });
+  },
+}, { order: 110 });
 
 registerMechanic("grab-hold", {
   update(f) {

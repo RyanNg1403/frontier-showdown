@@ -8,6 +8,8 @@ import { createCpu } from "../src/combat/ai.js";
 import { canGrab } from "../src/combat/mechanics/grabs.js";
 import { applyGroundBounce } from "../src/combat/mechanics/air-dive.js";
 import { RULES } from "../src/combat/constants.js";
+import { getMechanic, systems } from "../src/combat/mechanics.js";
+import { kitFor } from "../src/combat/ai-kits/index.js";
 
 const GUARD = { dir: 5, buttons: BTN.BLOCK };
 const LOW_GUARD = { dir: 2, buttons: BTN.BLOCK };
@@ -30,7 +32,7 @@ test("Elon follows the roster doc kit", () => {
   assert.ok(elon.quotes.intro.includes("The Walrus"));
   assert.ok(elon.quotes.rival.mark.includes("Walrus"));
   assert.equal(elon.normals.f_hk.name, "Cybertruck Charge");
-  assert.equal(elon.ai.jumpIn.name, "The Walrus");
+  assert.equal(elon.raw.ai.jumpIn.name, "The Walrus", "ai hints point at the Walrus move");
   assert.equal(elon.throw.name, "Cage Match");
   assert.ok(elon.hurtboxes.stand[0].y < mark.hurtboxes.stand[0].y, "Elon is taller than Mark");
 });
@@ -275,16 +277,22 @@ test("air dive: short landing recovery on hit, long on whiff, and the bounce com
 });
 
 test("ground bounce happens once per combo", () => {
-  const spawned = [];
-  const match = { spawnEntity: (e) => spawned.push(e) };
+  const ctx = { state: {} };
   const d = { state: "juggle", side: 1, combo: { hits: 3, bounced: true }, vy: -300, y: -50, def: { stats: { weight: 1 } } };
-  assert.equal(applyGroundBounce(match, d, { bounce: 700, slam: 900 }), false);
+  assert.equal(applyGroundBounce(ctx, d, { bounce: 700, slam: 900 }), false);
   assert.equal(d.vy, -300);
   d.combo = { hits: 1 };
-  assert.equal(applyGroundBounce(match, d, { bounce: 700, slam: 900 }), true);
+  assert.equal(applyGroundBounce(ctx, d, { bounce: 700, slam: 900 }), true);
   assert.equal(d.vy, 900, "slammed into the floor");
-  assert.equal(applyGroundBounce(match, d, { bounce: 700, slam: 900 }), false, "already bounced this combo");
-  assert.equal(spawned.length, 1);
+  assert.equal(applyGroundBounce(ctx, d, { bounce: 700, slam: 900 }), false, "already bounced this combo");
+  assert.equal(ctx.state.groundBounces.get(d), 700, "the ground-bounce system has the bounce queued");
+});
+
+test("Elon's modules are on the unified registry and his CPU kit is registered", () => {
+  const names = systems().map((sys) => sys.name);
+  for (const name of ["guard-crush", "ground-bounce", "anti-air-grab"]) assert.ok(names.includes(name), `system ${name}`);
+  for (const name of ["elon-walrus", "finisher-no-jump", "ground-bounce", "anti-air-grab"]) assert.ok(getMechanic(name), `mechanic ${name}`);
+  assert.equal(typeof kitFor("elon"), "function");
 });
 
 test("xAI passive (engine): +15% Compute gain below 50% health", () => {

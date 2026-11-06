@@ -7,6 +7,8 @@ import { fullRotation, halfCircleForward, rotationIn } from "../src/combat/mecha
 import { GUARD_BREAK_STUN } from "../src/combat/mechanics/guard-crush.js";
 import { RULES } from "../src/combat/constants.js";
 import { motionSteps } from "../src/combat/ai.js";
+import { getMechanic, systems } from "../src/combat/mechanics.js";
+import { kitFor } from "../src/combat/ai-kits/index.js";
 
 const GUARD = { dir: 5, buttons: BTN.BLOCK };
 const LOW_GUARD = { dir: 2, buttons: BTN.BLOCK };
@@ -17,8 +19,8 @@ const HCBF = (b) => motion([6, 3, 2, 1, 4, 6], b);
 const SUPER = motion([2, 3, 6, 2, 3, 6], BTN.HP);
 
 test("Mark follows the roster doc kit", () => {
-  assert.deepEqual(mark.specials.map((s) => [s.id, s.input]), [["send_me_location", "HCB,F+P"], ["hydrofoil_rush", "B,F+K"], ["move_fast", "QCF+P"]]);
-  assert.ok(mark.specials[0].mechanicData.rotation, "Send Me Location also takes a full 360");
+  assert.deepEqual(mark.specials.map((s) => [s.id, s.input]), [["send_me_location", "360+P"], ["hydrofoil_rush", "B,F+K"], ["move_fast", "QCF+P"]]);
+  assert.ok(mark.specials[0].motion.rotation, "Send Me Location is a 360 motion");
   assert.equal(mark.super.id, "metaverse_submission");
   assert.deepEqual([mark.finisher.id, mark.finisher.input, mark.finisher.rangeName], ["fourth_of_july", "D,D,B+LP", "close"]);
   assert.deepEqual({ ...mark.assists }, { a: "move_fast", b: "hydrofoil_rush" });
@@ -59,8 +61,13 @@ test("360: a full rotation or HCB,F; QCF, HCB and partial circles do not count",
   assert.ok(!rotationIn([2, 3, 6]), "QCF");
   assert.ok(!rotationIn([6, 3, 2, 1, 4]), "HCB without the final forward");
   assert.ok(!rotationIn([4, 2, 6]));
-  assert.ok(!rotationIn([6, 2, 4, 6, ...Array(12).fill(5)]), "stale rotation");
-  assert.ok(matchMotion(feed(dirs([6, 2, 4, 6])), mark.specials[0].motion, 1) >= 0, "the engine matches HCB,F itself");
+  assert.ok(!rotationIn([6, 2, 4, 6, ...Array(14).fill(5)]), "stale rotation (beyond the 12-frame motion window)");
+  const m360 = parseMotion("360+P");
+  assert.deepEqual([...m360.seq], [6, 3, 2, 1, 4, 6], "the parser's 360 is HCB,F plus full rotations");
+  assert.ok(matchMotion(feed(dirs([6, 2, 4, 6])), m360, 1) >= 0, "HCB,F");
+  assert.ok(matchMotion(feed(dirs([4, 2, 6, 8])), m360, 1) >= 0, "B,D,F,U");
+  assert.ok(matchMotion(feed(dirs([4, 1, 2, 3, 6])), m360, 1) < 0, "HCF is not a 360");
+  assert.ok(matchMotion(feed(dirs([2, 3, 6])), m360, 1) < 0, "QCF is not a 360");
 });
 
 test("360 through up: the grab starts from neutral or the prejump frames", () => {
@@ -76,7 +83,7 @@ test("360 through up: the grab starts from neutral or the prejump frames", () =>
 });
 
 test("CPU macros for Mark's inputs are accepted by the parser", () => {
-  for (const input of ["HCB,F+P", "B,F+K", "D,D,B+LP"]) {
+  for (const input of ["360+P", "B,F+K", "D,D,B+LP"]) {
     const b = new InputBuffer();
     for (const s of motionSteps(input)) for (let i = 0; i < s.frames; i += 1) b.push({ dir: s.dir, buttons: s.buttons || 0 });
     assert.ok(matchMotion(b, parseMotion(input), 1, 6) >= 0 || matchMotion(b, parseMotion(input), 1, 3) >= 0, input);
@@ -181,6 +188,14 @@ test("stop on contact: a blocked glide skips its remaining active frames", () =>
   const mk = m.point(0);
   assert.ok(mk.moveFrame >= mk.move.startup + mk.move.active, "in recovery right after the block");
   assert.ok(Math.abs(mk.x - m.point(1).x) < 200);
+});
+
+test("Mark's modules are on the unified registry and his CPU kit is registered", () => {
+  const names = systems().map((sys) => sys.name);
+  for (const name of ["guard-crush", "anti-air-grab"]) assert.ok(names.includes(name), `system ${name}`);
+  for (const name of ["rotation-360", "grab-hold", "guard-crush", "low-profile-slide"]) assert.ok(getMechanic(name), `mechanic ${name}`);
+  assert.equal(typeof kitFor("mark"), "function");
+  assert.equal(mark.raw.ai.superRange, 95, "ai hints are kept in the character data");
 });
 
 test("Meta passive (engine): forward dash 2 frames shorter", () => {
