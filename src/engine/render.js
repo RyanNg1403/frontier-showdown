@@ -108,11 +108,9 @@ export function drawFallbackStage(ctx, camera, layer, bounds) {
 
   ctx.save();
   camera.apply(ctx, 0.35);
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
   for (let i = -8; i <= 8; i += 1) {
-    const x = i * 220;
-    ctx.fillRect(x - 40, -620, 80, 620);
     ctx.fillStyle = i % 2 ? "rgba(140,200,255,0.06)" : "rgba(255,255,255,0.05)";
+    ctx.fillRect(i * 220 - 40, -620, 80, 620);
   }
   ctx.restore();
 
@@ -187,7 +185,8 @@ export function createFallbackVfx() {
       for (let i = parts.length - 1; i >= 0; i -= 1) if (parts[i].age > parts[i].life) parts.splice(i, 1);
       for (let i = flashes.length - 1; i >= 0; i -= 1) if (flashes[i].age > flashes[i].life) flashes.splice(i, 1);
     },
-    draw(ctx, camera) {
+    draw(ctx, camera, layer = "front") {
+      if (layer !== "front") return;
       ctx.save();
       camera.apply(ctx);
       ctx.globalCompositeOperation = "lighter";

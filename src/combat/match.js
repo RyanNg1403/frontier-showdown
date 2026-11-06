@@ -80,6 +80,10 @@ export class Match {
   }
 
   vfx(type, x, y, opts = {}) {
+    if (opts.labId === undefined && opts.side !== undefined) {
+      const f = this.point(opts.side);
+      opts = { ...opts, labId: f?.def.labId, characterId: opts.characterId ?? f?.id };
+    }
     this.emitFn("vfx", { type, x, y, opts });
   }
 

@@ -65,6 +65,15 @@ export class Camera {
     this.shakeY = shake > 0 ? (rand() * 2 - 1) * amp * 0.6 : 0;
   }
 
+  /** Aliases for modules that expect explicit centre coordinates. */
+  get centerX() {
+    return this.x - this.shakeX / this.zoom;
+  }
+
+  get centerY() {
+    return this.y - this.shakeY / this.zoom;
+  }
+
   get left() {
     return this.x - VIEW_W / 2 / this.zoom;
   }

@@ -11,6 +11,8 @@ import { assetApi, loadAtlas } from "./assets.js";
 import { loadModules } from "./modules.js";
 import { createFallbackVfx, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
+import { adaptVfx } from "./vfx-adapter.js";
+import { adaptStageDef, listModuleStages, stageCamera } from "./stage-adapter.js";
 
 const DEFAULT_STAGES = [{ id: "default", name: "Training Lab" }];
 
@@ -57,7 +59,12 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   let vfx = fallbackVfx;
   if (modules.vfx) {
     try {
-      vfx = modules.vfx.createVfx(ctx, assetApi) || fallbackVfx;
+      let vfxAssets = assetApi;
+      if (typeof modules.vfx.loadVfxAssets === "function") {
+        vfxAssets = await modules.vfx.loadVfxAssets("/assets/vfx/").then((a) => ({ ...assetApi, ...a })).catch(() => assetApi);
+      }
+      const instance = modules.vfx.createVfx(ctx, vfxAssets);
+      vfx = instance ? adaptVfx(modules.vfx, instance) : fallbackVfx;
     } catch (error) {
       console.error("[engine] createVfx failed; using built-in sparks.", error);
     }
@@ -80,7 +87,8 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   const camera = new Camera();
   let match = null;
   let lastConfig = null;
-  let stageDef = { id: "default", name: "Training Lab", bounds: { left: -900, right: 900 } };
+  const DEFAULT_STAGE = adaptStageDef("default", { name: "Training Lab" });
+  let stageDef = DEFAULT_STAGE;
   let paused = false;
   let debug = false;
   let loading = false;
@@ -111,14 +119,12 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   }
 
   async function loadStageDef(id) {
-    if (!modules.stage?.loadStage) return { id: "default", name: "Training Lab", bounds: { left: -900, right: 900 } };
+    if (!modules.stage?.loadStage || stageFailed) return DEFAULT_STAGE;
     try {
-      const def = await modules.stage.loadStage(id);
-      return { id, name: id, ...(def || {}), bounds: { left: def?.bounds?.left ?? -900, right: def?.bounds?.right ?? 900 } };
+      return adaptStageDef(id, await modules.stage.loadStage(id));
     } catch (error) {
       console.error(`[engine] loadStage("${id}") failed; using the training stage.`, error);
-      stageFailed = true;
-      return { id: "default", name: "Training Lab", bounds: { left: -900, right: 900 } };
+      return DEFAULT_STAGE;
     }
   }
 
@@ -157,6 +163,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     loading = true;
     paused = false;
     match = null;
+    vfx.clearProjectiles?.();
     refreshSnapshot();
     const stageId = config.stage || listStages()[0]?.id || "default";
     const [stage, atlases] = await Promise.all([
@@ -193,10 +200,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   }
 
   function listStages() {
-    if (modules.stage?.listStages && !stageFailed) {
+    if (modules.stage && !stageFailed) {
       try {
-        const list = modules.stage.listStages();
-        if (Array.isArray(list) && list.length) return list;
+        const list = listModuleStages(modules.stage);
+        if (list) return list;
       } catch (error) {
         console.error("[engine] listStages failed", error);
       }
@@ -232,6 +239,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
 
   function quitToMenu() {
     match = null;
+    vfx.clearProjectiles?.();
     paused = false;
     stopMusic();
     refreshSnapshot();
@@ -248,6 +256,9 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     if (!match || paused) return;
     const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(s.side) : null));
     match.step(inputs);
+    if (vfx.syncProjectiles) {
+      vfxCall(() => vfx.syncProjectiles(match.projectiles.map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
+    }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
     camera.update(targets, match.bounds, match.shakeFrames);
     if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, snapshot));
@@ -257,7 +268,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   function drawStage(layer) {
     if (!stageFailed && modules.stage) {
       ctx.save();
-      stageCall(() => modules.stage.drawStage(ctx, camera, layer));
+      stageCall(() => modules.stage.drawStage(ctx, stageCamera(stageDef, camera), layer));
       ctx.restore();
       if (!stageFailed) return;
     }
@@ -269,6 +280,9 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     drawStage("back");
+    ctx.save();
+    vfxCall(() => vfx.draw(ctx, camera, "back"));
+    ctx.restore();
     if (match) {
       const order = [...match.fighters].sort((a, b) => {
         const rank = (f) => (f.assistMode ? 0 : f.isLying || f.ko ? 1 : f.state === "attack" || f.state === "throwing" ? 3 : 2);
@@ -298,7 +312,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     }
     drawStage("front");
     ctx.save();
-    vfxCall(() => vfx.draw(ctx, camera));
+    vfxCall(() => vfx.draw(ctx, camera, "front"));
     ctx.restore();
     if (match && debug) {
       ctx.save();
@@ -356,6 +370,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     }
   }
   if (!uiMounted) mountFallbackUI(uiRoot, game);
+  const firstStage = listStages()[0]?.id;
+  if (firstStage && modules.stage) loadStageDef(firstStage).then((def) => {
+    if (!match) stageDef = def;
+  });
   loop.start();
   return game;
 }
