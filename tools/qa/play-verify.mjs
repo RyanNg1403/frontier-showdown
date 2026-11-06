@@ -146,6 +146,7 @@ async function center(page, selector, index = 0) {
   return page.evaluate((s, i) => {
     const el = document.querySelectorAll(s)[i];
     if (!el) return null;
+    el.scrollIntoView({ block: "nearest", inline: "center" });
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, selector, index);
@@ -234,6 +235,7 @@ class Touch {
   }
   async send() {
     const touchPoints = [...this.points.values()].map((p) => ({ x: p.x, y: p.y, id: p.id, radiusX: 8, radiusY: 8, force: 1 }));
+    if (!touchPoints.length && !this.started) return;
     await this.cdp.send("Input.dispatchTouchEvent", { type: touchPoints.length ? (this.started ? "touchMove" : "touchStart") : "touchEnd", touchPoints });
     this.started = touchPoints.length > 0;
   }
@@ -652,16 +654,16 @@ async function refreshCheck(browser, defs, order) {
     await page.waitForSelector(".fs-settings", { timeout: 5000 });
     await press(page, false, ".fs-settings .fs-tab", { text: "Gameplay" });
     await sleep(300);
-    await press(page, false, ".fs-settings button", { text: "60 s" }).catch(async () => {
-      rec.settingsUiNote = "60 s option not a button; used the settings store";
-      await page.evaluate(() => window.frontierShowdown.ui.settings.set("gameplay.roundTime", 60));
-    });
+    // Round timer 99 s -> 60 s with the row's left arrow; Music to 40 % with the fourth pip.
+    const rowIndex = (label) => page.evaluate((l) => [...document.querySelectorAll(".fs-settings .fs-opt")].findIndex((r) => r.querySelector(".fs-opt__label")?.textContent === l), label);
+    await press(page, false, `.fs-settings .fs-opt:nth-child(${(await rowIndex("Round timer")) + 1}) .fs-opt__arrow`);
     await press(page, false, ".fs-settings .fs-tab", { text: "Audio" });
     await sleep(300);
+    await press(page, false, `.fs-settings .fs-opt:nth-child(${(await rowIndex("Music")) + 1}) .fs-opt__track i`, { index: 3 });
+    await page.mouse.move(5, 5);
     await page.screenshot({ path: shotPath("refresh-01-settings") });
     await page.keyboard.press("Escape");
     await sleep(400);
-    await page.evaluate(() => window.frontierShowdown.ui.settings.set("audio.music", 0.35));
     rec.settingsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem("frontier-showdown.settings.v1")));
     await toSelect(page, sc, false);
     await pickFighters(page, sc, false, order);
@@ -688,13 +690,21 @@ async function refreshCheck(browser, defs, order) {
     rec.settingsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem("frontier-showdown.settings.v1")));
     rec.settingsUi = await page.evaluate(() => window.frontierShowdown.ui.settings.get().gameplay);
     await pauseToSelect(page, false);
-    rec.selectAfter = await page.evaluate(() => [...document.querySelectorAll(".fs-tile.is-picked")].map((t) => t.getAttribute("aria-label")));
-    await sleep(300);
-    await page.screenshot({ path: shotPath("refresh-04-select-remembers-picks") });
-    // Reload once more on the select screen: the last picks come back without a match in progress.
+    // Reload once more: menus come back on the last mode, and the select cursor on the last pick.
     await page.reload({ waitUntil: "load" });
     await page.waitForFunction(() => window.frontierShowdown?.ui, { timeout: 60000 });
     await sleep(1500);
+    rec.lastPicks = await page.evaluate(() => window.frontierShowdown.ui.session.lastPicks);
+    rec.modeAfterReload = await page.evaluate(() => window.frontierShowdown.ui.session.mode);
+    await press(page, false, ".fs-title__start");
+    await waitScreen(page, "Mode select");
+    await press(page, false, '.fs-matchup[data-id="cpu"]');
+    await waitScreen(page, "Character select");
+    await page.mouse.move(5, 5);
+    await sleep(300);
+    rec.selectCursor = await page.evaluate(() => document.querySelector(".fs-tile .fs-tile__cursor.is-p1.is-on")?.closest(".fs-tile")?.getAttribute("aria-label"));
+    rec.selectMode = await page.evaluate(() => document.querySelector(".fs-select__mode-chip")?.textContent);
+    await page.screenshot({ path: shotPath("refresh-04-select-remembers-picks") });
     rec.lastSession = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith("frontier")).map((k) => [k, localStorage.getItem(k).slice(0, 400)])));
   } catch (error) {
     rec.error = String(error?.stack || error).slice(0, 800);
