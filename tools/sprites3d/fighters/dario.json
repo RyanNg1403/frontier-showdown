@@ -61,8 +61,40 @@
     }
   ],
   "head": {
+    "image": "heads/dario_tq.png",
     "heads_tall": 7.2,
-    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/dario_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 732,
+        "neck_cut": 834
+      },
+      "profile": {
+        "image": "heads/dario_profile.png",
+        "source_height": 1024,
+        "crown": 112,
+        "chin": 742,
+        "neck_cut": 844
+      },
+      "hurt": {
+        "image": "heads/dario_hurt.png",
+        "source_height": 1024,
+        "crown": 114,
+        "chin": 744,
+        "neck_cut": 846
+      },
+      "shout": {
+        "image": "heads/dario_shout.png",
+        "source_height": 1024,
+        "crown": 116,
+        "chin": 746,
+        "neck_cut": 848
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
   "likeness": "Mid-blue open-collar button-down, dark chinos, dark shoes; soft medium build, slightly rounded shoulders. Glasses and curls come from the 2D head."
 }

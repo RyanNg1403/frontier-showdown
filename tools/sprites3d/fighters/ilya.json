@@ -74,8 +74,40 @@
     }
   ],
   "head": {
+    "image": "heads/ilya_tq.png",
     "heads_tall": 7.2,
-    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/ilya_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/ilya_profile.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "hurt": {
+        "image": "heads/ilya_hurt.png",
+        "source_height": 1024,
+        "crown": 114,
+        "chin": 740,
+        "neck_cut": 842
+      },
+      "shout": {
+        "image": "heads/ilya_shout.png",
+        "source_height": 1024,
+        "crown": 118,
+        "chin": 744,
+        "neck_cut": 846
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
   "likeness": "Charcoal suit jacket over a white open-collar shirt, dark trousers; slim with narrow shoulders."
 }

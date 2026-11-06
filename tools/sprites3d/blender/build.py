@@ -229,16 +229,15 @@ def _as_anim(a):
 
 def head_skin(cfg):
     """The 3D skin takes the 2D head's neck tone, so the composite has no colour seam at the neck."""
-    views = headmeta.discover(HEADS, cfg["id"])
-    path = views.get("threequarter") or next(iter(views.values()), None)
+    views = headmeta.views_from_config(HEADS, cfg)
+    path, rows = views.get("threequarter") or next(iter(views.values()), (None, {}))
     if not path or not cfg.get("skin_from_head", True):
         return None
     img = bpy.data.images.load(path)
     w, h = img.size
     px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]
     bpy.data.images.remove(img)
-    view_cfg = (cfg.get("head") or {}).get("views", {}).get("threequarter", {})
-    m = headmeta.measure((px * 255).astype(np.uint8), {**headmeta.sidecar(path), **view_cfg})
+    m = headmeta.measure((px * 255).astype(np.uint8), {**headmeta.sidecar(path), **rows})
     return m["skin"]
 
 

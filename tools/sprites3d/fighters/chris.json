@@ -72,8 +72,40 @@
     }
   ],
   "head": {
+    "image": "heads/chris_tq.png",
     "heads_tall": 7.2,
-    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/chris_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/chris_profile.png",
+        "source_height": 1024,
+        "crown": 104,
+        "chin": 730,
+        "neck_cut": 832
+      },
+      "hurt": {
+        "image": "heads/chris_hurt.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "shout": {
+        "image": "heads/chris_shout.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
   "likeness": "Workaday navy suit over a plain light shirt, no tie, brown shoes; slim."
 }

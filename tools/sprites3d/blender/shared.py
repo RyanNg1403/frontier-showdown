@@ -347,7 +347,7 @@ def run(sk, rest, posing, cfg, ppm):
     p = params_from(RUN, gcfg.get("run"))
     poses = fit_pelvis(sk, rest, locomotion(sk, p), posing)
     fps = _cadence(p, sk, ppm, gcfg.get("run", {}).get("speed", cfg.get("speeds", {}).get("run", 460)))
-    return Anim(poses, fps, locomotion=True, head="profile")
+    return Anim(poses, fps, locomotion=True)
 
 
 def _cadence(p, sk, ppm, target_speed):

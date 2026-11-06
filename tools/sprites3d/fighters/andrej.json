@@ -61,8 +61,40 @@
     }
   ],
   "head": {
+    "image": "heads/andrej_tq.png",
     "heads_tall": 7.2,
-    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/andrej_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/andrej_profile.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      },
+      "hurt": {
+        "image": "heads/andrej_hurt.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "shout": {
+        "image": "heads/andrej_shout.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
   "likeness": "Untucked dusty-pink button-down, dark jeans, grey sneakers; lean, slightly lanky, long arms."
 }

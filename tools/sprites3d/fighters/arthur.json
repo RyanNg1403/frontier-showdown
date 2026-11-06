@@ -84,8 +84,40 @@
     }
   ],
   "head": {
+    "image": "heads/arthur_tq.png",
     "heads_tall": 7.2,
-    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/arthur_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 726,
+        "neck_cut": 828
+      },
+      "profile": {
+        "image": "heads/arthur_profile.png",
+        "source_height": 1024,
+        "crown": 104,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "hurt": {
+        "image": "heads/arthur_hurt.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "shout": {
+        "image": "heads/arthur_shout.png",
+        "source_height": 1024,
+        "crown": 118,
+        "chin": 742,
+        "neck_cut": 844
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
   "likeness": "Dark-navy suit, white shirt, dark-blue tie; tall and lean, long limbs."
 }

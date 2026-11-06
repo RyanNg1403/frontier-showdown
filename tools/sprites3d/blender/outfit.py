@@ -121,8 +121,12 @@ def _region_top(info, i, g):
     neck_len = info.rest["neck_01"]["length"]
     if k in ("arm", "clavicle", "hand"):
         return k == "clavicle" or info.arm_t[i] <= g.get("sleeve", 1.0)
+    hem_z = pelvis_z + g.get("hem", -0.03)
+    if k == "leg" and hem_z < pelvis_z:
+        # A hem below the hip wraps the tops of the thighs instead of cutting up between them.
+        return z >= hem_z and info.leg_t[i] < 0.5
     if k == "torso":
-        if z < pelvis_z + g.get("hem", -0.03):
+        if z < hem_z:
             return False
         open_front = g.get("open_front", 0.0)
         if open_front > 0 and info.co[i].y < 0 and abs(info.co[i].x) < open_front:

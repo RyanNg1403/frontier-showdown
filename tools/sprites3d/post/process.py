@@ -28,6 +28,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 import headmeta
 
+key_background = headmeta.key_background  # used by prep_head.py and heads/make_heads.py
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 HEADS = os.path.join(HERE, "..", "heads")
 
@@ -147,10 +149,41 @@ class HeadView:
 
 
 def load_heads(cfg):
-    hcfg = cfg.get("head") or {}
-    views_cfg = hcfg.get("views", {})
-    found = headmeta.discover(HEADS, cfg["id"])
-    return {view: HeadView(path, cfg, views_cfg.get(view, {})) for view, path in found.items()}
+    return {view: HeadView(path, cfg, rows) for view, (path, rows) in headmeta.views_from_config(HEADS, cfg).items()}
+
+
+class HeadSprite:
+    """Unrotated game-size head from a config `head` block (`image` plus source rows), for heads/make_heads.py."""
+
+    def __init__(self, cfg, height_px):
+        head = cfg["head"]
+        path = os.path.join(os.path.dirname(os.path.abspath(HEADS)), head["image"])
+        self.view = HeadView(path, {"height_px": height_px, "head": head}, head)
+
+    def get(self, tilt=0):
+        return quantize_rgba(self.view.scaled_unrotated(), self.view.colors)
+
+
+# Head view per animation when the animation itself asks for the default view. First match wins.
+HEAD_RULES = [
+    (("walk_back", "dash_fwd", "dash_back", "dash"), "profile"),
+    (("hit_high", "hit_low", "hit", "knockdown", "ko", "dazed", "thrown"), "hurt"),
+    (("special", "super", "victory", "intro", "finisher"), "shout"),
+]
+
+
+def head_for(name, requested, cfg):
+    """An animation's explicit non-default view wins; then the config's `head.by_anim`; then HEAD_RULES."""
+    by_anim = (cfg.get("head") or {}).get("by_anim", {})
+    if name in by_anim:
+        return by_anim[name]
+    if requested and requested != "threequarter":
+        return requested
+    for prefixes, view in HEAD_RULES:
+        if any(name == p or name.startswith(p + "_") or (p in ("special", "super") and name.startswith(p))
+               for p in prefixes):
+            return view
+    return "threequarter"
 
 
 def head_tilt(fr, rest):
@@ -422,7 +455,7 @@ def main():
                                      for v, h in heads.items()}, "skin": build.get("skin")}
     for r in records:
         raw, meta = rendered[r["name"]]
-        frames = finish(raw, meta, heads, r.get("head", "threequarter"))
+        frames = finish(raw, meta, heads, head_for(r["name"], r.get("head"), cfg))
         contacts = [f["contact"] for f in meta["frames"]]
         speed, samples = measure_stride(meta) if r.get("locomotion") else (None, [])
         events = list(r.get("events") or [])
@@ -436,7 +469,9 @@ def main():
                                  "cycle_px": round(len(frames) * speed / r["fps"], 1),
                                  "slip_px_max": round(float(np.abs(arr - np.median(arr)).max()), 3)}
         for d in r.get("derived") or []:
-            seq = frames[::-1] if d.get("reverse") else frames
+            view = head_for(d["name"], d.get("head"), cfg)
+            base = frames if view == head_for(r["name"], r.get("head"), cfg) else finish(raw, meta, heads, view)
+            seq = base[::-1] if d.get("reverse") else base
             dc = contacts[::-1] if d.get("reverse") else contacts
             scale = d.get("speed", 1.0)
             entries.append({"name": d["name"], "frames": seq, "fps": round(r["fps"] * scale, 2), "loop": r["loop"],
