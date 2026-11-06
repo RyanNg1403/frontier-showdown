@@ -48,7 +48,7 @@ export function createMockGame({ canvas = null, roster = MOCK_ROSTER, stages = M
     });
     return {
       control: sideCfg.control, label: sideCfg.control === "cpu" ? "CPU" : `P${i + 1}`,
-      roundWins: 0, meter: 0, meterMax: METER_PER_SEGMENT * 3, meterSegments: 3,
+      roundWins: 0, meter: 0, meterMax: METER_PER_SEGMENT * 3, meterSegments: 3, runway: 200, runwayMax: 200,
       active: 0, combo: { hits: 0, damage: 0 }, tagReady: fighters.length > 1, assistReady: fighters.length > 1, fighters,
     };
   }
@@ -112,6 +112,7 @@ export function createMockGame({ canvas = null, roster = MOCK_ROSTER, stages = M
     addMeter(def, dmg * 0.1);
     sim.anim[att] = { type: "attack", t: 0 };
     sim.anim[def] = { type: "hit", t: 0 };
+    side.runway = Math.max(0, side.runway - 12);
     events.emit("hit", { attacker: att, target: def, damage: prevHealth - target.health, kind, move: name, combo: { ...side.combo } });
     if (target.health <= 0) onDepleted(att, def);
   }
@@ -169,6 +170,7 @@ export function createMockGame({ canvas = null, roster = MOCK_ROSTER, stages = M
       const def = 1 - att;
       sim.anim[def] = { type: "block", t: 0 };
       addMeter(def, 4);
+      state.sides[def].runway = Math.max(0, state.sides[def].runway - 50);
       events.emit("block", { attacker: att, target: def, chip: 0 });
       return rand(0.4, 0.8);
     }
@@ -223,6 +225,7 @@ export function createMockGame({ canvas = null, roster = MOCK_ROSTER, stages = M
     });
 
     state.sides.forEach((side, i) => {
+      side.runway = Math.min(side.runwayMax, side.runway + dt * 30);
       sim.comboTimer[i] -= dt;
       if (sim.comboTimer[i] <= 0 && side.combo.hits) {
         events.emit("comboEnd", { side: i, ...side.combo });
@@ -383,6 +386,8 @@ export function createMockGame({ canvas = null, roster = MOCK_ROSTER, stages = M
       a.roundWins = 1;
       a.meter = 248;
       b.meter = 300;
+      a.runway = 150;
+      b.runway = 70;
       const fa = a.fighters[0];
       fa.health = fa.maxHealth * 0.62; fa.recoverable = fa.maxHealth * 0.74;
       const fb = b.fighters[0];

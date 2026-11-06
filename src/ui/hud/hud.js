@@ -5,7 +5,7 @@
  *   state.timer           seconds remaining (null or Infinity for no limit)
  *   state.round, state.roundsToWin
  *   state.sides[i]        { label, control, roundWins, meter, meterMax, meterSegments?, active,
- *                           combo: { hits, damage }, tagReady?, assistReady?,
+ *                           combo: { hits, damage }, tagReady?, assistReady?, runway?, runwayMax?,
  *                           fighters: [{ id, name, lab, health, maxHealth, recoverable }] }
  * `recoverable` is the upper bound of red recoverable health (>= health).
  * Event-driven pieces (announcer, callouts, shakes) come through `onEvent(type, payload)`.
@@ -61,9 +61,10 @@ export function createHud(rootEl, ui) {
 
     const meterSegs = h("div", { class: "fs-meter__segs" });
     const meterLevel = h("span", { class: "fs-meter__level" }, "0");
+    const runway = h("div", { class: "fs-runway", hidden: true }, h("span", { class: "fs-runway__label" }, "Runway"), h("span", { class: "fs-runway__segs" }));
     const meterEl = h("div", { class: `fs-meter ${cls}` },
       h("span", { class: "fs-meter__diamond" }, meterLevel),
-      h("div", { class: "fs-meter__body" }, h("span", { class: "fs-meter__label" }, "Super"), meterSegs),
+      h("div", { class: "fs-meter__body" }, runway, h("span", { class: "fs-meter__label" }, "Super"), meterSegs),
       h("span", { class: "fs-meter__max" }, "MAX"));
 
     const comboHits = h("span", { class: "fs-combo__hits" });
@@ -73,7 +74,7 @@ export function createHud(rootEl, ui) {
 
     return {
       el: sideEl, portrait, tag, bar, sigil, name, pips, partner, partnerPortrait, partnerBar, tagChip,
-      meter: { el: meterEl, segs: meterSegs, level: meterLevel, count: 0, prevFull: 0 },
+      meter: { el: meterEl, segs: meterSegs, level: meterLevel, count: 0, prevFull: 0, runway, runwayCount: 0 },
       combo: { el: comboEl, hits: comboHits, dmg: comboDmg, last: 0, hideAt: 0 },
       callout,
       fighterKey: null, partnerKey: null, wins: -1, roundsToWin: 0,
@@ -177,6 +178,27 @@ export function createHud(rootEl, ui) {
     m.el.classList.toggle("is-max", value >= max);
     if (full > m.prevFull) pulseClass(m.el, "is-level-up");
     m.prevFull = full;
+    renderRunway(m, side);
+  }
+
+  // Optional defensive stamina (side.runway / side.runwayMax, two segments by default).
+  function renderRunway(m, side) {
+    const has = Number.isFinite(side.runway);
+    m.runway.hidden = !has;
+    if (!has) return;
+    const max = side.runwayMax || 200;
+    const segs = side.runwaySegments || 2;
+    const box = m.runway.lastChild;
+    if (m.runwayCount !== segs) {
+      m.runwayCount = segs;
+      box.replaceChildren(...Array.from({ length: segs }, () => h("span", { class: "fs-runway__seg" }, h("i"))));
+    }
+    const per = max / segs;
+    [...box.children].forEach((seg, k) => {
+      const t = clamp((side.runway - k * per) / per, 0, 1);
+      seg.firstChild.style.transform = `scaleX(${t})`;
+      seg.classList.toggle("is-full", t >= 1);
+    });
   }
 
   function renderCombo(c, side, now, target) {
