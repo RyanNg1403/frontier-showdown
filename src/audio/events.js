@@ -116,7 +116,7 @@ export function bindGameEvents(audio, game, opts = {}) {
   function announceMatch(e, side) {
     winnerAnnounced = true;
     later(opts.winnerDelay ?? 1.4, () => {
-      audio.announceWinner(labOf(e, side, opts));
+      audio.announceWinner(labOf(e, side, opts), { side: Number.isInteger(side) ? side : undefined });
       if (opts.music !== false) audio.music("victory", { fade: 0.8 });
     });
   }

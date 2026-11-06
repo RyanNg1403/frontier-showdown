@@ -55,7 +55,7 @@ export const LABS = {
   xai: { name: "xAI", say: ["X A I", "X. A. I.", "Ex, ay, eye", "X, A, I"], aliases: ["x-ai"] },
   mistral: { name: "Mistral", say: ["Mistral", "Miss trall", "Mis-trahl"], aliases: ["mistral-ai"] },
   deepseek: { name: "DeepSeek", say: ["Deep Seek", "DeepSeek"] },
-  microsoft: { name: "Microsoft", say: ["Microsoft"] },
+  microsoft: { name: "Microsoft", say: ["Microsoft"], aliases: ["microsoft-ai"] },
   nvidia: { name: "NVIDIA", say: ["N Vidia", "En vidia", "Nvidia"] },
   qwen: { name: "Qwen", say: ["Kwen", "Qwen", "Kwenn"], aliases: ["alibaba"] },
   player1: { name: "Player 1", say: ["Player one"], aliases: ["p1"] },

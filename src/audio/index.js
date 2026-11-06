@@ -255,6 +255,8 @@ export function createAudio(options = {}) {
   function announceWinner(lab, opts = {}) {
     const id = labId(lab);
     if (id && VOICE[`ann.wins.${id}`]) return announce(`ann.wins.${id}`, opts);
+    // Labs without a recorded line use the side's recorded line rather than speaking a raw id.
+    if (Number.isInteger(opts.side)) return announce(`ann.wins.player${opts.side + 1}`, opts);
     const name = typeof lab === "object" ? lab?.name ?? lab?.lab ?? "" : String(lab ?? "");
     return announce(name ? `${name} wins!` : "ann.wins.player1", opts);
   }

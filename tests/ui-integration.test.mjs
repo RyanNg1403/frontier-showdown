@@ -68,3 +68,30 @@ test("slow overlays follow their source: icing only for the cake, wind for the g
   drawMechanics(plain.ctx, slowedMatch({ frames: 30 }), 0, "back");
   assert.ok(!plain.fills.includes("#f7e7ef"), "an unlabeled slow draws no icing");
 });
+
+test("kick normals default to the kick animations; atlases without them fall back to the shared states", async () => {
+  const { loadCharacter } = await import("../src/characters/index.js");
+  const { resolveAnim } = await import("../src/combat/anim.js");
+  const sam = await loadCharacter("sam");
+  assert.equal(sam.moves.get("c_lk").anim, "crouch_light_kick");
+  assert.equal(sam.moves.get("c_hk").anim, "crouch_heavy_kick");
+  assert.equal(sam.moves.get("j_k").anim, "air_kick");
+  const old = { animations: { idle: {}, crouch_light: {}, crouch_heavy: {}, air_attack: {} } };
+  assert.equal(resolveAnim(old, "crouch_light_kick"), "crouch_light");
+  assert.equal(resolveAnim(old, "crouch_heavy_kick"), "crouch_heavy");
+  assert.equal(resolveAnim(old, "air_kick"), "air_attack");
+});
+
+test("the match winner is announced with the winning side, so labs without a recorded line use the side's line", async () => {
+  const { bindGameEvents } = await import("../src/audio/events.js");
+  const { labId } = await import("../src/audio/catalog.js");
+  const handlers = {};
+  const emitter = { on: (n, fn) => { (handlers[n] ??= []).push(fn); return () => {}; } };
+  const calls = [];
+  const audio = { announce() {}, announceWinner: (lab, opts) => calls.push([lab, opts?.side]), play() {}, music() {}, slowmo() {}, duck() {} };
+  bindGameEvents(audio, emitter, { winnerDelay: 0 });
+  for (const fn of handlers.roundEnd || []) fn({ round: 2, winner: 1, reason: "ko", matchOver: true, matchWinner: 1, winnerLab: "uoft" });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(calls, [["uoft", 1]]);
+  assert.equal(labId("microsoft-ai"), "microsoft", "Mustafa's lab uses the recorded Microsoft line");
+});
