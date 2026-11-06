@@ -347,7 +347,7 @@ export function createTouchControls(ui) {
   window.addEventListener("touchend", onTouchEnd, { passive: true });
   window.addEventListener("touchcancel", onTouchEnd, { passive: true });
   // Stops double-tap zoom, the callout menu and text selection on long presses.
-  layer.addEventListener("touchstart", (e) => { if (!e.target.closest(".fs-touch__toolbar, .fs-touch__pause")) e.preventDefault(); }, { passive: false });
+  layer.addEventListener("touchstart", (e) => { if (e.cancelable && !e.target.closest(".fs-touch__toolbar, .fs-touch__pause")) e.preventDefault(); }, { passive: false });
   layer.addEventListener("contextmenu", (e) => e.preventDefault());
   const onHide = () => releaseAll();
   window.addEventListener("blur", onHide);
