@@ -4,7 +4,7 @@
  * (with transcoded formats, content hashes and the precache list); `npm start` serves the same
  * base fields live from the working tree.
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const NON_CHARACTER_FILES = new Set(["index.js", "schema.js"]);
@@ -20,7 +20,17 @@ export function listCharacters(root) {
     .filter((f) => /^[a-z0-9-]+\.js$/.test(f) && !NON_CHARACTER_FILES.has(f))
     .map((f) => f.slice(0, -3))
     .sort()
-    .map((id) => ({ id, atlas: existsSync(join(root, "assets", "fighters", id, "atlas.json")) }));
+    .map((id) => {
+      const file = join(root, "assets", "fighters", id, "atlas.json");
+      if (!existsSync(file)) return { id, atlas: false };
+      let decodedBytes = null;
+      try {
+        decodedBytes = JSON.parse(readFileSync(file, "utf8")).size?.decodedBytes ?? null;
+      } catch {
+        decodedBytes = null;
+      }
+      return decodedBytes ? { id, atlas: true, decodedBytes } : { id, atlas: true };
+    });
 }
 
 export function baseManifest(root) {

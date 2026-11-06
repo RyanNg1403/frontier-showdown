@@ -92,6 +92,11 @@ export function atlasIds() {
   return Array.isArray(list) ? new Set(list.filter((c) => c.atlas).map((c) => c.id)) : null;
 }
 
+/** Decoded size of a fighter's atlas from the sprite pipeline (`size.decodedBytes`), or null. */
+export function atlasDecodedBytes(id) {
+  return manifest?.characters?.find((c) => c.id === id)?.decodedBytes ?? null;
+}
+
 export function audioDuration(path) {
   return manifest?.audioDurations?.[path] ?? null;
 }

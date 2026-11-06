@@ -9,10 +9,12 @@
  */
 import { local } from "./storage.js";
 
+// atlasBudgetMB: decoded fighter-atlas bytes a match may hold at full resolution; above it the
+// match loads half-resolution frames (a quarter of the memory).
 export const TIERS = {
-  high: { id: "high", dprCap: 2, particles: 1, ambient: 1 },
-  medium: { id: "medium", dprCap: 1.5, particles: 0.6, ambient: 0.6 },
-  low: { id: "low", dprCap: 1, particles: 0.35, ambient: 0.35 },
+  high: { id: "high", dprCap: 2, particles: 1, ambient: 1, atlasBudgetMB: 200 },
+  medium: { id: "medium", dprCap: 1.5, particles: 0.6, ambient: 0.6, atlasBudgetMB: 140 },
+  low: { id: "low", dprCap: 1, particles: 0.35, ambient: 0.35, atlasBudgetMB: 64 },
 };
 const ORDER = ["high", "medium", "low"];
 const SLOW_FRAME_MS = 22;

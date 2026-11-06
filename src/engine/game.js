@@ -10,7 +10,7 @@ import { createLoop } from "./loop.js";
 import { assetApi } from "./assets.js";
 import { acquireAtlas, atlasStats, releaseAtlas, trimAtlasCache } from "./atlas-store.js";
 import { loadManifest, loadModules } from "./modules.js";
-import { assetUrl } from "../platform/assets.js";
+import { assetUrl, atlasDecodedBytes } from "../platform/assets.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { drawMechanics, drawMechProjectile } from "./mechanics-render.js";
@@ -242,9 +242,12 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
         progress("Sound ready");
       })
       : Promise.resolve().then(() => { done += 1; });
-    // Low tier on a small screen draws the scene at about half size; half-resolution frames
-    // look the same there and take a quarter of the memory.
-    const atlasScale = renderScale <= 0.6 ? 0.5 : 1;
+    // Half-resolution frames take a quarter of the memory. Use them when the scene is drawn at
+    // about half size anyway (low tier on a small screen), or when the match's atlases
+    // (`decodedBytes` from the sprite pipeline) exceed the quality tier's budget.
+    const atlasMB = ids.reduce((n, id) => n + (atlasDecodedBytes(id) || 0), 0) / 1048576;
+    const budgetMB = quality?.tier.atlasBudgetMB ?? Infinity;
+    const atlasScale = renderScale <= 0.6 || atlasMB > budgetMB ? 0.5 : 1;
     const kept = heldAtlases.filter((h) => ids.includes(h.id) && h.scale === atlasScale);
     for (const h of heldAtlases) if (!kept.includes(h)) releaseAtlas(h.id, h);
     heldAtlases = kept;

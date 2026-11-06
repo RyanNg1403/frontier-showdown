@@ -1,8 +1,11 @@
 /**
- * Reference-counted fighter atlases. `acquireAtlas(id)` loads and repacks an atlas (see
- * atlas-pack.js) the first time and shares it after that; `releaseAtlas(id)` drops a reference
- * and closes the packed ImageBitmaps once nobody holds it, so the decoded pixels are freed
- * between matches instead of waiting for garbage collection.
+ * Reference-counted fighter atlases. `acquireAtlas(id)` loads an atlas the first time and
+ * shares it after that; `releaseAtlas(id)` drops a reference and closes its ImageBitmaps once
+ * nobody holds it, so the decoded pixels are freed between matches instead of waiting for GC.
+ *
+ * Sprite-pipeline atlases (`images: { webp, png }`, `size.decodedBytes`) are already trimmed and
+ * packed, so at full resolution the WebP is decoded and drawn as-is. The repacker in
+ * atlas-pack.js handles half-resolution copies for the low tier and older cell-grid atlases.
  *
  * Resolves to null when the atlas is missing or broken; the renderer then draws the procedural
  * placeholder fighter.
@@ -96,6 +99,25 @@ async function packOnMainThread(url, json, scale) {
   }
 }
 
+/** Image files to try, best first: the sprite pipeline lists `images: { webp, png }`. */
+function imageCandidates(json) {
+  const list = [json.images?.webp, json.images?.png, json.image, "atlas.png"].filter(Boolean);
+  return [...new Set(list)];
+}
+
+/** Decode an atlas sheet as-is (pipeline atlases are already trimmed and packed). */
+async function decodeSheet(base, json) {
+  let lastError = null;
+  for (const file of imageCandidates(json)) {
+    try {
+      return { image: await decodeOnMainThread(assetUrl(base + file)), file };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("no atlas image");
+}
+
 async function loadPacked(id, scale) {
   const base = `assets/fighters/${id}/`;
   const res = await fetch(assetUrl(`${base}atlas.json`));
@@ -105,19 +127,32 @@ async function loadPacked(id, scale) {
     console.warn(`Atlas for "${id}" has no animations; using placeholder.`);
     return null;
   }
-  const url = assetUrl(base + (json.image || "atlas.png"));
-  let packed = await packInWorker(url, json, scale);
-  if (packed.unsupported) packed = await packOnMainThread(url, json, scale);
+  const anchor = json.anchor || { x: 128, y: 244 };
+  const prepacked = Boolean(json.size?.decodedBytes || json.images);
+  if (prepacked && scale === 1) {
+    const { image, file } = await decodeSheet(base, json);
+    const bytes = image.width * image.height * 4;
+    return { ...json, anchor, image, pages: [image], packStats: { sourceBytes: json.size?.decodedBytes || bytes, packedBytes: bytes, scale, file } };
+  }
+  let packed = null;
+  for (const file of imageCandidates(json)) {
+    const url = assetUrl(base + file);
+    packed = await packInWorker(url, json, scale);
+    if (packed.unsupported) packed = await packOnMainThread(url, json, scale).catch((error) => ({ error: String(error?.message || error) }));
+    if (!packed.error) break;
+  }
   if (packed.error) throw new Error(packed.error);
   applyPlacements(json, packed.placements, packed.bitmaps);
-  return { ...json, anchor: json.anchor || { x: 128, y: 244 }, image: null, pages: packed.bitmaps, packStats: { ...packed.stats, scale } };
+  return { ...json, anchor, image: null, pages: packed.bitmaps, packStats: { ...packed.stats, sourceBytes: json.size?.decodedBytes || packed.stats.sourceBytes, scale } };
 }
 
 function closeAtlas(atlas) {
   if (!atlas) return;
   atlas.released = true;
+  atlas.image = null;
   for (const page of atlas.pages || []) {
     if (typeof page.close === "function") page.close();
+    else if (typeof HTMLImageElement !== "undefined" && page instanceof HTMLImageElement) page.src = "";
     else if ("width" in page) page.width = page.height = 0;
   }
   atlas.pages = [];

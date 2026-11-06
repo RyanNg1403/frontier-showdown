@@ -32,7 +32,7 @@ npm run build     # writes dist/: manifest.json, sw.js, WebP art, Opus + MP3 aud
 npm run preview   # serves dist/ at http://localhost:5173/frontier-showdown/ with a plain static server
 ```
 
-`npm run build` needs `ffmpeg` on the PATH (or `FFMPEG=/path/to/ffmpeg`) for audio and the `sharp` dev dependency for images; without them it copies the originals. `--atlas-webp` also writes lossless WebP fighter atlases (off by default because the sprite pipeline owns the atlas format).
+`npm run build` needs `ffmpeg` on the PATH (or `FFMPEG=/path/to/ffmpeg`) for audio and the `sharp` dev dependency for images; without them it copies the originals. Fighter atlases ship as the sprite pipeline writes them; the game loads `atlas.webp` and falls back to `atlas.png`.
 
 To deploy, enable Pages once: **Settings → Pages → Build and deployment → Source: GitHub Actions**. After that, every push to `main` runs `.github/workflows/pages.yml` (tests, build, deploy) and the game is served at `https://<owner>.github.io/frontier-showdown/`. The workflow can also be started by hand from the Actions tab. Every URL is relative, so the site works under any subpath.
 

@@ -10,8 +10,10 @@
  *    sw.js (service worker with the precache list and build version).
  *  - All URLs are relative, so dist/ works at `/` or under a subpath like /frontier-showdown/.
  *
- * Options: --out <dir> (default dist), --no-audio, --no-images, --atlas-webp (lossless WebP
- * fighter atlases; off by default because the atlas format belongs to the sprite pipeline).
+ * Fighter atlases are copied as the sprite pipeline wrote them (every file listed in
+ * atlas.json `images`, WebP first at runtime).
+ *
+ * Options: --out <dir> (default dist), --no-audio, --no-images.
  * Environment: FFMPEG=<path to ffmpeg>.
  */
 import { createHash } from "node:crypto";
@@ -88,14 +90,15 @@ const fighterFiles = [];
 for (const id of readdirSync(join(root, "assets/fighters"), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)) {
   const jsonPath = `assets/fighters/${id}/atlas.json`;
   if (!exists(jsonPath)) continue;
-  let image = "atlas.png";
+  let images = [];
   try {
-    image = JSON.parse(readFileSync(join(root, jsonPath), "utf8")).image || image;
+    const json = JSON.parse(readFileSync(join(root, jsonPath), "utf8"));
+    images = [...new Set([...Object.values(json.images || {}), json.image || "atlas.png"])];
   } catch {
     continue;
   }
   fighterFiles.push(jsonPath);
-  if (exists(`assets/fighters/${id}/${image}`)) fighterFiles.push(`assets/fighters/${id}/${image}`);
+  for (const image of images) if (exists(`assets/fighters/${id}/${image}`)) fighterFiles.push(`assets/fighters/${id}/${image}`);
 }
 
 const stageFiles = walk("assets/stages").filter((f) => /\.png$/i.test(f) && !/\/_(source|pipeline)\//.test(f));
@@ -139,12 +142,12 @@ if (!flag("no-images")) {
     console.warn("[build] sharp is not installed; images are copied unconverted (npm install to enable WebP).");
   }
 }
-const LOSSLESS_DIRS = ["assets/stages/", "assets/vfx/", "assets/fighters/"];
-const imageDirs = ["assets/stages/", "assets/ui/", "assets/vfx/", ...(flag("atlas-webp") ? ["assets/fighters/"] : [])];
+const LOSSLESS_DIRS = ["assets/stages/", "assets/vfx/"];
+const imageDirs = ["assets/stages/", "assets/ui/", "assets/vfx/"];
 const except = [];
 const sourceBytes = { images: 0, audio: 0 };
 
-const images = [...stageFiles, ...uiFiles.filter((f) => /\.(png|jpe?g)$/i.test(f)), ...vfxFiles.filter((f) => f.endsWith(".png")), ...fighterFiles.filter((f) => f.endsWith(".png"))];
+const images = [...stageFiles, ...uiFiles.filter((f) => /\.(png|jpe?g)$/i.test(f)), ...vfxFiles.filter((f) => f.endsWith(".png")), ...fighterFiles.filter((f) => /\.(png|webp)$/.test(f))];
 await pool(images, Math.max(2, cpus().length), async (rel) => {
   const src = join(root, rel);
   const size = statSync(src).size;
