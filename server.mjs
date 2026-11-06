@@ -519,10 +519,17 @@ const mimeTypes = {
   ".mp3": "audio/mpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".woff2": "font/woff2",
+  ".mjs": "text/javascript; charset=utf-8",
 };
 const publicFiles = new Set([
-  "index.html", "game.js", "styles.css", "favicon.svg",
+  "index.html", "legacy.html", "game.js", "styles.css", "favicon.svg",
 ]);
+const publicDirs = ["assets/", "src/", "styles/"];
 
 function serveFile(request, response) {
   let pathname;
@@ -533,7 +540,7 @@ function serveFile(request, response) {
     return;
   }
   const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
-  if (!publicFiles.has(relativePath) && !relativePath.startsWith("assets/")) {
+  if (!publicFiles.has(relativePath) && !publicDirs.some((dir) => relativePath.startsWith(dir))) {
     sendJson(response, 404, { error: "Not found." });
     return;
   }
@@ -553,7 +560,7 @@ function serveFile(request, response) {
       "Cache-Control": "no-cache",
       "X-Content-Type-Options": "nosniff",
     });
-    response.end(content);
+    response.end(request.method === "HEAD" ? undefined : content);
   });
 }
 
@@ -571,7 +578,7 @@ createServer((request, response) => {
     void chooseResponse(request, response);
     return;
   }
-  if (request.method === "GET") {
+  if (request.method === "GET" || request.method === "HEAD") {
     serveFile(request, response);
     return;
   }
