@@ -41,23 +41,19 @@ The engine names (`src/characters/schema.js`) are `light_punch`, `heavy_punch`, 
 `crouch_light`, `crouch_heavy`, `air_attack`, `throw`, `special_1` to `special_3`, `super`, `finisher`, `intro`
 and `victory`, plus `air_dive` for Elon's Walrus.
 
-| extra animation | fighter | move | engine today |
+| extra animation | fighter | move | wired in the character data |
 | --- | --- | --- | --- |
-| `crouch_light_kick`, `crouch_heavy_kick`, `air_kick` | all | `c_lk`, `c_hk`, `j_k` | `crouch_light`, `crouch_heavy`, `air_attack` |
-| `ship_it` | Sam | `f_hp` Ship It | `heavy_punch` |
-| `safeguard_palm` | Dario | ASL Safeguard counter | `heavy_punch` (`parry.counter.anim`) |
-| `cybertruck_charge` | Elon | `f_hk` | `heavy_punch` (the data sets `anim: "heavy_punch"`) |
-| `knights_move` | Demis | `f_hk` Knight's Move | `heavy_kick` |
-
-The extras take effect once the character data names them with `anim:`.
+| `air_dive` | Elon | `the_walrus` | yes, PR #14 (was `air_attack`) |
+| `ship_it` | Sam | `f_hp` Ship It | yes, PR #14 |
+| `safeguard_palm` | Dario | ASL Safeguard counter | yes, PR #14 (`parry.counter.anim`) |
+| `cybertruck_charge` | Elon | `f_hk` | yes, PR #14 (was `heavy_punch`) |
+| `knights_move` | Demis | `f_hk` Knight's Move | yes, PR #14 |
+| `crouch_light_kick`, `crouch_heavy_kick`, `air_kick` | all | `c_lk`, `c_hk`, `j_k` | not yet: `tests/characters.test.mjs` only allows `REQUIRED_ANIMS` and `ANIM_FALLBACKS` names on standard normals, so these need fallback entries in `src/combat/constants.js` first |
 
 ## Timing
 
 All five character files are on main; `src/characters/*.js` there is the source of truth for timing.
 `timing(startup, active, recovery)` converts the 60 Hz frame data into frame counts.
-
-On main, Elon's Walrus is the special `the_walrus` (D+HP, air only) with `anim: "air_attack"`, so the engine
-plays the jumping punch for it. Set `anim: "air_dive"` there to use the belly-flop authored here.
 
 ## Props
 

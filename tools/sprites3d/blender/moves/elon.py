@@ -52,7 +52,7 @@ def moves(k):
                                      (1, flat, "lin", ["hit", "vfx:walrus_dive"]),
                                      (2, put(flat, lh=(0.4, -0.15, 0.85), rh=(0.35, -0.2, 0.9)), "io"),
                                      (1, put(flat, pz=-0.7, spitch=86.0), "snap", "vfx:ground_bounce"),
-                                     (2, put(flat, pz=-0.6), "io")], note="The Walrus; set anim: 'air_dive' on the_walrus in the data to use it")
+                                     (2, put(flat, pz=-0.6), "io")], note="The Walrus (the_walrus, anim air_dive)")
 
     # F+HK Cybertruck Charge (the data maps it to heavy_punch; this is a dedicated shoulder charge).
     kk, a, r = timing(16, 4, 22)
