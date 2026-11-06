@@ -15,6 +15,7 @@ const FAMILY_TITLES = {
   motion: "Afterimages and trails",
   cinematic: "Super, KO and tag",
   labs: "Lab projectiles and specials",
+  "lab-templates": "Reusable special templates",
 };
 
 // --- Stand-in fighters (old run atlases; the rebuild's fighters load from assets/fighters/<id>/) ---
@@ -155,13 +156,46 @@ const DEMOS = {
   tag_out: (v, s) => v.spawn("tag_out", s.p2.x, s.ground, { lab: "deepmind", side: "right" }),
 };
 
-const HOLDS = { super_freeze: 1.4, ko: 2.4, afterimage_trail: 1.1, tag_in: 1.0 };
+const HOLDS = { super_freeze: 1.4, ko: 2.4, afterimage_trail: 1.1, tag_in: 1.0, lab_aura: 1.3, lab_vortex: 1.4, lab_ground_wave: 1.1 };
 
 function after(seconds, fn) {
   state.timers.push({ t: seconds, fn });
 }
 
+const TEMPLATE_DEMOS = {
+  lab_burst: (v, s, o) => v.spawn("lab_burst", s.mid.x, s.mid.y, o),
+  lab_pillar: (v, s, o) => v.spawn("lab_pillar", s.mid.x + 120, s.ground, o),
+  lab_beam: (v, s, o) => v.spawn("lab_beam", s.p1.x + 60, s.ground - 120, { ...o, length: 640 }),
+  lab_slash_x: (v, s, o) => v.spawn("lab_slash_x", s.mid.x + 60, s.mid.y, o),
+  lab_aura: (v, s, o) => v.spawn("lab_aura", s.p1.x, s.ground, { ...o, follow: () => ({ x: s.p1.x, y: s.ground }) }),
+  lab_ground_wave: (v, s, o) => v.spawn("lab_ground_wave", s.p1.x + 40, s.ground, o),
+  lab_vortex: (v, s, o) => v.spawn("lab_vortex", s.mid.x + 80, s.mid.y, o),
+  lab_charge: (v, s, o) => v.spawn("lab_charge", s.p1.x + 60, s.ground - 120, o),
+};
+
+const TEMPLATE_LAB = { lab_burst: "openai", lab_pillar: "anthropic", lab_beam: "deepmind", lab_slash_x: "xai", lab_aura: "meta", lab_ground_wave: "nvidia", lab_vortex: "deepseek", lab_charge: "mistral" };
+
+function templateLabFor(type) {
+  const pick = document.getElementById("optLab")?.value;
+  return pick && pick !== "auto" ? pick : TEMPLATE_LAB[type];
+}
+
+function labDemo(item, v, s) {
+  s.p2.x = 1040;
+  s.mid.x = (s.p1.x + s.p2.x) / 2;
+  if (item.type.startsWith("projectile_")) {
+    const x0 = s.p1.x + 70;
+    const fx = v.spawn(item.type, x0, s.ground - 130, { dir: 1, speed: 700 });
+    after((s.p2.x - 50 - x0) / 700, () => fx && fx.impact());
+    return fx;
+  }
+  if (item.type.startsWith("special_")) return v.spawn(item.type, s.p1.x + 20, s.ground, { dir: 1 });
+  const lab = item.demo.lab || templateLabFor(item.type);
+  return TEMPLATE_DEMOS[item.type](v, s, { dir: 1, lab });
+}
+
 function familyDefault(item, v, s) {
+  if (item.family === "labs" || item.family === "lab-templates") return labDemo(item, v, s);
   const o = { dir: 1, ...(item.demo.opts || {}) };
   switch (item.family) {
     case "hits": return v.spawn(item.type, s.hit.x, s.hit.y, o);
@@ -315,6 +349,7 @@ function sheet(family, o = {}) {
         if (item.family === "hits") return s.hit;
         if (item.family === "dust") return { x: s.p1.x, y: s.ground - 60 };
         if (item.family === "motion") return { x: s.p1.x - 20, y: s.ground - 130 };
+        if (item.family === "labs" || item.family === "lab-templates") return { x: 760, y: s.ground - 160 };
         return s.mid;
       });
       runDemo(item, state.vfx, false);
@@ -449,6 +484,8 @@ function buildUi() {
     }
     root.appendChild(grid);
   }
+  const labSel = document.getElementById("optLab");
+  for (const id of LAB_IDS) labSel.add(new Option(id, id));
   const all = document.getElementById("playAll");
   all.onclick = () => {
     state.playAll = !state.playAll;
