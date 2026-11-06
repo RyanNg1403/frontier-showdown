@@ -287,6 +287,7 @@ function sheet(family, o = {}) {
 // Steps a scripted timeline and returns PNG frames for GIF assembly.
 function record(script, o = {}) {
   resetScene(o.seed || 99);
+  if (o.setup) o.setup();
   const frames = [];
   const total = o.frames || 120;
   const every = o.every || 2;
@@ -319,13 +320,41 @@ function record(script, o = {}) {
   return frames;
 }
 
+// Named timelines for GIF captures. Frame numbers are 60 Hz sim steps.
+const SCRIPTS = {
+  footfall: () => record([], { frames: 300, every: 2, setup: () => startFootfallDemo(true) }),
+  showcase: () => {
+    const items = effectCatalog();
+    const script = [];
+    let at = 4;
+    for (const item of items) {
+      script.push({ at, type: item.type });
+      at += Math.round((item.demo.hold ?? 0.9) * 60);
+    }
+    return record(script, { frames: at + 20, every: 3 });
+  },
+};
+
+function recordScript(name, family) {
+  if (SCRIPTS[name]) return SCRIPTS[name]();
+  const items = effectCatalog().filter((i) => i.family === name || i.family === family);
+  const script = [];
+  let at = 4;
+  for (const item of items) {
+    script.push({ at, type: item.type });
+    at += Math.round((item.demo.hold ?? 0.9) * 60);
+  }
+  return record(script, { frames: at + 20, every: 2 });
+}
+
 // Runs the stand-in fighter across the floor so dust lands on contact frames.
-function startFootfallDemo() {
-  resetScene(7);
+function startFootfallDemo(keep = false) {
+  if (!keep) resetScene(7);
   const p1 = state.p1;
   let phase = 0;
   let t = 0;
-  p1.x = 260;
+  p1.x = 240;
+  state.p2.x = 1180;
   state.footfall = (dt) => {
     t += dt;
     if (phase === 0 && t > 0.3) {
@@ -335,7 +364,7 @@ function startFootfallDemo() {
       p1.vx = 360 * p1.facing;
       state.router.onState(p1, "idle", "run");
     }
-    if (phase === 1 && (p1.x > 1000 || p1.x < 280)) {
+    if (phase === 1 && ((p1.facing > 0 && p1.x > 1040) || (p1.facing < 0 && p1.x < 240))) {
       phase = 2;
       t = 0;
       state.router.onState(p1, "run", "skid");
@@ -409,4 +438,4 @@ async function boot() {
   requestAnimationFrame(frame);
 }
 
-window.vfxPreview = { ready: boot(), sheet, record, catalog: effectCatalog, labs: LAB_IDS, state };
+window.vfxPreview = { ready: boot(), sheet, record, recordScript, catalog: effectCatalog, labs: LAB_IDS, state };
