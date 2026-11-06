@@ -108,20 +108,28 @@ async function instrument(page) {
       ctx.start = function (...a) { qa.sounds += 1; return start.apply(this, a); };
       ctx.__qa = true;
     }
+    // Stuck = one non-neutral state (and move) for over 300 simulated, unfrozen frames (5 s of game time).
     const since = new Map();
+    let lastFrame = 0;
     setInterval(() => {
       const m = g.match;
       if (!m || g.state?.paused) return;
+      const delta = m.frame >= lastFrame ? m.frame - lastFrame : 0;
+      lastFrame = m.frame;
       for (const f of m.fighters) {
         if (!Number.isFinite(f.x) || !Number.isFinite(f.y)) qa.problems.push({ kind: "non-finite", id: f.id, x: f.x, y: f.y });
         if (f.y > 1) qa.problems.push({ kind: "below-floor", id: f.id, y: f.y, state: f.state });
         const key = `${f.side}:${f.id}`;
         const neutral = f.isNeutral || ["bench", "ko", "dazed", "finished", "win", "lose", "intro"].includes(f.state) || m.phase !== "fight";
         const prev = since.get(key);
-        if (neutral || !prev || prev.state !== f.state) since.set(key, { state: f.state, t: performance.now() });
-        else if (performance.now() - prev.t > 5000 && !prev.flagged) {
-          prev.flagged = true;
-          qa.problems.push({ kind: "stuck", id: f.id, state: f.state, phase: m.phase });
+        const move = f.move?.id ?? null;
+        if (neutral || !prev || prev.state !== f.state || prev.move !== move) since.set(key, { state: f.state, move, frames: 0 });
+        else {
+          if (!m.freezeFrames && !f.hitstop) prev.frames += delta;
+          if (prev.frames > 300 && !prev.flagged) {
+            prev.flagged = true;
+            qa.problems.push({ kind: "stuck", id: f.id, state: f.state, move, phase: m.phase, frames: prev.frames });
+          }
         }
         if (f.state === "attack" && f.anim?.name === "idle") qa.problems.push({ kind: "attack-drawn-idle", id: f.id, move: f.move?.id });
       }
@@ -146,8 +154,11 @@ async function center(page, selector, index = 0) {
   return page.evaluate((s, i) => {
     const el = document.querySelectorAll(s)[i];
     if (!el) return null;
-    el.scrollIntoView({ block: "nearest", inline: "center" });
-    const r = el.getBoundingClientRect();
+    let r = el.getBoundingClientRect();
+    if (r.right > innerWidth || r.left < 0 || r.bottom > innerHeight || r.top < 0) {
+      el.scrollIntoView({ block: "nearest", inline: "center" });
+      r = el.getBoundingClientRect();
+    }
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, selector, index);
 }
@@ -619,6 +630,10 @@ async function runScenario(browser, sc, defs, order, { first = false, rematch = 
     await page.screenshot({ path: shotPath(`${tag}-04-versus`) });
     await waitFight(page);
     rec.screens.push("fight");
+    const f0 = await page.evaluate(() => [window.frontierShowdown.match.frame, performance.now()]);
+    await sleep(1500);
+    const f1 = await page.evaluate(() => [window.frontierShowdown.match.frame, performance.now()]);
+    rec.simFps = Math.round(((f1[0] - f0[0]) / (f1[1] - f0[1])) * 1000);
     const shots = Object.fromEntries(["special", "super", "throw", "block", "assist", "tag", "finish"].map((k) => [k, { path: shotPath(`${tag}-fight-${k}`) }]));
     const play = await playMatch(page, sc, defs, { touch, shots });
     Object.assign(rec, play);
