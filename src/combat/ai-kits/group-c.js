@@ -1,4 +1,5 @@
 import { BTN } from "../constants.js";
+import { registerKits } from "./index.js";
 
 /**
  * CPU tactics for Andrej, Yann, Liang and Mustafa. Each kit runs when the CPU is free to act
@@ -133,3 +134,5 @@ export const groupCKits = {
     return false;
   },
 };
+
+registerKits(groupCKits);

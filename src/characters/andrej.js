@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/group-c.js";
 
 /**
  * Andrej Karpathy, "The Vibe Coder" (roster doc 3.9). Technical all-rounder: a splitting

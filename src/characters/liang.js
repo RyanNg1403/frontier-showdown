@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/group-c.js";
 
 /**
  * Liang Wenfeng, "The Quiet Whale" (roster doc 3.11). Glass cannon with the cheapest meter in

@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/group-c.js";
 
 /**
  * Yann LeCun, "The Contrarian" (roster doc 3.10). Zoner and anti-air specialist: a

@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/group-c.js";
 
 /**
  * Mustafa Suleyman, "The Containment Specialist" (roster doc 3.12). Trap and space control:

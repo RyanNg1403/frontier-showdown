@@ -692,3 +692,18 @@ for (const def of [andrej, yann, liang, mustafa]) {
     for (const sp of def.specials) assert.ok(used.has(sp.id), `${def.id} CPU used ${sp.id} (used: ${[...used]})`);
   });
 }
+
+test("one mechanics registry: systems run by order, names merge, kits self-register", async () => {
+  const { registerMechanic, registerSystem, systems, getMechanic } = await import("../src/combat/mechanics.js");
+  const { kitFor } = await import("../src/combat/ai-kits/index.js");
+  const names = systems().map((s) => s.name);
+  assert.deepEqual(names.slice(0, 6), ["strikes", "status", "projectiles", "placed", "companion", "meter-parry"]);
+  registerSystem("test-late", {});
+  registerSystem("test-early", {}, { order: 5 });
+  assert.equal(systems()[0].name, "test-early");
+  assert.equal(systems().at(-1).name, "test-late");
+  registerMechanic("test-early", { onStart() {} });
+  const merged = getMechanic("test-early");
+  assert.ok(merged.system && merged.onStart, "fighter/move hooks and a system share one entry");
+  for (const id of ["andrej", "yann", "liang", "mustafa"]) assert.equal(typeof kitFor(id), "function");
+});
