@@ -1,34 +1,22 @@
-import { BTN, DT, PHYS, RULES } from "../constants.js";
-import { isDown } from "../input.js";
+import { DT, PHYS } from "../constants.js";
 import { registerMechanic, registerSystem } from "../mechanics.js";
 
 /**
- * Air dives with a ground bounce (roster doc group A, Elon's "The Walrus").
- *
- * `registerAirDive(name, move)` registers a fighter-level mechanic that starts `move` when the
- * fighter presses down+HP during a jump (a jumping command normal). The dive's
- * `mechanicData.landingRecoveryOnHit` replaces its landing recovery after it connected.
+ * Air dives with a ground bounce (roster doc group A, Elon's "The Walrus", an `airOnly` special).
  *
  * The "ground-bounce" move hook slams a launched victim into the floor at `slam` px/s; the
  * "ground-bounce" system bounces them back up at `bounce` px/s just before they land. One
- * ground bounce per combo (doc 2.5).
+ * ground bounce per combo (doc 2.5). The fighter-level "air-dive" mechanic swaps the dive's
+ * landing recovery for `mechanicData.landingRecoveryOnHit` after it connected.
  */
 
-export function registerAirDive(name, move) {
-  registerMechanic(name, {
-    update(f, env) {
-      const b = env.input;
-      if (f.state === "jump_land" && f.mech.diveHit) {
-        f.mech.diveHit = false;
-        f.landingRecovery = move.mechanicData?.landingRecoveryOnHit ?? f.landingRecovery;
-      }
-      if (f.state !== "jump" || f.airAttackUsed || !env.canAct || !b) return;
-      if (!b.findPress(BTN.HP, RULES.bufferFrames) || !isDown(b.dir(f.facing))) return;
-      f.startMove(move, env);
-      f.moveFrame = 0;
-    },
-  });
-}
+registerMechanic("air-dive", {
+  update(f) {
+    if (f.state !== "jump_land" || f.mech.diveLanding == null) return;
+    f.landingRecovery = f.mech.diveLanding;
+    f.mech.diveLanding = null;
+  },
+});
 
 function bounces(ctx) {
   return (ctx.state.groundBounces ??= new Map());
@@ -46,13 +34,13 @@ export function applyGroundBounce(ctx, d, data) {
 
 registerMechanic("ground-bounce", {
   onStart(f) {
-    f.mech.diveHit = false;
+    f.mech.diveLanding = null;
   },
   onHit({ match, attacker, defender, props, blocked }) {
-    if (blocked) return;
-    attacker.mech.diveHit = true;
     const data = attacker.state === "attack" && attacker.move?.id === props.id ? attacker.move.mechanicData : null;
-    if (data?.groundBounce) applyGroundBounce(match.mech.ctx, defender, data.groundBounce);
+    if (blocked || !data) return;
+    attacker.mech.diveLanding = data.landingRecoveryOnHit ?? null;
+    if (data.groundBounce) applyGroundBounce(match.mech.ctx, defender, data.groundBounce);
   },
 });
 

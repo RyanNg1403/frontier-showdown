@@ -46,8 +46,16 @@ export class CpuController {
     for (const s of steps) this.queue.push({ dir: s.dir ?? 5, buttons: s.buttons ?? 0, frames: s.frames ?? 1 });
   }
 
+  /** Plain movement; dropped if a projectile threatens (see `think`). */
   hold(dir, frames, buttons = 0) {
     this.push([{ dir, frames, buttons }]);
+    if (!buttons) this.queue[this.queue.length - 1].interruptible = true;
+  }
+
+  /** An enemy projectile heading for `self`, seen at least `reaction` frames ago. */
+  incomingProjectile(match, side, self, range) {
+    return match.projectiles.find((pr) => pr.side !== side && pr.age >= this.p.reaction &&
+      Math.sign(self.x - pr.x) === Math.sign(pr.vx) && Math.abs(self.x - pr.x) < range);
   }
 
   /** Guard with the block button; `low` crouch-blocks. */
@@ -82,6 +90,10 @@ export class CpuController {
     const self = match.point(side);
     const team = match.sides[side];
     const seen = this.perceive(match, side);
+    if (this.queue[0]?.interruptible && (self.isNeutral || self.state === "run") && this.incomingProjectile(match, side, self, 320)) {
+      this.queue.length = 0;
+      this.cooldown = 0;
+    }
     const out = this.next(self.facing);
     if (out) return out;
     if (this.cooldown > 0) {
@@ -148,7 +160,10 @@ export class CpuController {
     }
     if (self.state !== "attack") this.scaleChecked = false;
     if (self.state === "attack" && self.connected && self.move?.cancelInto.length) {
-      if (this.chance(p.combo * 0.25)) this.planCancel(self, team, dist);
+      if (this.cancelChecked !== self.move) {
+        this.cancelChecked = self.move;
+        if (this.chance(p.combo)) this.planCancel(self, team, dist, opp);
+      }
       return;
     }
     if (!self.isNeutral && self.state !== "run") return;
@@ -163,12 +178,18 @@ export class CpuController {
       return;
     }
 
-    const incoming = match.projectiles.find((pr) => pr.side !== side && Math.sign(self.x - pr.x) === Math.sign(pr.vx) && Math.abs(self.x - pr.x) < 360);
+    const incoming = this.incomingProjectile(match, side, self, 360);
     if (incoming) {
+      const gap = Math.abs(self.x - incoming.x);
+      const own = this.projectileSpecial(self);
+      if (own && gap > 240 && !match.projectiles.some((pr) => pr.ownerUid === self.uid) && this.chance(p.zoning * 1.5)) {
+        this.doSpecial(self, team, own);
+        return;
+      }
       const r = this.rng.next();
-      if (r < p.block) this.guard(18);
-      else if (r < p.block + 0.25 && Math.abs(self.x - incoming.x) > 160) this.hold(9, 6);
-      else this.hold(6, 6);
+      if (r < Math.max(p.block, 0.4)) this.guard(Math.min(30, Math.round(gap / Math.max(60, Math.abs(incoming.vx)) * 60) + 8));
+      else if (gap > 170) this.push([{ dir: 9, frames: 6 }]);
+      else this.guard(16);
       return;
     }
 
@@ -181,7 +202,7 @@ export class CpuController {
 
     if (seen.attacking && dist < 230) {
       const parry = def.specials.find((s) => s.parry);
-      if (parry && seen.level !== "low" && dist < 170 && this.chance(p.punish * 0.25)) {
+      if (parry && seen.level !== "low" && dist < 170 && this.chance(p.punish * 0.4)) {
         this.doSpecial(self, team, parry);
         return;
       }
@@ -328,17 +349,23 @@ export class CpuController {
     for (const [dir, btn] of executed) {
       this.push([{ dir, buttons: btn, frames: 2 }, { dir, frames: this.rng.int(5, 8) }]);
     }
-    if (executed.length === route.length && this.chance(p.combo)) this.planCancel(self, team, dist);
+
   }
 
-  planCancel(self, team, dist) {
+  /** Cancel a connected normal. Only commit to unsafe enders when the opponent is actually hit. */
+  planCancel(self, team, dist, opp = null) {
+    const usable = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (s.hitbox || s.projectile || s.teleport) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
+    if (opp && opp.state === "blockstun") {
+      const safe = usable.find((s) => s.projectile);
+      if (safe && dist > 140 && this.chance(this.p.zoning)) this.doSpecial(self, team, safe);
+      return;
+    }
     const sup = self.def.super;
     if (sup && self.canSuper({ team }, sup) && this.chance(this.p.superUse * 0.5)) {
       this.push(motionSteps(sup.input));
       return;
     }
-    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (s.hitbox || s.projectile) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
-    const sp = options.find((s) => !s.projectile && s.velocity.length) || options[0];
+    const sp = usable.find((s) => !s.projectile && (s.velocity.length || s.teleport) && s.knockback.y === 0) || usable.find((s) => !s.projectile) || usable[0];
     if (sp) this.doSpecial(self, team, sp);
   }
 

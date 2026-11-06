@@ -111,7 +111,7 @@ export default defineCharacter({
     {
       id: "hydrofoil_rush", name: "Hydrofoil Rush", input: "B,F+K",
       description: "Hops onto an electric hydrofoil and glides across a spray of blue water, ending in a low slide tackle. Projectile-invulnerable and low-profile from frame 8. LK travels 220 px, HK 360 px. Scale Up: ends with a wave splash that launches.",
-      startup: 14, active: 20, recovery: 24, damage: 80, chip: 10, hitstun: 24, blockstun: 17,
+      startup: 14, active: 20, recovery: 24, damage: 80, chip: 10, hitstun: 24, blockstun: 16,
       hitbox: { x: 8, y: -52, w: 104, h: 52 }, knockback: { x: 200, y: 300 }, knockdown: true, level: "low", meterGain: 8,
       velocity: [{ from: 4, to: 33, vx: 440 }], invuln: { from: 8, to: 33, type: "projectile" },
       mechanic: "low-profile-slide", mechanicData: { lowProfile: { from: 8, to: 33 }, stopOnContact: true },
@@ -125,11 +125,11 @@ export default defineCharacter({
     {
       id: "move_fast", name: "Move Fast and Break Things", input: "QCF+P",
       description: "A four-punch flurry finishing with a shoulder. On block the shoulder drains 40 Runway (\"breaks things\"); an empty Runway means a guard break. Scale Up: Stable Infra, with 1-hit armor and +2 on block.",
-      startup: 13, active: 10, recovery: 22, damage: 22, chip: 3, hitstun: 18, blockstun: 19, hits: 4, hitInterval: 3,
+      startup: 13, active: 10, recovery: 22, damage: 22, chip: 3, hitstun: 18, blockstun: 18, hits: 4, hitInterval: 3,
       hitbox: { x: 18, y: -170, w: 92, h: 110 }, knockback: { x: 50 }, level: "mid", meterGain: 3, hitstop: 6,
       velocity: [{ from: 3, to: 22, vx: 170 }], lastHit: { knockback: { x: 330 } },
       mechanicData: { guardCrush: { runway: 40 } }, vfx: "special_meta",
-      scaleUp: { name: "Stable Infra", damage: 22, blockstun: 25, armor: { from: 1, to: 13, hits: 1 } },
+      scaleUp: { name: "Stable Infra", damage: 22, blockstun: 24, armor: { from: 1, to: 13, hits: 1 } },
     },
   ],
   super: {

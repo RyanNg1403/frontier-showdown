@@ -25,12 +25,12 @@ export function drawFighter(ctx, f) {
 
 export function drawShadow(ctx, f) {
   if (!f.onField || f.state === "bench" || f.hidden) return;
-  const h = Math.min(1, -f.y / 260);
+  const h = Math.min(1, ((f.floorY || 0) - f.y) / 260);
   const w = (f.isLying ? 110 : 62) * (1 - h * 0.5);
   ctx.save();
   ctx.fillStyle = `rgba(0,0,0,${0.32 * (1 - h * 0.6)})`;
   ctx.beginPath();
-  ctx.ellipse(f.x + (f.isLying ? -f.facing * 60 : 0), 2, w, 10 * (1 - h * 0.4), 0, 0, Math.PI * 2);
+  ctx.ellipse(f.x + (f.isLying ? -f.facing * 60 : 0), (f.floorY || 0) + 2, w, 10 * (1 - h * 0.4), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

@@ -4,7 +4,7 @@ import { registerKits } from "./index.js";
 /**
  * CPU tactics for Mark and Elon, driven by the `ai` hints in their character files. Hint keys:
  *   antiAir, evade, punish, pressure, approach, jumpIn: move ids ("id" or "id:HP" for a button
- *     variant), or a normalized move object for moves a mechanic starts (Elon's Walrus);
+ *     variant); `airOnly` specials and jumping normals are done from a forward jump;
  *   grabRate: how often to go for the command grab up close;
  *   superRange: max distance for the super (grab supers also need a grabbable opponent);
  *   projectileRange: [min, max] distance for the projectile special.
@@ -15,7 +15,6 @@ function entries(self, key) {
   const raw = self.def.raw?.ai?.[key];
   if (!raw) return [];
   return (Array.isArray(raw) ? raw : [raw]).map((entry) => {
-    if (entry && typeof entry === "object") return entry.startup ? { move: entry, button: null } : null;
     const [id, btn] = String(entry).split(":");
     const move = self.def.moves.get(id);
     return move ? { move, button: btn ? BTN[btn] : null } : null;
@@ -39,13 +38,14 @@ function inReach(self, key, dist) {
 
 function use(cpu, k, entry) {
   const m = entry.move;
+  const jump = [{ dir: 9, frames: 4 }, { dir: 5, frames: 14 }];
   if (m.category !== "normal") {
-    cpu.push(k.steps(m.input, entry.button));
+    cpu.push([...(m.airOnly ? jump : []), ...k.steps(m.input, entry.button)]);
     return true;
   }
   const dir = m.id.startsWith("c_") || m.id.startsWith("j_d") ? 2 : m.id.startsWith("f_") ? 6 : m.id.startsWith("b_") ? 4 : 5;
   const btn = { lp: BTN.LP, hp: BTN.HP, lk: BTN.LK, hk: BTN.HK }[m.id.slice(-2)] ?? BTN.HP;
-  if (m.air) cpu.push([{ dir: 9, frames: 4 }, { dir: 5, frames: 14 }, { dir, buttons: btn, frames: 2 }, { dir: 5, frames: 12 }]);
+  if (m.air) cpu.push([...jump, { dir, buttons: btn, frames: 2 }, { dir: 5, frames: 12 }]);
   else cpu.press(dir, btn);
   return true;
 }

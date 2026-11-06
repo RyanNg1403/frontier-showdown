@@ -1,31 +1,10 @@
 import { defineCharacter } from "./schema.js";
 import { bodyFor } from "../combat/mechanics/body-scale.js";
-import { registerAirDive } from "../combat/mechanics/air-dive.js";
+import "../combat/mechanics/air-dive.js";
 import "../combat/mechanics/grabs.js";
 import "../combat/mechanics/guard-crush.js";
 import "../combat/mechanics/finisher-inputs.js";
 import "../combat/ai-kits/group-a.js";
-
-/**
- * "The Walrus" is jumping down+HP, a command normal the schema has no key for, so it is
- * normalized on its own and started by the "elon-walrus" air-dive mechanic.
- */
-const WALRUS = Object.freeze({
-  ...defineCharacter({
-    id: "elon",
-    normals: {
-      j_p: {
-        name: "The Walrus", startup: 9, active: 30, recovery: 4, damage: 70, hitstun: 22, blockstun: 18,
-        hitbox: { x: -34, y: -96, w: 124, h: 80 }, knockback: { x: 160 }, level: "overhead", knockdown: true,
-        velocity: [{ from: 6, to: 38, vx: 200, vy: 1150 }], landingRecovery: 14, meterGain: 5, hitstop: 12,
-        mechanic: "ground-bounce", mechanicData: { groundBounce: { bounce: 760, slam: 900 }, landingRecoveryOnHit: 4 },
-        description: "Belly-flop dive (jumping down+HP). Overhead; a hit slams the opponent into the floor for a ground bounce.",
-      },
-    },
-  }).normals.j_p,
-  id: "j_d_hp",
-});
-registerAirDive("elon-walrus", WALRUS);
 
 /**
  * Elon Musk, "The Technoking" (roster doc 3.4). Rushdown / wildcard and the tallest fighter:
@@ -54,11 +33,12 @@ export default defineCharacter({
     accent: "#ff3b30",
     skin: "#efc8ac",
     hair: "#6a4a33",
+    hairStyle: "swept",
     shoes: "#121212",
   },
   stats: { health: 1000, walkSpeed: 225, runSpeed: 520, jump: 225, weight: 1.1, height: 214 },
   ...bodyFor(214, 1.08),
-  mechanics: ["guard-crush", "elon-walrus", "finisher-no-jump"],
+  mechanics: ["guard-crush", "air-dive", "finisher-no-jump"],
   normals: {
     lp: {
       name: "Quick Jab", startup: 7, active: 2, recovery: 12, damage: 24, hitstun: 16, blockstun: 13,
@@ -118,7 +98,7 @@ export default defineCharacter({
     {
       id: "not_a_flamethrower", name: "Not-a-Flamethrower", input: "QCF+P",
       description: "Sweeps a cartoon flame stream in front of him, six quick hits. LP reaches 120 px; HP reaches 200 px with more recovery. Scale Up: 1-hit armor and +3 hits.",
-      startup: 12, active: 18, recovery: 22, damage: 12, chip: 2, hitstun: 16, blockstun: 19, hits: 6, hitInterval: 3,
+      startup: 12, active: 18, recovery: 22, damage: 12, chip: 2, hitstun: 16, blockstun: 18, hits: 6, hitInterval: 3,
       hitbox: { x: 34, y: -170, w: 120, h: 70 }, knockback: { x: 40 }, level: "mid", meterGain: 2, hitstop: 4,
       lastHit: { knockback: { x: 260 } }, vfx: "lab_burst",
       variants: {
@@ -146,6 +126,14 @@ export default defineCharacter({
       },
       scaleUp: { projectile: { spread: [-620, -300], damage: 60 } },
     },
+    {
+      id: "the_walrus", name: "The Walrus", input: "D+HP", airOnly: true, anim: "air_attack",
+      description: "Jumping down+HP belly-flop dive. Overhead; a hit slams the opponent into the floor for a ground bounce. Short landing recovery when it connects.",
+      startup: 9, active: 30, recovery: 4, damage: 70, chip: 0, hitstun: 22, blockstun: 18, juggle: 2, scaleUp: false,
+      hitbox: { x: -34, y: -96, w: 124, h: 80 }, knockback: { x: 160 }, level: "overhead", knockdown: true,
+      velocity: [{ from: 6, to: 38, vx: 200, vy: 1150 }], landingRecovery: 14, meterGain: 5, hitstop: 12,
+      mechanic: "ground-bounce", mechanicData: { groundBounce: { bounce: 760, slam: 900 }, landingRecoveryOnHit: 4 },
+    },
   ],
   super: {
     id: "colossus_launch", name: "Colossus Launch", input: "QCF,QCF+HP", meterCost: 300, freeze: 30,
@@ -166,7 +154,7 @@ export default defineCharacter({
     antiAir: "mechazilla_catch",
     pressure: ["not_a_flamethrower:LP"],
     punish: ["c_hp"],
-    jumpIn: WALRUS,
+    jumpIn: "the_walrus",
     superRange: 200,
     projectileRange: [330, 520],
   },

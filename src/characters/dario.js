@@ -37,18 +37,18 @@ export default defineCharacter({
       cancelInto: ["lp", "hp", "special", "super"],
     },
     hp: {
-      name: "Scaling Law", startup: 12, active: 3, recovery: 21, damage: 68, hitstun: 22, blockstun: 17,
-      hitbox: { x: 26, y: -172, w: 114, h: 32 }, knockback: { x: 300 }, level: "high", meterGain: 5,
+      name: "Scaling Law", startup: 12, active: 3, recovery: 21, damage: 66, hitstun: 22, blockstun: 17,
+      hitbox: { x: 26, y: -172, w: 104, h: 32 }, knockback: { x: 300 }, level: "high", meterGain: 5,
       cancelInto: ["special", "super"],
     },
     lk: {
       name: "Step Kick", startup: 9, active: 3, recovery: 13, damage: 32, hitstun: 16, blockstun: 13,
-      hitbox: { x: 22, y: -100, w: 102, h: 26 }, knockback: { x: 200 }, level: "mid", meterGain: 4,
+      hitbox: { x: 22, y: -100, w: 94, h: 26 }, knockback: { x: 200 }, level: "mid", meterGain: 4,
       cancelInto: ["hk", "special", "super"],
     },
     hk: {
-      name: "Measured Roundhouse", startup: 15, active: 4, recovery: 23, damage: 78, hitstun: 24, blockstun: 18,
-      hitbox: { x: 30, y: -152, w: 128, h: 40 }, knockback: { x: 380 }, level: "mid", meterGain: 6,
+      name: "Measured Roundhouse", startup: 15, active: 4, recovery: 23, damage: 76, hitstun: 24, blockstun: 18,
+      hitbox: { x: 30, y: -152, w: 114, h: 40 }, knockback: { x: 380 }, level: "mid", meterGain: 6,
       cancelInto: ["special", "super"],
     },
     c_lp: {
@@ -58,17 +58,17 @@ export default defineCharacter({
     },
     c_lk: {
       name: "Red-Team Poke", startup: 8, active: 2, recovery: 13, damage: 22, hitstun: 15, blockstun: 12,
-      hitbox: { x: 20, y: -28, w: 112, h: 24 }, knockback: { x: 160 }, level: "low", meterGain: 3,
+      hitbox: { x: 20, y: -28, w: 102, h: 24 }, knockback: { x: 160 }, level: "low", meterGain: 3,
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Hex Palm", startup: 10, active: 4, recovery: 31, damage: 105, hitstun: 30, blockstun: 18,
-      hitbox: { x: 4, y: -228, w: 84, h: 150 }, knockback: { x: 100, y: 1160 }, level: "mid", meterGain: 6,
+      name: "Hex Palm", startup: 11, active: 3, recovery: 31, damage: 92, hitstun: 30, blockstun: 18,
+      hitbox: { x: 6, y: -220, w: 72, h: 136 }, knockback: { x: 100, y: 1160 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"], vfx: "lab_burst",
     },
     c_hk: {
       name: "Slow Takeoff Sweep", startup: 13, active: 3, recovery: 29, damage: 72, hitstun: 24, blockstun: 18,
-      hitbox: { x: 18, y: -26, w: 146, h: 26 }, knockback: { x: 210, y: 320 }, level: "low", knockdown: true,
+      hitbox: { x: 18, y: -26, w: 136, h: 26 }, knockback: { x: 210, y: 320 }, level: "low", knockdown: true,
       meterGain: 5,
     },
     j_p: {
@@ -98,7 +98,7 @@ export default defineCharacter({
         damage: 50, chip: 6, hitstun: 20, blockstun: 16, knockback: { x: 230 }, vfx: "projectile_anthropic", meterGain: 8,
       },
       variants: {
-        LP: { projectile: { speed: 420, damage: 50 } },
+        LP: { projectile: { speed: 360, damage: 50 } },
         HP: { projectile: { speed: 380, damage: 20, hitbox: { x: -16, y: -16, w: 32, h: 32 }, spread: [-520, -380, -240], gravity: 900, scale: 0.6, offset: { x: 70, y: -150 } } },
       },
       scaleUp: { projectile: { damage: 18, hitbox: { x: -16, y: -16, w: 32, h: 32 }, spread: [-600, -470, -340, -210, -80], gravity: 900, speed: 400, scale: 0.6 } },

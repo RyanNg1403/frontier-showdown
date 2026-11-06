@@ -20,7 +20,8 @@ const BF = (b) => motion([4, 6], b);
 const SUPER = motion([2, 3, 6, 2, 3, 6], BTN.HP);
 
 test("Elon follows the roster doc kit", () => {
-  assert.deepEqual(elon.specials.map((s) => [s.id, s.input]), [["not_a_flamethrower", "QCF+P"], ["mechazilla_catch", "DP+P"], ["armor_glass", "B,F+P"]]);
+  assert.deepEqual(elon.specials.map((s) => [s.id, s.input]), [["not_a_flamethrower", "QCF+P"], ["mechazilla_catch", "DP+P"], ["armor_glass", "B,F+P"], ["the_walrus", "D+HP"]]);
+  assert.ok(elon.moves.get("the_walrus").airOnly, "The Walrus is an air-only special (jumping down+HP)");
   assert.equal(elon.super.id, "colossus_launch");
   assert.deepEqual([elon.finisher.id, elon.finisher.input, elon.finisher.rangeName], ["to_the_moon", "D,U,U+HK", "far"]);
   assert.deepEqual({ ...elon.assists }, { a: "not_a_flamethrower", b: "mechazilla_catch" });
@@ -32,13 +33,14 @@ test("Elon follows the roster doc kit", () => {
   assert.ok(elon.quotes.intro.includes("The Walrus"));
   assert.ok(elon.quotes.rival.mark.includes("Walrus"));
   assert.equal(elon.normals.f_hk.name, "Cybertruck Charge");
-  assert.equal(elon.raw.ai.jumpIn.name, "The Walrus", "ai hints point at the Walrus move");
+  assert.equal(elon.raw.ai.jumpIn, "the_walrus", "ai hints are kept in the character data");
+  assert.equal(elon.palette.hairStyle, "swept");
   assert.equal(elon.throw.name, "Cage Match");
   assert.ok(elon.hurtboxes.stand[0].y < mark.hurtboxes.stand[0].y, "Elon is taller than Mark");
 });
 
 test("Elon's special frame data matches the doc (startup / active / recovery)", () => {
-  const table = { not_a_flamethrower: [12, 18, 22], mechazilla_catch: [7, 6, 34], armor_glass: [18, 2, 28] };
+  const table = { not_a_flamethrower: [12, 18, 22], mechazilla_catch: [7, 6, 34], armor_glass: [18, 2, 28], the_walrus: [9, 30, 4] };
   for (const s of elon.specials) assert.deepEqual([s.startup, s.active, s.recovery], table[s.id], s.id);
   assert.equal(elon.moves.get("not_a_flamethrower").hits, 6);
   assert.equal(elon.moves.get("not_a_flamethrower").variants.HP.recovery, 28, "HP flame has more recovery");
@@ -237,7 +239,7 @@ test("air dive: The Walrus is down+HP in the air, an overhead that ground-bounce
   walrus(m);
   until(m, () => events(m, "hit").length > 0, 40);
   const hit = events(m, "hit")[0];
-  assert.equal(hit.moveId, "j_d_hp");
+  assert.equal(hit.moveId, "the_walrus");
   assert.equal(hit.level, "overhead");
   const d = m.point(1);
   let bounced = false;
@@ -266,7 +268,7 @@ test("air dive: short landing recovery on hit, long on whiff, and the bounce com
   assert.equal(e.landingRecovery, 4);
   until(m, () => e.isNeutral, 30);
   play(m, 0, [{ dir: 2, buttons: BTN.HP }, { dir: 2, frames: 30 }]);
-  assert.deepEqual(events(m, "hit").map((h) => [h.moveId, h.combo]), [["j_d_hp", 1], ["c_hp", 2]], "Walrus, ground bounce, Rocket Uppercut");
+  assert.deepEqual(events(m, "hit").map((h) => [h.moveId, h.combo]), [["the_walrus", 1], ["c_hp", 2]], "Walrus, ground bounce, Rocket Uppercut");
 
   const whiff = makeMatch({ p1: [elon], p2: [sam] });
   place(whiff, -400, 400);
@@ -291,7 +293,7 @@ test("ground bounce happens once per combo", () => {
 test("Elon's modules are on the unified registry and his CPU kit is registered", () => {
   const names = systems().map((sys) => sys.name);
   for (const name of ["guard-crush", "ground-bounce", "anti-air-grab"]) assert.ok(names.includes(name), `system ${name}`);
-  for (const name of ["elon-walrus", "finisher-no-jump", "ground-bounce", "anti-air-grab"]) assert.ok(getMechanic(name), `mechanic ${name}`);
+  for (const name of ["air-dive", "finisher-no-jump", "ground-bounce", "anti-air-grab"]) assert.ok(getMechanic(name), `mechanic ${name}`);
   assert.equal(typeof kitFor("elon"), "function");
 });
 
@@ -377,5 +379,5 @@ test("the CPU plays both kits", () => {
     }
   }
   for (const id of ["send_me_location", "hydrofoil_rush", "move_fast"]) assert.ok(used.mark.has(id), `Mark CPU uses ${id}`);
-  for (const id of ["not_a_flamethrower", "mechazilla_catch", "armor_glass", "j_d_hp"]) assert.ok(used.elon.has(id), `Elon CPU uses ${id}`);
+  for (const id of ["not_a_flamethrower", "mechazilla_catch", "armor_glass", "the_walrus"]) assert.ok(used.elon.has(id), `Elon CPU uses ${id}`);
 });

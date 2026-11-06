@@ -329,6 +329,28 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     drawFallbackStage(ctx, camera, layer, stageDef.bounds);
   }
 
+  /**
+   * Mechanic entities: `draw(ctx, camera, layer)` for their `layer` ("back" before fighters,
+   * "front" after them; default "front"), or `drawBack` / `drawFront` for both. `space:
+   * "screen"` draws untransformed (super backdrops), otherwise the camera transform is applied.
+   */
+  function drawEntities(layer) {
+    for (const e of match.entities) {
+      if (e.dead || e.drawFailed) continue;
+      const fn = layer === "back" ? e.drawBack || ((e.layer || "front") === "back" ? e.draw : null) : e.drawFront || ((e.layer || "front") === "front" ? e.draw : null);
+      if (typeof fn !== "function") continue;
+      ctx.save();
+      if (e.space !== "screen") camera.apply(ctx);
+      try {
+        fn.call(e, ctx, camera, layer);
+      } catch (error) {
+        e.drawFailed = true;
+        console.error("[engine] entity draw failed; skipping it.", error);
+      }
+      ctx.restore();
+    }
+  }
+
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
@@ -337,6 +359,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     ctx.save();
     vfxCall(() => vfx.draw(ctx, camera, "back"));
     ctx.restore();
+    if (match) drawEntities("back");
     if (match) {
       const order = [...match.fighters].sort((a, b) => {
         const rank = (f) => (f.assistMode ? 0 : f.isLying || f.ko ? 1 : f.state === "attack" || f.state === "throwing" ? 3 : 2);
@@ -368,6 +391,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
         }
       }
     }
+    if (match) drawEntities("front");
     drawStage("front");
     ctx.save();
     vfxCall(() => vfx.draw(ctx, camera, "front"));
