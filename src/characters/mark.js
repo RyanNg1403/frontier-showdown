@@ -106,7 +106,7 @@ export default defineCharacter({
       startup: 14, active: 20, recovery: 24, damage: 80, chip: 10, hitstun: 24, blockstun: 17,
       hitbox: { x: 8, y: -52, w: 104, h: 52 }, knockback: { x: 200, y: 300 }, knockdown: true, level: "low", meterGain: 8,
       velocity: [{ from: 4, to: 33, vx: 440 }], invuln: { from: 8, to: 33, type: "projectile" },
-      lowProfile: { from: 8, to: 33 }, stopOnContact: true, vfx: "lab_ground_wave",
+      lowProfile: { from: 8, to: 33 }, stopOnContact: true, vfx: "lab_ground_wave", limb: "leg",
       variants: {
         LK: { velocity: [{ from: 4, to: 33, vx: 440 }] },
         HK: { velocity: [{ from: 4, to: 33, vx: 720 }] },

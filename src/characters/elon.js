@@ -98,7 +98,7 @@ export default defineCharacter({
       description: "Sweeps a cartoon flame stream in front of him, six quick hits. LP reaches 120 px; HP reaches 200 px with more recovery. Scale Up: 1-hit armor and +3 hits.",
       startup: 12, active: 18, recovery: 22, damage: 12, chip: 2, hitstun: 16, blockstun: 19, hits: 6, hitInterval: 3,
       hitbox: { x: 34, y: -170, w: 120, h: 70 }, knockback: { x: 40 }, level: "mid", meterGain: 2, hitstop: 4,
-      lastHit: { knockback: { x: 260 } }, vfx: "lab_beam",
+      lastHit: { knockback: { x: 260 } }, vfx: "lab_burst",
       variants: {
         LP: { hitbox: { x: 34, y: -170, w: 120, h: 70 }, recovery: 22 },
         HP: { hitbox: { x: 34, y: -170, w: 200, h: 70 }, recovery: 28 },
