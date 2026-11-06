@@ -8,7 +8,7 @@ import { Camera, VIEW_H, VIEW_W } from "./camera.js";
 import { InputDevices } from "./input.js";
 import { createLoop } from "./loop.js";
 import { assetApi, loadAtlas } from "./assets.js";
-import { loadModules } from "./modules.js";
+import { loadManifest, loadModules } from "./modules.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { adaptVfx } from "./vfx-adapter.js";
@@ -42,14 +42,15 @@ function guarded(label, onFail) {
   };
 }
 
-export async function createGame({ canvas, uiRoot, modules: preloaded = null } = {}) {
+export async function createGame({ canvas, uiRoot, modules: preloaded = null, manifest = undefined } = {}) {
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   const events = createEmitter();
   const devices = new InputDevices(window);
-  const modules = preloaded || (await loadModules());
+  const info = manifest === undefined ? await loadManifest() : manifest;
+  const modules = preloaded || (await loadModules(info));
   const roster = await discoverCharacters();
   const characters = await loadAllCharacters(roster.ids);
   const charMap = new Map(characters.map((c) => [c.id, c]));

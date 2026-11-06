@@ -583,7 +583,26 @@ function listCharacters() {
     });
 }
 
+/** Which optional sibling modules exist, so the client never requests missing files. */
+function manifest() {
+  const has = (...parts) => existsSync(join(projectRoot, ...parts));
+  return {
+    modules: {
+      stage: has("src", "stages", "index.js"),
+      vfx: has("src", "vfx", "index.js"),
+      ui: has("src", "ui", "index.js"),
+      audio: has("src", "audio", "index.js"),
+    },
+    styles: { ui: has("styles", "ui.css") },
+    characters: listCharacters(),
+  };
+}
+
 createServer((request, response) => {
+  if (request.method === "GET" && request.url === "/api/manifest") {
+    sendJson(response, 200, manifest());
+    return;
+  }
   if (request.method === "GET" && request.url === "/api/characters") {
     sendJson(response, 200, { characters: listCharacters() });
     return;

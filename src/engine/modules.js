@@ -11,12 +11,24 @@ async function tryImport(url, label) {
   }
 }
 
-export async function loadModules() {
+/** Server manifest (`/api/manifest`) or null when served statically. */
+export async function loadManifest() {
+  try {
+    const res = await fetch("/api/manifest", { cache: "no-store" });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadModules(manifest = null) {
+  const present = (name) => !manifest?.modules || manifest.modules[name] !== false;
+  const load = (name, url) => (present(name) ? tryImport(url, name) : Promise.resolve(null));
   const [stage, vfx, ui, audio] = await Promise.all([
-    tryImport("../stages/index.js", "stage"),
-    tryImport("../vfx/index.js", "vfx"),
-    tryImport("../ui/index.js", "ui"),
-    tryImport("../audio/index.js", "audio"),
+    load("stage", "../stages/index.js"),
+    load("vfx", "../vfx/index.js"),
+    load("ui", "../ui/index.js"),
+    load("audio", "../audio/index.js"),
   ]);
   return {
     stage: stage && typeof stage.drawStage === "function" ? stage : null,
