@@ -27,10 +27,10 @@ for (const id of characterIds) {
     c.specials.forEach((s, i) => {
       assert.equal(s.anim, `special_${i + 1}`);
       assert.ok(s.motion && s.motion.buttonMask, `${id}.${s.id} input`);
-      assert.ok(s.hitbox || s.projectile || s.grab || s.barrier || s.parry, `${id}.${s.id} does something`);
+      assert.ok(s.hitbox || s.projectile || s.grab || s.barrier || s.parry || s.mech, `${id}.${s.id} does something`);
       assert.ok(s.description);
     });
-    assert.ok(c.super && c.super.meterCost === 300 && c.super.motion);
+    assert.ok(c.super && c.super.meterCost === (c.passive === "Cheap Training" ? 200 : 300) && c.super.motion);
     assert.equal(c.super.motion.buttonMask, 2, "Breakthrough is QCF,QCF+HP");
     assert.ok(c.finisher && c.finisher.motion && c.finisher.description);
     assert.ok(c.moves.has(c.assists.a) && c.moves.has(c.assists.b));
