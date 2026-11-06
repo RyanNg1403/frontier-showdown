@@ -26,7 +26,7 @@ The full logs, one JSON file per run, are in the project store under `media/rele
 | 12 | Offline reload: the service worker serves the game | **Pass**: locally and on the live site |
 | 13 | Live GitHub Pages smoke test: 1v1, 2v2 and mobile | **Pass**: 0 console errors, 0 failed requests |
 | 14 | No console errors, page errors, failed requests or stuck fighters in any match | **Pass** on the final build (see the defects below) |
-| 15 | Authorship: every commit on `main` and this branch authored and committed by Nguyễn Thuận Phát, with no `Co-authored-by` trailers | **Pass**: 129 of 129 on `main`, 7 of 7 on the branch |
+| 15 | Authorship: every commit on `main` and this branch authored and committed by Nguyễn Thuận Phát, with no `Co-authored-by` trailers | **Pass**: all 129 commits on `main` and every commit on this branch |
 
 ## Matches
 
