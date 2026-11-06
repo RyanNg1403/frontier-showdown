@@ -113,9 +113,11 @@ function skylinePlace(sky, x, w, top) {
  * @param {object} json atlas.json
  * @param {(w:number, h:number, read?:boolean) => OffscreenCanvas|HTMLCanvasElement} makeCanvas
  * @param {() => Promise<void>} [pause] called between strips so the main thread stays responsive
+ * @param {number} [scale] 1, or 0.5 to store frames at half resolution for low render scales
+ *   (placements then carry `dw`/`dh`, the size to draw them at)
  * @returns {{ pages, placements: Map<string, object>, stats }}
  */
-export async function packAtlas(source, json, makeCanvas, pause = null) {
+export async function packAtlas(source, json, makeCanvas, pause = null, scale = 1) {
   const width = source.width;
   const height = source.height;
   const rects = uniqueRects(json).filter((r) => r.x >= 0 && r.y >= 0 && r.x + r.w <= width && r.y + r.h <= height);
@@ -153,38 +155,41 @@ export async function packAtlas(source, json, makeCanvas, pause = null) {
     byHash.set(dupKey, t);
     t.sx = r.x + t.dx;
     t.sy = r.y + t.dy;
+    t.pw = Math.max(1, Math.ceil(t.w * scale));
+    t.ph = Math.max(1, Math.ceil(t.h * scale));
     unique.push(t);
   }
 
-  const area = unique.reduce((n, t) => n + (t.w + PAD) * (t.h + PAD), 0);
-  const widest = Math.max(64, ...unique.map((t) => t.w + PAD * 2));
+  const area = unique.reduce((n, t) => n + (t.pw + PAD) * (t.ph + PAD), 0);
+  const widest = Math.max(64, ...unique.map((t) => t.pw + PAD * 2));
   const pageW = Math.min(PAGE_W, Math.max(widest, 2 ** Math.ceil(Math.log2(Math.sqrt(area)))));
-  const order = [...unique].sort((a, b) => b.h - a.h || b.w - a.w);
+  const order = [...unique].sort((a, b) => b.ph - a.ph || b.pw - a.pw);
   const pageHeights = [];
   let page = 0;
   let sky = [{ x: 0, w: pageW, y: PAD }];
   for (const t of order) {
-    let spot = skylineFit(sky, t.w + PAD, pageW);
-    if (!spot || spot.y + t.h + PAD > PAGE_MAX_H) {
+    let spot = skylineFit(sky, t.pw + PAD, pageW);
+    if (!spot || spot.y + t.ph + PAD > PAGE_MAX_H) {
       pageHeights[page] = Math.max(...sky.map((s) => s.y));
       page += 1;
       sky = [{ x: 0, w: pageW, y: PAD }];
-      spot = skylineFit(sky, t.w + PAD, pageW);
+      spot = skylineFit(sky, t.pw + PAD, pageW);
     }
     t.page = page;
     t.px = spot.x + PAD;
     t.py = spot.y;
-    skylinePlace(sky, spot.x, t.w + PAD, spot.y + t.h + PAD);
+    skylinePlace(sky, spot.x, t.pw + PAD, spot.y + t.ph + PAD);
   }
   pageHeights[page] = Math.max(...sky.map((s) => s.y));
 
   const pages = pageHeights.map((h) => makeCanvas(pageW, Math.max(1, h), false));
   const ctxs = pages.map((c) => {
     const g = c.getContext("2d");
-    g.imageSmoothingEnabled = false;
+    g.imageSmoothingEnabled = scale !== 1;
+    if (scale !== 1) g.imageSmoothingQuality = "high";
     return g;
   });
-  for (const t of order) ctxs[t.page].drawImage(source, t.sx, t.sy, t.w, t.h, t.px, t.py, t.w, t.h);
+  for (const t of order) ctxs[t.page].drawImage(source, t.sx, t.sy, t.w, t.h, t.px, t.py, t.pw, t.ph);
 
   const placements = new Map();
   for (const r of rects) {
@@ -194,7 +199,9 @@ export async function packAtlas(source, json, makeCanvas, pause = null) {
       continue;
     }
     const src = t.same || t;
-    placements.set(r.key, { page: src.page, x: src.px, y: src.py, w: t.w, h: t.h, dx: t.dx, dy: t.dy });
+    const place = { page: src.page, x: src.px, y: src.py, w: src.pw, h: src.ph, dx: t.dx, dy: t.dy };
+    if (scale !== 1) Object.assign(place, { dw: t.w, dh: t.h });
+    placements.set(r.key, place);
   }
   const packedBytes = pages.reduce((n, c) => n + c.width * c.height * 4, 0);
   return {
@@ -210,7 +217,7 @@ export function applyPlacements(json, placements, images) {
     for (const f of anim.frames || []) {
       const p = f && placements[frameKey(f)];
       if (!p) continue;
-      f.draw = p.empty ? { empty: true } : { img: images[p.page], x: p.x, y: p.y, w: p.w, h: p.h, dx: p.dx, dy: p.dy };
+      f.draw = p.empty ? { empty: true } : { img: images[p.page], x: p.x, y: p.y, w: p.w, h: p.h, dx: p.dx, dy: p.dy, dw: p.dw ?? p.w, dh: p.dh ?? p.h };
     }
   }
   return json;

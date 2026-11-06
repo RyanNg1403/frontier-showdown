@@ -17,7 +17,7 @@ export function drawFighter(ctx, f) {
     ctx.translate(Math.round(f.x + shake), Math.round(f.y));
     ctx.scale(f.facing, 1);
     if (!packed) ctx.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, -anchor.x, -anchor.y, frame.w, frame.h);
-    else if (!packed.empty) ctx.drawImage(packed.img, packed.x, packed.y, packed.w, packed.h, packed.dx - anchor.x, packed.dy - anchor.y, packed.w, packed.h);
+    else if (!packed.empty) ctx.drawImage(packed.img, packed.x, packed.y, packed.w, packed.h, packed.dx - anchor.x, packed.dy - anchor.y, packed.dw, packed.dh);
   } else {
     if (shake) ctx.translate(shake, 0);
     drawPlaceholder(ctx, f);

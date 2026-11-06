@@ -90,11 +90,14 @@ async function boot() {
     const progress = createProgress(game, storage);
     game.progress = progress;
     progress.restoreMenus(game.ui);
-    loading.hide();
+    const loaderGone = loading.hide();
     if (manifest?.build) registerServiceWorker(new URL("sw.js", SITE_ROOT), SITE_ROOT.pathname);
     const params = new URLSearchParams(location.search);
     if (params.has("quick")) await quickStart(game, params);
-    else await offerResume(game, progress);
+    else {
+      await loaderGone;
+      await offerResume(game, progress);
+    }
   } catch (error) {
     console.error(error);
     loading.hide();

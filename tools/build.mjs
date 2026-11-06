@@ -216,6 +216,30 @@ if (exists("styles/ui.css")) {
   writeOut("styles/ui.css", css);
 }
 
+// index.html: preload the whole boot module graph so the browser fetches it in parallel instead
+// of discovering ~130 modules one import level at a time.
+function importGraph(entries) {
+  const seen = new Set();
+  const stack = [...entries];
+  const re = /(?:^|[;\s])(?:import|export)\s*(?:[\w*{}\s,$]+from\s*)?["'](\.{1,2}\/[^"']+)["']/g;
+  while (stack.length) {
+    const rel = stack.pop();
+    if (seen.has(rel) || !written.has(rel)) continue;
+    seen.add(rel);
+    const text = readFileSync(join(outDir, rel), "utf8");
+    for (const m of text.matchAll(re)) stack.push(posix(join(dirname(rel), m[1])));
+  }
+  return [...seen];
+}
+const characterModules = srcFiles.filter((f) => /^src\/characters\/[a-z0-9-]+\.js$/.test(f) && !/\/(index|schema)\.js$/.test(f));
+const bootEntries = ["src/main.js", "src/stages/index.js", "src/vfx/index.js", "src/ui/index.js", "src/audio/index.js", ...characterModules];
+const preload = importGraph(bootEntries).filter((f) => f !== "src/main.js").sort();
+const html = readFileSync(join(root, "index.html"), "utf8").replace(
+  /(\s*)<script type="module" src="\.\/src\/main\.js"><\/script>/,
+  (all, indent) => `${preload.map((f) => `${indent}<link rel="modulepreload" href="./${f}" />`).join("")}${all}`,
+);
+writeOut("index.html", html);
+
 const base = baseManifest(root);
 const manifest = {
   ...base,

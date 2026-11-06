@@ -29,15 +29,20 @@ export function createLoadingScreen(el = document.getElementById("fs-loader")) {
     else reveal();
   }
 
+  /** Fade out; resolves once the loader is gone. */
   function hide() {
     clearTimeout(showTimer);
-    if (el.hidden) return;
+    if (el.hidden) return Promise.resolve();
     set(1);
     el.classList.add("is-fading");
-    hideTimer = setTimeout(() => {
-      el.hidden = true;
-      el.classList.remove("is-fading");
-    }, 260);
+    clearTimeout(hideTimer);
+    return new Promise((resolve) => {
+      hideTimer = setTimeout(() => {
+        el.hidden = true;
+        el.classList.remove("is-fading");
+        resolve();
+      }, 260);
+    });
   }
 
   /** Follow a game's match loading. */

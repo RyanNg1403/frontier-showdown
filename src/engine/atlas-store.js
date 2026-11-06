@@ -49,13 +49,13 @@ function getWorker() {
   return worker;
 }
 
-function packInWorker(url, json) {
+function packInWorker(url, json, scale) {
   const w = getWorker();
   if (!w) return Promise.resolve({ unsupported: true });
   const job = ++jobs;
   return new Promise((resolve) => {
     pending.set(job, { resolve });
-    w.postMessage({ job, url, json: { animations: json.animations } });
+    w.postMessage({ job, url, json: { animations: json.animations }, scale });
   });
 }
 
@@ -83,10 +83,10 @@ async function decodeOnMainThread(url) {
   }
 }
 
-async function packOnMainThread(url, json) {
+async function packOnMainThread(url, json, scale) {
   const source = await decodeOnMainThread(url);
   try {
-    const out = await packAtlas(source, json, makeCanvas, () => new Promise((r) => setTimeout(r, 0)));
+    const out = await packAtlas(source, json, makeCanvas, () => new Promise((r) => setTimeout(r, 0)), scale);
     const bitmaps = typeof createImageBitmap === "function" ? await Promise.all(out.pages.map((c) => createImageBitmap(c))) : out.pages;
     if (bitmaps !== out.pages) for (const c of out.pages) c.width = c.height = 1;
     return { bitmaps, placements: Object.fromEntries(out.placements), stats: out.stats };
@@ -96,7 +96,7 @@ async function packOnMainThread(url, json) {
   }
 }
 
-async function loadPacked(id) {
+async function loadPacked(id, scale) {
   const base = `assets/fighters/${id}/`;
   const res = await fetch(assetUrl(`${base}atlas.json`));
   if (!res.ok) return null;
@@ -106,11 +106,11 @@ async function loadPacked(id) {
     return null;
   }
   const url = assetUrl(base + (json.image || "atlas.png"));
-  let packed = await packInWorker(url, json);
-  if (packed.unsupported) packed = await packOnMainThread(url, json);
+  let packed = await packInWorker(url, json, scale);
+  if (packed.unsupported) packed = await packOnMainThread(url, json, scale);
   if (packed.error) throw new Error(packed.error);
   applyPlacements(json, packed.placements, packed.bitmaps);
-  return { ...json, anchor: json.anchor || { x: 128, y: 244 }, image: null, pages: packed.bitmaps, packStats: packed.stats };
+  return { ...json, anchor: json.anchor || { x: 128, y: 244 }, image: null, pages: packed.bitmaps, packStats: { ...packed.stats, scale } };
 }
 
 function closeAtlas(atlas) {
@@ -123,43 +123,48 @@ function closeAtlas(atlas) {
   atlas.pages = [];
 }
 
+const keyOf = (id, scale) => (scale === 1 ? id : `${id}@${scale}`);
+
 /**
  * Load (or share) a fighter atlas. Loads run one at a time so the transient decode of a full
  * source sheet happens once at a time, which keeps the loading peak low on phones.
+ * `scale: 0.5` stores the frames at half resolution (low quality tier on small screens).
  */
-export function acquireAtlas(id) {
+export function acquireAtlas(id, { scale = 1 } = {}) {
   const known = atlasIds();
   if (known && !known.has(id)) return Promise.resolve(null);
-  let entry = entries.get(id);
-  if (entry && cold.has(id)) cold.delete(id);
+  const key = keyOf(id, scale);
+  let entry = entries.get(key);
+  if (entry && cold.has(key)) cold.delete(key);
   if (!entry) {
     entry = { refs: 0, atlas: null, promise: null };
     const wanted = entry;
-    const run = queue.then(() => (entries.get(id) === wanted ? loadPacked(id) : null)).catch((error) => {
+    const run = queue.then(() => (entries.get(key) === wanted ? loadPacked(id, scale) : null)).catch((error) => {
       console.warn(`Atlas for "${id}" unavailable; using placeholder.`, error?.message || error);
       return null;
     });
     queue = run.then(() => undefined);
     entry.promise = run.then((atlas) => {
-      if (entries.get(id) !== entry) {
+      if (entries.get(key) !== entry) {
         closeAtlas(atlas);
         return null;
       }
       entry.atlas = atlas;
       return atlas;
     });
-    entries.set(id, entry);
+    entries.set(key, entry);
   }
   entry.refs += 1;
   return entry.promise;
 }
 
-export function releaseAtlas(id) {
-  const entry = entries.get(id);
+export function releaseAtlas(id, { scale = 1 } = {}) {
+  const key = keyOf(id, scale);
+  const entry = entries.get(key);
   if (!entry || entry.refs <= 0) return;
   entry.refs -= 1;
   if (entry.refs > 0) return;
-  cold.set(id, entry);
+  cold.set(key, entry);
   while (cold.size > COLD_MAX) evict(cold.keys().next().value);
 }
 
@@ -182,7 +187,7 @@ export function atlasStats() {
   for (const [id, e] of entries) {
     if (!e.atlas) continue;
     const bytes = e.atlas.pages.reduce((n, p) => n + p.width * p.height * 4, 0);
-    out.live.push({ id, refs: e.refs, MB: +(bytes / 1048576).toFixed(1), sourceMB: +((e.atlas.packStats?.sourceBytes || 0) / 1048576).toFixed(1) });
+    out.live.push({ id, refs: e.refs, MB: +(bytes / 1048576).toFixed(1), sourceMB: +((e.atlas.packStats?.sourceBytes || 0) / 1048576).toFixed(1), scale: e.atlas.packStats?.scale ?? 1 });
     out.bytes += bytes;
   }
   out.MB = +(out.bytes / 1048576).toFixed(1);

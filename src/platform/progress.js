@@ -23,6 +23,7 @@ function matchupOf(sides) {
 
 export function createProgress(game, storage) {
   let current = null;
+  let resumedRounds = null;
 
   function sessionFromConfig(config) {
     const ui = game.ui?.session;
@@ -61,7 +62,8 @@ export function createProgress(game, storage) {
     if (!config) return;
     const session = sessionFromConfig(config);
     local.set(SESSION_KEY, session);
-    current = { startedAt: Date.now(), rounds: [], config, resumed: Boolean(e.resumed) };
+    current = { startedAt: Date.now(), rounds: e.resumed && resumedRounds ? resumedRounds : [], config, resumed: Boolean(e.resumed) };
+    resumedRounds = null;
     if (!e.resumed) void storage.remove("resume");
   });
 
@@ -93,6 +95,7 @@ export function createProgress(game, storage) {
         meter: live?.sides?.[i]?.meter ?? 0,
         lastCheckpointUsed: Boolean(live?.sides?.[i]?.lastCheckpointUsed),
       })),
+      rounds: current.rounds,
       savedAt: Date.now(),
       appVersion: game.version || null,
     };
@@ -177,6 +180,7 @@ export function createProgress(game, storage) {
     },
 
     resume(cp) {
+      resumedRounds = Array.isArray(cp.rounds) ? cp.rounds.slice(0, 16) : null;
       return game.startMatch({ ...cp.config, resume: { round: cp.round, sides: cp.sides } });
     },
 

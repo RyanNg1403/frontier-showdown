@@ -89,7 +89,21 @@ async function snapshot(page, cdp, browserCdp, label) {
   await cdp.send("HeapProfiler.collectGarbage");
   await sleep(500);
   const [ua, heap, proc] = [await uaMemory(page), await jsHeap(cdp), await processMemory(browserCdp)];
-  const images = await page.evaluate(() => window.__fsImageStats?.() ?? null);
+  const images = await page.evaluate(async () => {
+    const g = window.frontierShowdown;
+    if (g?.atlasStats) return { fighterAtlasMB: g.atlasStats().MB, atlases: g.atlasStats().live.map((a) => `${a.id}${a.scale !== 1 ? "@" + a.scale : ""}`) };
+    // Builds without the atlas store decode full sheets: size them from the requests made.
+    const urls = [...new Set(performance.getEntriesByType("resource").map((e) => e.name).filter((n) => /fighters\/[^/]+\/atlas\.(png|webp)/.test(n)))];
+    let bytes = 0;
+    for (const url of urls) {
+      const img = new Image();
+      img.src = url;
+      await img.decode().catch(() => {});
+      bytes += img.naturalWidth * img.naturalHeight * 4;
+      img.src = "";
+    }
+    return { fighterAtlasMB: +(bytes / 1048576).toFixed(1), atlases: urls.map((u) => u.split("/").at(-2)) };
+  });
   return { label, ua, heap, proc, images };
 }
 
@@ -153,7 +167,7 @@ const base = new URL(target.pathname, `http://127.0.0.1:${proxy.address().port}`
 const browser = await puppeteer.launch({
   executablePath: chromePath,
   headless: true,
-  args: ["--no-sandbox", "--enable-precise-memory-info", "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling", "--disable-renderer-backgrounding"],
+  args: ["--no-sandbox", "--enable-precise-memory-info", "--disable-background-timer-throttling", "--disable-renderer-backgrounding"],
 });
 const browserCdp = await browser.target().createCDPSession();
 const page = await browser.newPage();

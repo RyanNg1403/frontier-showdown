@@ -242,21 +242,24 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
         progress("Sound ready");
       })
       : Promise.resolve().then(() => { done += 1; });
-    const kept = heldAtlases.filter((id) => ids.includes(id));
-    for (const id of heldAtlases) if (!kept.includes(id)) releaseAtlas(id);
+    // Low tier on a small screen draws the scene at about half size; half-resolution frames
+    // look the same there and take a quarter of the memory.
+    const atlasScale = renderScale <= 0.6 ? 0.5 : 1;
+    const kept = heldAtlases.filter((h) => ids.includes(h.id) && h.scale === atlasScale);
+    for (const h of heldAtlases) if (!kept.includes(h)) releaseAtlas(h.id, h);
     heldAtlases = kept;
     const loaded = [];
     for (const id of ids) {
       progress(`Loading ${charMap.get(id)?.shortName || charMap.get(id)?.name || id}`);
-      const atlas = hasAtlasFile(id) ? await acquireAtlas(id) : null;
-      loaded.push(id);
+      const atlas = hasAtlasFile(id) ? await acquireAtlas(id, { scale: atlasScale }) : null;
+      loaded.push({ id, scale: atlasScale });
       done += 1;
       if (atlas) atlases[id] = { id, anchor: atlas.anchor, animations: atlas.animations };
       atlasMap.set(id, atlas);
     }
     const [stage] = await Promise.all([stagePromise, audioPromise]);
     if (token !== loadToken) {
-      for (const id of loaded) releaseAtlas(id);
+      for (const h of loaded) releaseAtlas(h.id, h);
       return currentSnapshot();
     }
     swapHeldAtlases(loaded);
@@ -295,9 +298,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
   function swapHeldAtlases(next) {
     const previous = heldAtlases;
     heldAtlases = next;
-    for (const id of previous) releaseAtlas(id);
-    for (const id of Object.keys(atlases)) if (!next.includes(id)) delete atlases[id];
-    for (const id of [...atlasMap.keys()]) if (!next.includes(id)) atlasMap.delete(id);
+    for (const h of previous) releaseAtlas(h.id, h);
+    const ids = next.map((h) => h.id);
+    for (const id of Object.keys(atlases)) if (!ids.includes(id)) delete atlases[id];
+    for (const id of [...atlasMap.keys()]) if (!ids.includes(id)) atlasMap.delete(id);
   }
 
   /**

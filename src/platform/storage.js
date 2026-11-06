@@ -71,7 +71,13 @@ function promisify(req) {
 }
 
 function openDb() {
-  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  let idb = null;
+  try {
+    idb = globalThis.indexedDB ?? null;
+  } catch (error) {
+    note(error, "indexedDB");
+  }
+  if (!idb) return Promise.resolve(null);
   return new Promise((resolve) => {
     let settled = false;
     const done = (db) => {
@@ -89,7 +95,7 @@ function openDb() {
     }, OPEN_TIMEOUT_MS);
     let req;
     try {
-      req = indexedDB.open(DB_NAME, DB_VERSION);
+      req = idb.open(DB_NAME, DB_VERSION);
     } catch (error) {
       clearTimeout(timer);
       note(error, "indexedDB.open");

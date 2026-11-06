@@ -6,7 +6,7 @@
 import { packAtlas } from "./atlas-pack.js";
 
 self.onmessage = async ({ data }) => {
-  const { job, url, json } = data;
+  const { job, url, json, scale = 1 } = data;
   if (typeof OffscreenCanvas === "undefined" || typeof createImageBitmap === "undefined") {
     self.postMessage({ job, unsupported: true });
     return;
@@ -16,7 +16,7 @@ self.onmessage = async ({ data }) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${res.status} ${url}`);
     source = await createImageBitmap(await res.blob());
-    const { pages, placements, stats } = await packAtlas(source, json, (w, h) => new OffscreenCanvas(w, h));
+    const { pages, placements, stats } = await packAtlas(source, json, (w, h) => new OffscreenCanvas(w, h), null, scale);
     const bitmaps = pages.map((c) => c.transferToImageBitmap());
     self.postMessage({ job, bitmaps, placements: Object.fromEntries(placements), stats }, bitmaps);
   } catch (error) {
