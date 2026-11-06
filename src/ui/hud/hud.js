@@ -34,6 +34,11 @@ export function createHud(rootEl, ui) {
 
   let raf = 0;
   let visible = false;
+  // 2v2: a point fighter's `ko` is followed by `lastStanding` for that side in the same engine
+  // step, so the KO banner is decided a microtask later. Mid-round falls get a partner-in cue,
+  // and the banner shows once per round.
+  const fellMidRound = new Map(); // side -> partner id coming in
+  let koShown = false;
   let lastT = 0;
   let mode = null;
   const queue = [];
@@ -299,11 +304,32 @@ export function createHud(rootEl, ui) {
     pulseClass(el, "is-shaking");
   }
 
-  function callout(side, text, kind = "special") {
+  const CALLOUT_LABELS = { tag: "Tag In", assist: "Assist", partner: "Partner In", special: "Special" };
+
+  function callout(side, text, kind = "special", sub = null) {
     const c = sides[side]?.callout;
     if (!c) return;
-    c.replaceChildren(h("span", { class: `fs-callout__item is-${kind}` }, h("small", null, kind === "tag" ? "Tag In" : kind === "assist" ? "Assist" : "Special"), text));
+    c.replaceChildren(h("span", { class: `fs-callout__item is-${kind}` }, h("small", null, CALLOUT_LABELS[kind] || CALLOUT_LABELS.special), text, sub ? h("em", null, sub) : null));
     pulseClass(c, "is-showing");
+  }
+
+  function onKo(e) {
+    const partnerId = fellMidRound.get(e.side);
+    const midRound = e.roundOver === false || (e.roundOver !== true && partnerId !== undefined);
+    fellMidRound.delete(e.side);
+    if (midRound) {
+      const fallen = ui.fighter(e.fighter) || { id: e.fighter, name: e.fighter };
+      const partner = ui.fighter(partnerId) || (partnerId ? { id: partnerId, name: partnerId } : null);
+      const fallenName = shortName(fallen);
+      callout(e.side, partner ? shortName(partner) : "Partner", "partner", `${fallenName} is out`);
+      ui.say(partner ? `${fallen.name} is out. ${partner.name} tags in.` : `${fallen.name} is out.`);
+      shake("sm");
+      return;
+    }
+    if (koShown) return;
+    koShown = true;
+    if (e.double) announce("Double K.O.", "ko", { speak: "Double K O" });
+    else announce("K.O.", "ko", { speak: "K O" });
   }
 
   function superCinematic(side, name, fighterId) {
@@ -330,6 +356,8 @@ export function createHud(rootEl, ui) {
     switch (type) {
       case "roundStart": {
         clearAnnouncer();
+        koShown = false;
+        fellMidRound.clear();
         const final = e.final ?? state?.sides?.every((s) => s.roundWins === (state.roundsToWin || 2) - 1);
         announce(final ? "Final Round" : `Round ${e.round ?? state?.round ?? 1}`, final ? "final" : "round");
         if (!e.waitForFight) announce("Fight!", "fight");
@@ -352,11 +380,14 @@ export function createHud(rootEl, ui) {
         callout(e.side ?? 0, data?.name || "Partner", "tag");
         break;
       }
+      case "lastStanding":
+        if (e.side != null) fellMidRound.set(e.side, e.fighter ?? null);
+        break;
       case "finishThem":
         announce("Finish Them!", "finish");
         break;
       case "ko":
-        announce("K.O.", "ko", { speak: "K O" });
+        queueMicrotask(() => onKo(e));
         break;
       case "roundEnd":
         if (e.reason === "time") announce("Time", "time");

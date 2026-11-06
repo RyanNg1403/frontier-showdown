@@ -33,6 +33,7 @@ export class InputDevices {
     this.padBindings = { p1: clonePad(), p2: clonePad() };
     this.listeners = new Set();
     this.padStart = [false, false];
+    this.sources = new Set();
     this.boundCodes = new Set();
     this.refreshBound();
     this.onKeyDown = (e) => {
@@ -57,6 +58,12 @@ export class InputDevices {
   onKey(fn) {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Extra per-step input, e.g. on-screen touch controls: `fn(player)` returns `{x, y, buttons}` or null. */
+  addSource(fn) {
+    this.sources.add(fn);
+    return () => this.sources.delete(fn);
   }
 
   /** Accepts either a code string or a list of codes for each binding. */
@@ -97,6 +104,13 @@ export class InputDevices {
         if (any(map[name])) buttons |= BTN[name];
       }
       if (pressed(9)) buttons |= BTN.START;
+    }
+    for (const source of this.sources) {
+      const s = source(player);
+      if (!s) continue;
+      if (s.x) x = s.x;
+      if (s.y) y = s.y;
+      buttons |= s.buttons | 0;
     }
     if (x !== 0 && this.isDown(b.left) && this.isDown(b.right)) x = 0;
     return { dir: dirFromAxes(Math.sign(x), Math.sign(y)), buttons };

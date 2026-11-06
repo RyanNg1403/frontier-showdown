@@ -13,7 +13,7 @@ export function createMenuInput({ settings, target = window }) {
   const padState = new Map();
   let context = "menu";
   let split = false;
-  let lastDevice = "keyboard";
+  let lastDevice = window.matchMedia?.("(pointer: coarse)").matches ? "touch" : "keyboard";
   let capture = null;
   let raf = 0;
 
@@ -163,6 +163,11 @@ export function createMenuInput({ settings, target = window }) {
     /** When true, arrows/Enter/Backspace drive player 2 so two people can share a keyboard. */
     setSplit(next) { split = next; },
     get lastDevice() { return lastDevice; },
+    setDevice(device) {
+      if (device === lastDevice) return;
+      lastDevice = device;
+      deviceListeners.forEach((fn) => fn(device));
+    },
     /** Feed a synthetic menu action, e.g. from tests or an on-screen touch control. */
     inject(action, player = 0, device = lastDevice) { emit(action, player, device, { synthetic: true }); },
     padCount() {

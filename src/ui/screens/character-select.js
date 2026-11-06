@@ -1,6 +1,6 @@
 import { h, replace, pulseClass } from "../core/dom.js";
 import { portraitImg, sigilUrl, uiAsset } from "../core/assets.js";
-import { embers, hintBar, screenHeader, statBars } from "../core/widgets.js";
+import { embers, hintBar, lastPointerType, screenHeader, statBars } from "../core/widgets.js";
 import { fighterAccent, labInfo, shortName } from "../data/labs.js";
 import { renderInput, glyphCount } from "../data/notation.js";
 import { createSpritePreview } from "./sprite-preview.js";
@@ -99,20 +99,31 @@ export function createSelectScreen(ui) {
         h("span", { class: "fs-tile__cursor is-p1" }, h("b", null, "1P")),
         h("span", { class: "fs-tile__cursor is-p2" }, h("b", null, "2P")),
         h("span", { class: "fs-tile__picks" }));
-      tile.addEventListener("pointerenter", () => {
+      tile.addEventListener("pointerenter", (e) => {
         const s = local ? 0 : current;
-        if (!sides[s] || sides[s].done) return;
+        if (e.pointerType !== "mouse" || !sides[s] || sides[s].done) return;
         setCursor(s, idx);
       });
       tile.addEventListener("click", () => {
-        const s = local ? 0 : current;
-        if (!sides[s] || sides[s].done) return;
+        const s = touchSide();
+        if (s < 0 || rouletteTimer) return;
+        // On touch the first tap previews the fighter and the second tap on the same tile picks.
+        if (lastPointerType() === "touch" && sides[s].cursor !== idx) {
+          setCursor(s, idx);
+          return;
+        }
         setCursor(s, idx, false);
         pick(s, roster[idx].id);
       });
       return tile;
     });
     replace(grid, tiles);
+  }
+
+  // Side a tap acts for: the choosing side, or in local versus the first side still picking.
+  function touchSide() {
+    if (!local) return sides[current] && !sides[current].done ? current : -1;
+    return sides.findIndex((x) => !x.done);
   }
 
   function sideLabel(i) {
@@ -143,6 +154,7 @@ export function createSelectScreen(ui) {
       ["move", "Move"],
       ["confirm", teamSize > 1 ? "Pick" : "Select"],
       ["info", "Random"],
+      ["start", "Moves", { touchOnly: true }],
       ["back", "Back"],
     ]);
   }
@@ -212,7 +224,7 @@ export function createSelectScreen(ui) {
     preview.dataset.side = String(previewSide);
     const rows = moves.map((m, k) => h("li", { class: ["fs-preview__move", m.kind === "Super" && "is-super"], dataset: { k: String(k) } },
       h("span", { class: "fs-preview__kind" }, m.kind),
-      h("span", { class: "fs-preview__name" }, m.name),
+      h("span", { class: "fs-preview__name", title: m.name }, m.name),
       h("span", { class: "fs-preview__input" }, renderInput(m.input, { size: "sm" }))));
     replace(preview,
       h("header", { class: "fs-preview__head" },
@@ -237,6 +249,7 @@ export function createSelectScreen(ui) {
       const m = moves[k];
       const n = glyphCount(m.input);
       [...items].forEach((li, idx) => li.classList.toggle("is-playing", idx === k));
+      followPlaying(list.parentElement, items[k]);
       const slot = items[k].querySelector(".fs-preview__input");
       slot.replaceChildren(renderInput(m.input, { size: "sm", activeIndex: reduce ? -1 : Math.max(-1, step) }));
       if (step === n) sprite.play(m.kind === "Super" ? "super" : `special_${k + 1}`);
@@ -249,6 +262,15 @@ export function createSelectScreen(ui) {
     };
     tick();
     cycleTimer = setInterval(tick, 150);
+  }
+
+  // Keep the demonstrated move in view when the list is taller than the panel (scrollTop only,
+  // so no ancestor of the stage scrolls).
+  function followPlaying(box, item) {
+    if (!box || box.scrollHeight <= box.clientHeight) return;
+    const top = item.offsetTop - box.offsetTop;
+    if (top < box.scrollTop) box.scrollTop = top;
+    else if (top + item.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top + item.offsetHeight - box.clientHeight;
   }
 
   function setCursor(si, idx, sound = true) {

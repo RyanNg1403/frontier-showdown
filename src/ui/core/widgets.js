@@ -21,13 +21,26 @@ function keyboardGlyph(action, settings) {
   }
 }
 
-/** Button prompt bar that re-renders when the player switches between keyboard and gamepad. */
+// On touch, prompts become tappable chips; directional prompts are dropped since the items themselves are tappable.
+const TOUCH_ACTIONS = new Set(["confirm", "back", "info", "start"]);
+
+/** Button prompt bar that re-renders when the player switches between keyboard, gamepad and touch. */
 export function hintBar(ui, hints) {
   const el = h("div", { class: "fs-hints", role: "note", "aria-label": "Controls" });
   let current = hints;
   const render = () => {
+    const touch = ui.input.lastDevice === "touch";
+    el.classList.toggle("is-touch", touch);
+    if (touch) {
+      replace(el, current.filter(([action, , opts]) => TOUCH_ACTIONS.has(action) && !opts?.noTouch).map(([action, label]) => {
+        const b = h("button", { class: `fs-hint fs-tap is-${action}`, type: "button" }, h("span", { class: "fs-hint__label" }, label));
+        b.addEventListener("click", (e) => { e.stopPropagation(); ui.input.inject(action, 0, "touch"); });
+        return b;
+      }));
+      return;
+    }
     const pad = ui.input.lastDevice === "gamepad";
-    replace(el, current.map(([action, label]) => {
+    replace(el, current.filter(([, , opts]) => !opts?.touchOnly).map(([action, label]) => {
       const [glyph, cls] = pad ? PAD_GLYPHS[action] || [action, ""] : [keyboardGlyph(action, ui.settings), "is-key"];
       return h("span", { class: "fs-hint" }, h("kbd", { class: `fs-glyph ${cls}` }, glyph), h("span", { class: "fs-hint__label" }, label));
     }));
@@ -43,7 +56,7 @@ export function hintBar(ui, hints) {
  * Focus tracking for a list or grid of elements. Elements get `.is-focused`; mouse hover moves focus
  * and click confirms, so pointer users get the same flow as pad users.
  */
-export function createNav({ items = [], columns = 1, wrap = true, index = 0, onChange, onConfirm, sound }) {
+export function createNav({ items = [], columns = 1, wrap = true, index = 0, onChange, onConfirm, sound, touchPreview = false }) {
   const nav = {
     items,
     columns,
@@ -79,8 +92,13 @@ export function createNav({ items = [], columns = 1, wrap = true, index = 0, onC
     bind(list) {
       nav.items = list;
       list.forEach((el, i) => {
-        el.addEventListener("pointerenter", () => nav.set(i));
-        el.addEventListener("click", () => { nav.set(i); onConfirm?.(i, el); });
+        el.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") nav.set(i); });
+        el.addEventListener("click", () => {
+          // With touchPreview, the first tap on a touch screen focuses (and previews), the second confirms.
+          if (touchPreview && lastPointer === "touch" && nav.index !== i) return nav.set(i);
+          nav.set(i);
+          onConfirm?.(i, el);
+        });
       });
       nav.set(Math.min(nav.index, list.length - 1), true);
     },
@@ -88,6 +106,11 @@ export function createNav({ items = [], columns = 1, wrap = true, index = 0, onC
   if (items.length) nav.bind(items);
   return nav;
 }
+
+let lastPointer = "mouse";
+if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; }, true);
+/** Pointer type of the most recent press ("mouse", "touch" or "pen"). */
+export const lastPointerType = () => lastPointer;
 
 function lastInColumn(col, cols, n) {
   let i = col;

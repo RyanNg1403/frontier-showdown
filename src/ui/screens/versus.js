@@ -5,7 +5,7 @@ import { fighterAccent, labInfo } from "../data/labs.js";
 export function createVersusScreen(ui) {
   const sidesEl = [h("div", { class: "fs-vs__side is-p1" }), h("div", { class: "fs-vs__side is-p2" })];
   const footer = h("div", { class: "fs-vs__footer" });
-  const skip = h("div", { class: "fs-vs__skip" }, "Press confirm to skip");
+  const skip = h("div", { class: "fs-vs__skip" }, "Press confirm or tap to skip");
   const el = h("section", { class: "fs-screen fs-vs", "aria-label": "Versus" },
     h("div", { class: "fs-vs__bg is-p1" }),
     h("div", { class: "fs-vs__bg is-p2" }),
@@ -20,6 +20,7 @@ export function createVersusScreen(ui) {
 
   let timer = 0;
   let done = false;
+  el.addEventListener("click", () => go());
 
   function renderSide(i) {
     const side = ui.session.sides[i];

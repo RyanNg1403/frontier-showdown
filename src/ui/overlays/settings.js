@@ -4,6 +4,7 @@ import { ACTIONS, DIFFICULTIES, keyName, padButtonName } from "../core/settings.
 
 const TABS = [
   { id: "controls", label: "Controls", icon: "controls" },
+  { id: "touch", label: "Touch", icon: "controls" },
   { id: "audio", label: "Audio", icon: "audio" },
   { id: "gameplay", label: "Gameplay", icon: "difficulty" },
   { id: "access", label: "Accessibility", icon: "settings" },
@@ -28,7 +29,8 @@ export function createSettingsOverlay(ui, params = {}) {
       note,
       hints));
 
-  let tab = Math.max(0, TABS.findIndex((t) => t.id === params.tab));
+  const initialTab = params.tab || (ui.input.lastDevice === "touch" ? "touch" : "controls");
+  let tab = Math.max(0, TABS.findIndex((t) => t.id === initialTab));
   let rows = [];
   let rowEls = [];
   let row = 0;
@@ -50,6 +52,30 @@ export function createSettingsOverlay(ui, params = {}) {
           display: () => (ctrlDevice === "keyboard" ? keyName(map[a.id]) : padButtonName(map[a.id])),
         })),
         { type: "action", label: "Reset controls to default", run: () => S.reset("controls") },
+      ];
+    }
+    if (TABS[tab].id === "touch") {
+      const t = v.touch;
+      const vibrate = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+      return [
+        { type: "choice", label: "Touch controls", get: () => t.mode, set: (x) => S.set("touch.mode", x), options: [
+          { value: "auto", label: "Auto", blurb: "Shown on touch screens; hidden as soon as a keyboard or gamepad is used, back on the next touch." },
+          { value: "on", label: "Always", blurb: "Always show the on-screen controls in fights." },
+          { value: "off", label: "Off", blurb: "Never show the on-screen controls." }] },
+        { type: "choice", label: "Stick", get: () => t.stick, set: (x) => S.set("touch.stick", x), options: [
+          { value: "floating", label: "Floating", blurb: "The stick centres wherever your thumb lands on the left side, and follows it." },
+          { value: "fixed", label: "Fixed", blurb: "The stick stays put; drag anywhere on the left side to steer it." }] },
+        { type: "toggle", label: "Simple specials", desc: "Adds an SP button: SP alone, forward + SP or back + SP for the three specials, down + SP for the super. Motion inputs still work.", get: () => t.simple, set: (x) => S.set("touch.simple", x) },
+        { type: "choice", label: "Button size", get: () => t.size, set: (x) => S.set("touch.size", x),
+          options: [0.7, 0.85, 1, 1.15, 1.3, 1.5].map((n) => ({ value: n, label: `${Math.round(n * 100)}%` })) },
+        { type: "slider", label: "Opacity", get: () => t.opacity, set: (x) => S.set("touch.opacity", Math.max(0.2, x)), format: (x) => `${Math.round(x * 100)}%` },
+        { type: "toggle", label: "Left-handed", desc: "Buttons on the left, stick on the right.", get: () => t.leftHanded, set: (x) => S.set("touch.leftHanded", x) },
+        { type: "toggle", label: "Vibration", desc: vibrate ? "Short buzzes on presses, big hits and KOs." : "This browser has no vibration support (iPhone and iPad Safari).", get: () => t.haptics, set: (x) => S.set("touch.haptics", x) },
+        { type: "toggle", label: "Two players on one screen", desc: "In Local Versus, splits the controls: Player 1 on the left half, Player 2 on the right.", get: () => t.twoPlayer, set: (x) => S.set("touch.twoPlayer", x) },
+        { type: "toggle", label: "Fullscreen on start", desc: "Go fullscreen and lock landscape when you start from the title screen, where the browser allows it.", get: () => t.fullscreen, set: (x) => S.set("touch.fullscreen", x) },
+        { type: "action", label: "Edit layout", desc: "Drag the stick and buttons where your thumbs rest.", run: () => ui.touch?.openEditor() },
+        ...(ui.canInstall ? [{ type: "action", label: "Add to Home Screen", desc: "Play fullscreen from an icon on your home screen.", run: () => ui.openOverlay("install") }] : []),
+        { type: "action", label: "Reset touch settings", run: () => S.reset("touch") },
       ];
     }
     if (TABS[tab].id === "audio") {
@@ -120,8 +146,13 @@ export function createSettingsOverlay(ui, params = {}) {
       r.addEventListener("click", (e) => {
         focus(i, false);
         const arrow = e.target.closest(".fs-opt__arrow");
+        const pip = e.target.closest(".fs-opt__track i");
         if (arrow) adjust(arrow === r.querySelector(".fs-opt__arrow") ? -1 : 1);
-        else activate();
+        else if (pip && rows[i].type === "slider") {
+          rows[i].set((Array.prototype.indexOf.call(pip.parentElement.children, pip) + 1) / 10);
+          ui.sound("move");
+          render();
+        } else activate();
       });
     });
     replace(list, rowEls);

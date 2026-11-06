@@ -48,6 +48,11 @@ export const DEFAULT_SETTINGS = {
   audio: { master: 0.8, music: 0.6, sfx: 0.8, announcer: 0.9 },
   gameplay: { difficulty: "normal", roundTime: 99, roundsToWin: 2 },
   accessibility: { reduceMotion: false, reduceFlashes: false, screenShake: true },
+  // `layout` holds drag offsets for the stick and the button cluster as fractions of the viewport.
+  touch: {
+    mode: "auto", stick: "floating", size: 1, opacity: 0.7, leftHanded: false, simple: false, haptics: true,
+    fullscreen: true, twoPlayer: true, layout: { stick: { x: 0, y: 0 }, buttons: { x: 0, y: 0 } },
+  },
 };
 
 const clone = (v) => JSON.parse(JSON.stringify(v));

@@ -602,6 +602,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     },
     bindings: devices.bindings,
     refreshBindings: () => devices.refreshBound(),
+    addInputSource: (fn) => devices.addSource(fn),
     listCharacters,
     listStages,
     startMatch,
