@@ -1,0 +1,231 @@
+{
+ "id": "chris",
+ "normals": {
+  "lp": {
+   "name": "Lens Tap",
+   "anim": "light_punch",
+   "startup": 6,
+   "active": 2,
+   "recovery": 11,
+   "hitbox": {
+    "x": 22,
+    "y": -166,
+    "w": 82,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Feature Swirl Palm",
+   "anim": "heavy_punch",
+   "startup": 12,
+   "active": 3,
+   "recovery": 20,
+   "hitbox": {
+    "x": 26,
+    "y": -172,
+    "w": 104,
+    "h": 34
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Neat Step Kick",
+   "anim": "light_kick",
+   "startup": 9,
+   "active": 3,
+   "recovery": 15,
+   "hitbox": {
+    "x": 20,
+    "y": -98,
+    "w": 98,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Activation Atlas Spin",
+   "anim": "heavy_kick",
+   "startup": 14,
+   "active": 4,
+   "recovery": 22,
+   "hitbox": {
+    "x": 28,
+    "y": -160,
+    "w": 116,
+    "h": 44
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Neuron Probe",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 18,
+    "y": -100,
+    "w": 82,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Low Attribution",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 14,
+   "hitbox": {
+    "x": 20,
+    "y": -28,
+    "w": 106,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Superposition",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 4,
+   "recovery": 28,
+   "hits": 2,
+   "hitbox": {
+    "x": 8,
+    "y": -222,
+    "w": 80,
+    "h": 140
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Circuit Sweep",
+   "anim": "crouch_heavy",
+   "startup": 13,
+   "active": 3,
+   "recovery": 28,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 138,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Lens Drop",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 10,
+    "y": -136,
+    "w": 84,
+    "h": 42
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Diagram Kick",
+   "anim": "air_attack",
+   "startup": 7,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -92,
+    "w": 104,
+    "h": 48
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "feature_visualization",
+   "name": "Feature Visualization",
+   "anim": "special_1",
+   "startup": 16,
+   "active": 2,
+   "recovery": 28,
+   "hitbox": {
+    "x": 68,
+    "y": -150,
+    "w": 20,
+    "h": 20
+   },
+   "projectile": true,
+   "parry": false
+  },
+  {
+   "id": "golden_gate",
+   "name": "Golden Gate",
+   "anim": "special_2",
+   "startup": 20,
+   "active": 2,
+   "recovery": 18,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "circuit_trace",
+   "name": "Circuit Trace",
+   "anim": "special_3",
+   "startup": 15,
+   "active": 4,
+   "recovery": 24,
+   "hitbox": {
+    "x": 10,
+    "y": -172,
+    "w": 96,
+    "h": 132
+   },
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {},
+ "super": {
+  "id": "scaling_monosemanticity",
+  "name": "Scaling Monosemanticity",
+  "anim": "super",
+  "startup": 9,
+  "active": 30,
+  "recovery": 50,
+  "hits": 10,
+  "hitbox": {
+   "x": 0,
+   "y": -214,
+   "w": 200,
+   "h": 214
+  },
+  "projectile": false,
+  "parry": false
+ },
+ "throw": {
+  "name": "Understanding LSTMs"
+ },
+ "finisher": {
+  "id": "toy_model",
+  "name": "Toy Model",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/chris.js"
+ }
+}

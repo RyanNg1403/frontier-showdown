@@ -1,0 +1,224 @@
+{
+ "id": "feifei",
+ "normals": {
+  "lp": {
+   "name": "Photo Tile Palm",
+   "anim": "light_punch",
+   "startup": 6,
+   "active": 2,
+   "recovery": 11,
+   "hitbox": {
+    "x": 20,
+    "y": -156,
+    "w": 84,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Tile Row Sweep",
+   "anim": "heavy_punch",
+   "startup": 12,
+   "active": 3,
+   "recovery": 21,
+   "hitbox": {
+    "x": 24,
+    "y": -162,
+    "w": 120,
+    "h": 34
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Short Kick",
+   "anim": "light_kick",
+   "startup": 8,
+   "active": 2,
+   "recovery": 14,
+   "hitbox": {
+    "x": 18,
+    "y": -94,
+    "w": 88,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Wireframe Spin Kick",
+   "anim": "heavy_kick",
+   "startup": 14,
+   "active": 4,
+   "recovery": 23,
+   "hitbox": {
+    "x": 26,
+    "y": -150,
+    "w": 112,
+    "h": 44
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Bounding Box Jab",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 18,
+    "y": -96,
+    "w": 80,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Floor Plane Poke",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 15,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 104,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Splat Pillar",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 4,
+   "recovery": 28,
+   "hitbox": {
+    "x": 10,
+    "y": -240,
+    "w": 76,
+    "h": 160
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Grid Sweep",
+   "anim": "crouch_heavy",
+   "startup": 13,
+   "active": 3,
+   "recovery": 29,
+   "hitbox": {
+    "x": 16,
+    "y": -26,
+    "w": 136,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Tile Slam",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 0,
+    "y": -110,
+    "w": 96,
+    "h": 70
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Wireframe Kick",
+   "anim": "air_attack",
+   "startup": 7,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -90,
+    "w": 100,
+    "h": 46
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "imagenet",
+   "name": "ImageNet",
+   "anim": "special_1",
+   "startup": 17,
+   "active": 2,
+   "recovery": 30,
+   "hitbox": {
+    "x": 74,
+    "y": -140,
+    "w": 20,
+    "h": 20
+   },
+   "projectile": true,
+   "parry": false
+  },
+  {
+   "id": "marble_world",
+   "name": "Marble World",
+   "anim": "special_2",
+   "startup": 20,
+   "active": 2,
+   "recovery": 18,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "spatial_step",
+   "name": "Spatial Step",
+   "anim": "special_3",
+   "startup": 10,
+   "active": 1,
+   "recovery": 18,
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {},
+ "super": {
+  "id": "the_worlds_i_see",
+  "name": "The Worlds I See",
+  "anim": "super",
+  "startup": 9,
+  "active": 30,
+  "recovery": 50,
+  "hits": 3,
+  "hitbox": {
+   "x": 0,
+   "y": -220,
+   "w": 200,
+   "h": 220
+  },
+  "projectile": false,
+  "parry": false
+ },
+ "throw": {
+  "name": "Label It"
+ },
+ "finisher": {
+  "id": "labeled",
+  "name": "Labeled",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/feifei.js"
+ }
+}

@@ -1,0 +1,230 @@
+{
+ "id": "liang",
+ "normals": {
+  "lp": {
+   "name": "6-Frame Jab",
+   "anim": "light_punch",
+   "startup": 6,
+   "active": 2,
+   "recovery": 10,
+   "hitbox": {
+    "x": 22,
+    "y": -166,
+    "w": 84,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Cobalt Straight",
+   "anim": "heavy_punch",
+   "startup": 11,
+   "active": 3,
+   "recovery": 19,
+   "hitbox": {
+    "x": 24,
+    "y": -170,
+    "w": 106,
+    "h": 30
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Snap Kick",
+   "anim": "light_kick",
+   "startup": 8,
+   "active": 3,
+   "recovery": 14,
+   "hitbox": {
+    "x": 20,
+    "y": -100,
+    "w": 96,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Turning Kick",
+   "anim": "heavy_kick",
+   "startup": 13,
+   "active": 4,
+   "recovery": 21,
+   "hitbox": {
+    "x": 28,
+    "y": -156,
+    "w": 118,
+    "h": 40
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Quiet Tap",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 11,
+   "hitbox": {
+    "x": 18,
+    "y": -100,
+    "w": 82,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Low Ripple",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 13,
+   "hitbox": {
+    "x": 20,
+    "y": -28,
+    "w": 104,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Whale Tail",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 3,
+   "recovery": 28,
+   "hitbox": {
+    "x": 6,
+    "y": -222,
+    "w": 80,
+    "h": 140
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Price Cut Sweep",
+   "anim": "crouch_heavy",
+   "startup": 12,
+   "active": 3,
+   "recovery": 27,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 136,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Falling Palm",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 10,
+    "y": -134,
+    "w": 84,
+    "h": 42
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Cobalt Dropkick",
+   "anim": "air_attack",
+   "startup": 7,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -92,
+    "w": 104,
+    "h": 48
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "aha_moment",
+   "name": "Aha Moment",
+   "anim": "special_1",
+   "startup": 3,
+   "active": 12,
+   "recovery": 24,
+   "projectile": false,
+   "parry": true
+  },
+  {
+   "id": "latent_attention",
+   "name": "Latent Attention",
+   "anim": "special_2",
+   "startup": 13,
+   "active": 2,
+   "recovery": 26,
+   "hitbox": {
+    "x": 60,
+    "y": -138,
+    "w": 20,
+    "h": 20
+   },
+   "projectile": true,
+   "parry": false
+  },
+  {
+   "id": "group_relative",
+   "name": "Group Relative Strike",
+   "anim": "special_3",
+   "startup": 14,
+   "active": 9,
+   "recovery": 26,
+   "hits": 3,
+   "hitbox": {
+    "x": 24,
+    "y": -146,
+    "w": 110,
+    "h": 44
+   },
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {},
+ "super": {
+  "id": "whale_breach",
+  "name": "The Whale Breach",
+  "anim": "super",
+  "startup": 8,
+  "active": 2,
+  "recovery": 48,
+  "hitbox": {
+   "x": -10,
+   "y": -20,
+   "w": 20,
+   "h": 20
+  },
+  "projectile": true,
+  "parry": false
+ },
+ "throw": {
+  "name": "Price War"
+ },
+ "finisher": {
+  "id": "mit_license",
+  "name": "MIT License",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/liang.js"
+ }
+}

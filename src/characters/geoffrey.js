@@ -104,7 +104,7 @@ export default defineCharacter({
       hitbox: { x: 8, y: -98, w: 120, h: 46 }, knockback: { x: 210 }, level: "overhead", meterGain: 4,
     },
     f_hp: {
-      name: "Capsule", startup: 20, active: 3, recovery: 21, damage: 62, hitstun: 22, blockstun: 17,
+      name: "Capsule", anim: "heavy_punch_forward", startup: 20, active: 3, recovery: 21, damage: 62, hitstun: 22, blockstun: 17,
       hitbox: { x: 24, y: -164, w: 112, h: 164 }, knockback: { x: 240 }, level: "overhead", meterGain: 5,
       cancelInto: ["special", "super"], description: "Overhead strike wrapped in glowing capsule outlines.",
     },

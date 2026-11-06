@@ -1,0 +1,282 @@
+{
+ "id": "noam",
+ "normals": {
+  "lp": {
+   "name": "Token Jab",
+   "anim": "light_punch",
+   "startup": 6,
+   "active": 2,
+   "recovery": 11,
+   "hitbox": {
+    "x": 22,
+    "y": -166,
+    "w": 84,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Feed-Forward",
+   "anim": "heavy_punch",
+   "startup": 12,
+   "active": 3,
+   "recovery": 20,
+   "hitbox": {
+    "x": 26,
+    "y": -172,
+    "w": 104,
+    "h": 32
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Skip Connection",
+   "anim": "light_kick",
+   "startup": 9,
+   "active": 3,
+   "recovery": 15,
+   "hitbox": {
+    "x": 20,
+    "y": -98,
+    "w": 98,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Layer-Norm Roundhouse",
+   "anim": "heavy_kick",
+   "startup": 14,
+   "active": 4,
+   "recovery": 22,
+   "hitbox": {
+    "x": 30,
+    "y": -158,
+    "w": 114,
+    "h": 40
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Low Logit",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 18,
+    "y": -100,
+    "w": 82,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Positional Poke",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 14,
+   "hitbox": {
+    "x": 20,
+    "y": -28,
+    "w": 106,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Residual",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 3,
+   "recovery": 28,
+   "hitbox": {
+    "x": 8,
+    "y": -218,
+    "w": 78,
+    "h": 136
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Sparse Sweep",
+   "anim": "crouch_heavy",
+   "startup": 13,
+   "active": 3,
+   "recovery": 28,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 140,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Head Drop",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 10,
+    "y": -136,
+    "w": 86,
+    "h": 42
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Decoder Kick",
+   "anim": "air_attack",
+   "startup": 7,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -92,
+    "w": 106,
+    "h": 48
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "attention",
+   "name": "Attention Is All You Need",
+   "anim": "special_1",
+   "startup": 17,
+   "active": 24,
+   "recovery": 28,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "mixture_of_experts",
+   "name": "Mixture of Experts",
+   "anim": "special_2",
+   "startup": 8,
+   "active": 40,
+   "recovery": 8,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "one_write_head",
+   "name": "One Write-Head",
+   "anim": "special_3",
+   "startup": 14,
+   "active": 12,
+   "recovery": 26,
+   "hits": 3,
+   "hitbox": {
+    "x": 18,
+    "y": -180,
+    "w": 104,
+    "h": 70
+   },
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {
+  "hp_striker": {
+   "name": "Expert Cross",
+   "anim": "heavy_punch_striker",
+   "startup": 9,
+   "active": 3,
+   "recovery": 17,
+   "hitbox": {
+    "x": 26,
+    "y": -172,
+    "w": 108,
+    "h": 32
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk_striker": {
+   "name": "Expert Roundhouse",
+   "anim": "heavy_kick_striker",
+   "startup": 11,
+   "active": 3,
+   "recovery": 18,
+   "hitbox": {
+    "x": 30,
+    "y": -158,
+    "w": 118,
+    "h": 40
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp_grappler": {
+   "name": "Gated Grab",
+   "anim": "heavy_punch_grappler",
+   "startup": 7,
+   "active": 3,
+   "recovery": 30,
+   "projectile": false,
+   "parry": false
+  },
+  "hk_zoner": {
+   "name": "Attention Dart",
+   "anim": "heavy_kick_zoner",
+   "startup": 13,
+   "active": 2,
+   "recovery": 22,
+   "hitbox": {
+    "x": 60,
+    "y": -130,
+    "w": 20,
+    "h": 20
+   },
+   "projectile": true,
+   "parry": false
+  },
+  "hp_guard": {
+   "name": "Guard Palm",
+   "anim": "heavy_punch_guard",
+   "startup": 3,
+   "active": 14,
+   "recovery": 22,
+   "projectile": false,
+   "parry": true
+  }
+ },
+ "super": {
+  "id": "divine_benevolence",
+  "name": "Divine Benevolence",
+  "anim": "super",
+  "startup": 8,
+  "active": 44,
+  "recovery": 46,
+  "projectile": false,
+  "parry": false
+ },
+ "throw": {
+  "name": "Did You Mean"
+ },
+ "finisher": {
+  "id": "did_you_mean",
+  "name": "Did You Mean...?",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/noam.js"
+ }
+}

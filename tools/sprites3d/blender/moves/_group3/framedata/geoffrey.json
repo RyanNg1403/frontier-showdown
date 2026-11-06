@@ -1,0 +1,238 @@
+{
+ "id": "geoffrey",
+ "normals": {
+  "lp": {
+   "name": "Finger-Point Jab",
+   "anim": "light_punch",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 24,
+    "y": -172,
+    "w": 100,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Chalk-Hand Swipe",
+   "anim": "heavy_punch",
+   "startup": 13,
+   "active": 3,
+   "recovery": 21,
+   "hitbox": {
+    "x": 28,
+    "y": -178,
+    "w": 128,
+    "h": 34
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Long Straight Kick",
+   "anim": "light_kick",
+   "startup": 9,
+   "active": 3,
+   "recovery": 16,
+   "hitbox": {
+    "x": 22,
+    "y": -106,
+    "w": 124,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Lecture-Hall Sweep",
+   "anim": "heavy_kick",
+   "startup": 16,
+   "active": 4,
+   "recovery": 26,
+   "hitbox": {
+    "x": 20,
+    "y": -30,
+    "w": 196,
+    "h": 30
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Pointer Tap",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 18,
+    "y": -102,
+    "w": 96,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Shin Correction",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 15,
+   "hitbox": {
+    "x": 20,
+    "y": -28,
+    "w": 120,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Gradient Ascent",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 4,
+   "recovery": 29,
+   "hitbox": {
+    "x": 6,
+    "y": -236,
+    "w": 82,
+    "h": 154
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Long Division Sweep",
+   "anim": "crouch_heavy",
+   "startup": 13,
+   "active": 3,
+   "recovery": 29,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 164,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Chalk Drop",
+   "anim": "air_attack",
+   "startup": 9,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 10,
+    "y": -136,
+    "w": 98,
+    "h": 44
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Professorial Boot",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -98,
+    "w": 120,
+    "h": 46
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "f_hp": {
+   "name": "Capsule",
+   "anim": "heavy_punch",
+   "startup": 20,
+   "active": 3,
+   "recovery": 21,
+   "hitbox": {
+    "x": 24,
+    "y": -164,
+    "w": 112,
+    "h": 164
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "backpropagation",
+   "name": "Backpropagation",
+   "anim": "special_1",
+   "startup": 4,
+   "active": 18,
+   "recovery": 28,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "dropout",
+   "name": "Dropout",
+   "anim": "special_2",
+   "startup": 26,
+   "active": 4,
+   "recovery": 16,
+   "hitbox": {
+    "x": 12,
+    "y": -176,
+    "w": 98,
+    "h": 120
+   },
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "boltzmann_machine",
+   "name": "Boltzmann Machine",
+   "anim": "special_3",
+   "startup": 18,
+   "active": 2,
+   "recovery": 26,
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {},
+ "super": {
+  "id": "forward_forward",
+  "name": "Forward-Forward",
+  "anim": "super",
+  "startup": 10,
+  "active": 3,
+  "recovery": 52,
+  "hitbox": {
+   "x": 70,
+   "y": -110,
+   "w": 20,
+   "h": 20
+  },
+  "projectile": true,
+  "parry": false
+ },
+ "throw": {
+  "name": "t-SNE"
+ },
+ "finisher": {
+  "id": "distillation",
+  "name": "Distillation",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/geoffrey.js"
+ }
+}
