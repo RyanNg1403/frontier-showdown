@@ -253,7 +253,7 @@ def _set_attributes(obj, info, index_map, garment_kind, trim_rings=0):
             trim.data[vi].value = 1.0
 
 
-def _extract(body, info, name, keep_vertex, garment_kind, offset_fn, trim_rings=0, smooth=0.0):
+def _extract(body, info, name, keep_vertex, garment_kind, offset_fn, trim_rings=0, smooth=0.0, finish=None):
     obj = _copy_body(body, name)
     bm = bmesh.new()
     bm.from_mesh(obj.data)
@@ -273,12 +273,37 @@ def _extract(body, info, name, keep_vertex, garment_kind, offset_fn, trim_rings=
         for _ in range(int(smooth * 10)):
             bmesh.ops.smooth_vert(bm, verts=interior, factor=0.5, use_axis_x=True, use_axis_y=True,
                                   use_axis_z=True)
+    if finish:
+        finish(bm, src_layer)
     bm.verts.ensure_lookup_table()
     index_map = {v.index: v[src_layer] for v in bm.verts}
     bm.to_mesh(obj.data)
     bm.free()
     _set_attributes(obj, info, index_map, garment_kind, trim_rings)
     return obj
+
+
+def _shoe_finish(info, ground, g):
+    """Flatten the sole: everything near the floor sits on one plane `sole` below the bare foot."""
+    sole = g.get("sole", 0.006)
+
+    def finish(bm, src_layer):
+        for v in bm.verts:
+            h = info.co[v[src_layer]].z - ground
+            if h < 0.018:
+                v.co.z = ground - sole + max(0.0, h - 0.012) * 0.5
+    return finish
+
+
+def _shoe_sole_band(obj, ground, g):
+    """Darken the sole edge (the `trim` attribute) so a shoe reads as upper + sole."""
+    band = g.get("sole_band", 0.012)
+    if not band:
+        return
+    trim = obj.data.attributes["trim"]
+    for v in obj.data.vertices:
+        if v.co.z < ground + band:
+            trim.data[v.index].value = 1.0
 
 
 def build_outfit(body, rest, outfit_cfg, hair_cfg):
@@ -297,13 +322,16 @@ def build_outfit(body, rest, outfit_cfg, hair_cfg):
             extra = 0.0
             if flare and info.kind(i) in ("leg", "foot"):
                 extra = flare * info.leg_t[i]
-            h = info.co[i].z - ground
-            if g["kind"] == "shoes" and h < 0.03:
-                return info.normal[i] * t + Vector((0, 0, -g.get("sole", 0.012) * (1 - h / 0.03)))
             return info.normal[i] * (t + extra)
 
+        finish = None
+        if g["kind"] == "shoes":
+            finish = _shoe_finish(info, ground, g)
         obj = _extract(body, info, g["name"], lambda i, g=g, region=region: region(info, i, g), g["kind"], offset,
-                       trim_rings=g.get("trim", 0), smooth=g.get("smooth", 0.0))
+                       trim_rings=g.get("trim", 0), smooth=g.get("smooth", 2.5 if g["kind"] == "shoes" else 0.0),
+                       finish=finish)
+        if g["kind"] == "shoes":
+            _shoe_sole_band(obj, ground, g)
         objects.append((obj, g))
         for i in range(n):
             if info.in_body[i] and region(info, i, g):

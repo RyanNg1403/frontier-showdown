@@ -13,6 +13,10 @@ def clear_scene():
             collection.remove(block)
 
 
+# Applied to every fighter unless the config sets them: MakeHuman feet read oversized once shod.
+DEFAULT_TARGETS = {"lr-foot-scale-decr": 0.35}
+
+
 def _expand_target_names(name):
     # "lr-upperarm-fat-decr" applies to both sides
     if name.startswith("lr-"):
@@ -31,7 +35,9 @@ def build_human(body_cfg):
     macro["race"] = {k: v / total for k, v in race.items()}
 
     body = HumanService.create_human(macro_detail_dict=macro)
-    for name, weight in body_cfg.get("targets", {}).items():
+    targets = dict(DEFAULT_TARGETS)
+    targets.update(body_cfg.get("targets", {}))
+    for name, weight in targets.items():
         for target in _expand_target_names(name):
             path = TargetService.target_full_path(target)
             if path is None:

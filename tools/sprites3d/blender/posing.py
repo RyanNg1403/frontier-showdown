@@ -12,6 +12,9 @@ from mathutils import Matrix, Quaternion, Vector
 from gait import FWD, LAT, rx, rz
 
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
+# Fist: per-joint curl (degrees at fist = 1) about each finger bone's local axis.
+FIST = {"f_axis": (1, 0, 0), "f": (85, 100, 70), "t_axis": (1, 0, 0), "t": (30, 40, 40)}
+FIST_OVERRIDE = None
 
 
 def bone_order(rig):
@@ -39,7 +42,14 @@ def aim(rest_dir, rest_ref, tgt_dir, tgt_ref):
 
 def hip_positions(rest, pose):
     pelvis = rest["pelvis"]["head"] + pose.pelvis_offset
-    return {s: pelvis + pose.pelvis @ (rest[f"thigh_{s}"]["head"] - rest["pelvis"]["head"]) for s in "lr"}
+    rot = pose.body @ pose.pelvis
+    return {s: pelvis + rot @ (rest[f"thigh_{s}"]["head"] - rest["pelvis"]["head"]) for s in "lr"}
+
+
+def _sagittal(rot, angle, lateral=0.0):
+    """Direction at `angle` degrees forward of 'down' in the frame `rot`, and its forward-facing normal."""
+    a = math.radians(angle)
+    return (rot @ Vector((lateral, -math.sin(a), -math.cos(a))), rot @ Vector((0.0, -math.cos(a), math.sin(a))))
 
 
 def two_bone_ik(hip, ankle, l1, l2, pole):
@@ -62,38 +72,59 @@ def _arm_dir(chest, swing, splay, sign):
 
 def solve(rest, pose):
     """Absolute rotations for every driven bone, plus explicit local rotations for fingers."""
-    D = {"pelvis": pose.pelvis, "spine_01": pose.spine[0], "spine_02": pose.spine[1], "spine_03": pose.spine[2],
-         "neck_01": pose.neck, "head": pose.head}
+    b = pose.body
+    D = {"pelvis": b @ pose.pelvis, "spine_01": b @ pose.spine[0], "spine_02": b @ pose.spine[1],
+         "spine_03": b @ pose.spine[2], "neck_01": b @ pose.neck, "head": b @ pose.head}
     hips = hip_positions(rest, pose)
     for s in "lr":
         sign = 1.0 if s == "l" else -1.0
-        hip, ankle = hips[s], pose.ankle[s]
-        pole = FWD + LAT * (sign * pose.knee_out.get(s, 0.08))
-        knee, v = two_bone_ik(hip, ankle, rest[f"thigh_{s}"]["length"], rest[f"calf_{s}"]["length"], pole)
         thigh_rest = rest[f"calf_{s}"]["head"] - rest[f"thigh_{s}"]["head"]
         calf_rest = rest[f"foot_{s}"]["head"] - rest[f"calf_{s}"]["head"]
-        D[f"thigh_{s}"] = aim(thigh_rest, FWD, knee - hip, v)
-        D[f"calf_{s}"] = aim(calf_rest, FWD, ankle - knee, v)
         yaw = rz(-sign * pose.foot_yaw.get(s, 0.0))  # toe-out
-        D[f"foot_{s}"] = yaw @ rx(pose.foot_pitch[s])
-        if pose.toe_pitch.get(s) is not None:
-            D[f"ball_{s}"] = yaw @ rx(pose.toe_pitch[s])
+        if s in pose.leg_fk:
+            # FK leg in the pelvis frame: (hip flexion, knee flexion, foot pitch), degrees.
+            hip_a, knee_a, foot_a = pose.leg_fk[s]
+            pel = D["pelvis"]
+            t_dir, t_ref = _sagittal(pel, hip_a, sign * 0.04)
+            c_dir, c_ref = _sagittal(pel, hip_a - knee_a, sign * 0.02)
+            D[f"thigh_{s}"] = aim(thigh_rest, FWD, t_dir, t_ref)
+            D[f"calf_{s}"] = aim(calf_rest, FWD, c_dir, c_ref)
+            D[f"foot_{s}"] = pel @ yaw @ rx(foot_a)
+        else:
+            hip, ankle = hips[s], pose.ankle[s]
+            pole = FWD + LAT * (sign * pose.knee_out.get(s, 0.08))
+            knee, v = two_bone_ik(hip, ankle, rest[f"thigh_{s}"]["length"], rest[f"calf_{s}"]["length"], pole)
+            D[f"thigh_{s}"] = aim(thigh_rest, FWD, knee - hip, v)
+            D[f"calf_{s}"] = aim(calf_rest, FWD, ankle - knee, v)
+            D[f"foot_{s}"] = yaw @ rx(pose.foot_pitch[s])
+            if pose.toe_pitch.get(s) is not None:
+                D[f"ball_{s}"] = yaw @ rx(pose.toe_pitch[s])
 
         swing, elbow, splay = pose.arm[s]
-        chest = pose.spine[2]
+        chest = D["spine_03"]
         up_t = _arm_dir(chest, swing, splay, sign)
         fore_t = _arm_dir(chest, swing + max(elbow, 4.0), splay * 0.5, sign)
         up_rest = rest[f"lowerarm_{s}"]["head"] - rest[f"upperarm_{s}"]["head"]
         fore_rest = rest[f"hand_{s}"]["head"] - rest[f"lowerarm_{s}"]["head"]
         D[f"upperarm_{s}"] = aim(up_rest, fore_rest, up_t, fore_t)
         D[f"lowerarm_{s}"] = aim(fore_rest, -up_rest, fore_t, -up_t)
+        twist = pose.hand_twist.get(s, 0.0) if pose.hand_twist else 0.0
+        if twist:
+            D[f"hand_{s}"] = Quaternion(fore_t.normalized(), math.radians(sign * twist)) @ D[f"lowerarm_{s}"]
 
     local = {}
+    spec = FIST_OVERRIDE or FIST
     for name in rest:
         base = name.split("_")[0]
         if base in FINGERS:
-            curl = pose.fist * (55.0 if base == "thumb" else 85.0)
-            local[name] = Quaternion((1, 0, 0), math.radians(curl))
+            side = name[-1]
+            amount = pose.fist_side.get(side, pose.fist) if pose.fist_side else pose.fist
+            seg = int(name.split("_")[1]) - 1
+            key = "t" if base == "thumb" else "f"
+            axis = Vector(spec[key + "_axis"] if not (key == "t" and seg == 0) else spec.get("t1_axis", spec["t_axis"]))
+            if side == "r" and spec.get("mirror_" + key):
+                axis = Vector((axis.x, -axis.y, -axis.z))
+            local[name] = Quaternion(axis.normalized(), math.radians(spec[key][seg] * amount))
     return D, local
 
 

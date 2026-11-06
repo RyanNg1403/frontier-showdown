@@ -70,7 +70,11 @@ class Pose:
     knee_out: dict = field(default_factory=dict)     # side -> lateral knee direction bias
     arm: dict = field(default_factory=dict)          # side -> (swing deg, elbow deg, splay deg) relative to the chest
     fist: float = 0.3
+    fist_side: dict = field(default_factory=dict)  # side -> fist amount, overrides `fist`
+    hand_twist: dict = field(default_factory=dict)  # side -> wrist twist about the forearm, degrees
     contact: dict = field(default_factory=dict)      # side -> True while the foot is planted
+    body: Quaternion = field(default_factory=Quaternion)  # whole-body rotation about the pelvis (falls, throws)
+    leg_fk: dict = field(default_factory=dict)       # side -> (hip, knee, foot) degrees: FK leg instead of IK
 
 
 class Skeleton:
@@ -147,9 +151,9 @@ RUN = GaitParams(
     toe_off_pitch=52.0,
     swing_keys=((0.2, 0.3, 0.4), (0.45, 0.62, 0.46), (0.7, 0.97, 0.27), (0.88, 1.08, 0.09)),
     swing_pitch=((0.2, 70.0), (0.5, 40.0), (0.8, 4.0)),
-    width=0.06, crouch=0.03, bob=0.05, bob_low=0.19, lean=15.0, pelvis_tilt=5.0,
+    width=0.06, crouch=0.03, bob=0.05, bob_low=0.19, lean=19.0, pelvis_tilt=5.0,
     lean_pulse=1.5, pelvis_yaw=9.0, pelvis_roll=2.0, shoulder_counter=1.0, arm_swing=46.0, arm_offset=8.0,
-    arm_lag=0.02, elbow=84.0, elbow_swing=20.0, arm_splay=12.0, head_level=0.75, fist=0.9)
+    arm_lag=0.02, elbow=84.0, elbow_swing=20.0, arm_splay=12.0, head_level=0.7, fist=1.0)
 
 
 def params_from(base, overrides):
@@ -254,6 +258,7 @@ def locomotion(sk, p):
             swing = p.arm_offset + sign * p.arm_swing * c
             fwd = max(0.0, swing / max(p.arm_swing, 1e-3))
             pose.arm[side] = (swing, p.elbow + p.elbow_swing * fwd, p.arm_splay)
+            pose.hand_twist[side] = 35.0 * p.fist
         poses.append(pose)
     return poses
 
@@ -276,68 +281,17 @@ def fit_pelvis(sk, rest, poses, posing):
 
 
 # --------------------------------------------------------------------------------------------- stances
+# Kept for callers of the first pipeline version; the shared states live in shared.py.
 
-def fighting_stance(sk, frames=8, breathe=0.012, crouch=0.16, guard=1.0):
-    """Orthodox guard facing right: far (left) foot and fist lead, chest open to the camera, knees bent.
-    Breathes over the loop. `guard` 1 = tight guard, lower values drop the fists towards the chest."""
-    L = sk.leg
-    poses = []
-    for f in range(frames):
-        ph = f / frames
-        b = math.sin(2 * math.pi * ph)
-        pose = Pose(fist=1.0)
-        pose.ankle["l"] = foot_on_ground(sk, "l", 0.30 * L, 0.0, 0.11)
-        pose.ankle["r"] = foot_on_ground(sk, "r", -0.34 * L, 0.0, -0.14)
-        pose.foot_pitch = {"r": 0.0, "l": 0.0}
-        pose.toe_pitch = {"r": None, "l": None}
-        pose.contact = {"r": True, "l": True}
-        pose.foot_yaw = {"l": 14.0, "r": 38.0}
-        pose.knee_out = {"l": 0.2, "r": 0.35}
-        pose.pelvis_offset = Vector((0.0, 0.0, -crouch * L - breathe * L * (1 + b) / 2))
-        pose.pelvis = rz(-24) @ rx(4)
-        pose.spine = (rz(-28) @ rx(5), rz(-32) @ rx(6 + 0.8 * b), rz(-36) @ rx(7 + 1.5 * b))
-        pose.neck = rz(-14) @ rx(2)
-        pose.head = rz(-6) @ rx(-1)
-        pose.arm["l"] = (lerp(40, 66, guard) + 2 * b, lerp(95, 108, guard), 8)    # lead fist
-        pose.arm["r"] = (lerp(12, 26, guard) + 2 * b, lerp(115, 132, guard), 20)  # rear fist by the chin
-        poses.append(pose)
-    return poses
+def fighting_stance(sk, frames=8, **_):
+    import shared
+    return shared.idle(sk, frames).poses
 
 
 def idle_breathing(sk, frames=8):
-    """Sam-style relaxed idle: lighter crouch, loose fists at chest height, a visible breath."""
-    return fighting_stance(sk, frames, breathe=0.02, crouch=0.11, guard=0.35)
+    return fighting_stance(sk, frames)
 
 
 def dash_forward(sk, frames=6):
-    """A short forward dash: push off the back foot, low glide with the lead knee up, land back in guard.
-    Poses only; the engine moves the fighter."""
-    L = sk.leg
-    keys = [  # (lead foot fwd, rear foot fwd, rear heel pitch, pelvis drop, lean, lead foot lift)
-        (0.27, -0.30, 0.0, 0.12, 6.0, 0.0),
-        (0.18, -0.42, 35.0, 0.14, 16.0, 0.0),
-        (0.36, -0.56, 55.0, 0.13, 22.0, 0.12),
-        (0.50, -0.46, 40.0, 0.12, 18.0, 0.05),
-        (0.38, -0.34, 12.0, 0.12, 11.0, 0.0),
-        (0.29, -0.30, 0.0, 0.12, 7.0, 0.0),
-    ]
-    poses = []
-    for f in range(frames):
-        k = keys[min(f, len(keys) - 1)]
-        pose = Pose(fist=1.0)
-        pose.ankle["l"] = foot_on_ground(sk, "l", k[0] * L, 0.0, 0.11) + UP * (k[5] * L)
-        pose.ankle["r"] = foot_on_ground(sk, "r", k[1] * L, k[2], -0.12)
-        pose.foot_pitch = {"l": -10.0 if k[5] else 0.0, "r": k[2]}
-        pose.toe_pitch = {"l": None, "r": 0.0 if k[2] else None}
-        pose.contact = {"l": not k[5], "r": True}
-        pose.foot_yaw = {"l": 12.0, "r": 30.0}
-        pose.knee_out = {"l": 0.15, "r": 0.25}
-        pose.pelvis_offset = Vector((0.0, 0.0, -k[3] * L))
-        pose.pelvis = rz(-18) @ rx(k[4] * 0.5)
-        pose.spine = (rz(-22) @ rx(k[4] * 0.8), rz(-26) @ rx(k[4]), rz(-30) @ rx(k[4]))
-        pose.neck = rz(-10) @ rx(-k[4] * 0.4)
-        pose.head = rz(-5) @ rx(-k[4] * 0.3)
-        pose.arm["l"] = (64, 104, 10)
-        pose.arm["r"] = (24, 128, 20)
-        poses.append(pose)
-    return poses
+    import shared
+    return shared.dash_fwd(sk).poses

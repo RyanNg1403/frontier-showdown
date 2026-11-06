@@ -3,9 +3,9 @@
 
     python3 tools/sprites3d/post/prep_head.py generated.jpg tools/sprites3d/heads/<id>.png [--size 512]
 
-The generated image should show only the head and neck, three-quarter view facing right, on a flat
-background colour. Record the crown, chin and neck-cut rows (in the source image's pixel rows) in the
-fighter config's `head` block.
+The generated image should show only the head and neck, facing right, on a flat background colour. Save
+extra views as <id>-profile.png, <id>-hurt.png, ... Crown, chin and neck cut are measured automatically
+(post/headmeta.py); a sidecar <id>[-<view>].json can override them.
 """
 
 import argparse

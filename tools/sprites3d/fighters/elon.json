@@ -46,8 +46,8 @@
       "kind": "shoes",
       "name": "shoes",
       "color": "#141416",
-      "thickness": 0.01,
-      "sole": 0.01,
+      "thickness": 0.005,
+      "sole": 0.006,
       "collar": 0.07
     },
     {
@@ -78,13 +78,8 @@
     }
   ],
   "head": {
-    "image": "heads/elon.png",
-    "source_height": 1024,
-    "crown": 0,
-    "chin": 0,
-    "neck_cut": 0,
-    "heads_tall": 7.5,
-    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+    "heads_tall": 7.2,
+    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
   },
   "likeness": "Black blazer over a black tee, dark jeans, black boots; tall, broad, heavy-set with a thick neck and slight paunch."
 }

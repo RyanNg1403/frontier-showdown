@@ -1,29 +1,39 @@
 """Headless Blender entry point: build one fighter and render its animations.
 
-    blender -b --factory-startup --addons ... --python tools/sprites3d/blender/build.py -- \
-        --config tools/sprites3d/fighters/sam.json --out build/sprites3d/sam [--anims walk,run] [--supersample 4]
+    blender -b --python tools/sprites3d/blender/build.py -- \
+        --config tools/sprites3d/fighters/sam.json --out tools/sprites3d/build/sam/render [--anims all] [--no-moves]
 
 Writes, per animation, `<out>/<anim>/beauty_####.png` (toon colours), `<out>/<anim>/id_####.png` (part ids in
 the red channel, id = round(r * 32)) and `<out>/<anim>/meta.json` (per-frame foot and head positions in
-final-cell pixels, measured from the evaluated rig).
+final-cell pixels, measured from the evaluated rig), plus `<out>/build.json` listing every animation with its
+fps, loop, events, head view and source (shared, or the move module that authored it).
 """
 
 import argparse
+import glob
+import importlib.util
+import inspect
 import json
 import math
 import os
 import sys
 
 import bpy
+import numpy as np
 from mathutils import Vector
 from bpy_extras.object_utils import world_to_camera_view
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+HEADS = os.path.join(HERE, "..", "heads")
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "..", "post"))
 
 import gait  # noqa: E402
+import headmeta  # noqa: E402
 import human  # noqa: E402
 import outfit  # noqa: E402
 import posing  # noqa: E402
+import shared  # noqa: E402
 import toon  # noqa: E402
 
 CELL = 256
@@ -35,7 +45,8 @@ def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--anims", default="walk,run,idle,stance,dash")
+    ap.add_argument("--anims", default="all", help="comma-separated animation names, or all")
+    ap.add_argument("--no-moves", action="store_true", help="shared states only")
     ap.add_argument("--supersample", type=int, default=4)
     ap.add_argument("--save-blend", action="store_true")
     return ap.parse_args(argv)
@@ -175,10 +186,69 @@ def render_animation(name, poses, fps, rig, rest, sk, cam, ppm, out_dir, id_mat,
         json.dump(meta, fh, indent=1)
 
 
+def discover_moves(fighter_id, sk, cfg, ctx):
+    """Animations from move modules: every .py under blender/moves/ (recursively, names not starting with
+    `_`) may define `animations(fighter_id, sk, cfg[, ctx])` returning {name: Anim | (poses, fps[, loop]) | dict},
+    or a table `ANIMATIONS = {fighter_id: {name: fn(sk, cfg) -> same}}`. A module that fails is skipped."""
+    moves_dir = os.path.join(HERE, "moves")
+    found = {}
+    if not os.path.isdir(moves_dir):
+        return found
+    if moves_dir not in sys.path:
+        sys.path.insert(0, moves_dir)
+    for path in sorted(glob.glob(os.path.join(moves_dir, "**", "*.py"), recursive=True)):
+        rel = os.path.relpath(path, moves_dir)
+        if any(part.startswith("_") for part in rel.split(os.sep)):
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location("moves_" + rel[:-3].replace(os.sep, "_"), path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            result = {}
+            if hasattr(mod, "animations"):
+                fn = mod.animations
+                nargs = len(inspect.signature(fn).parameters)
+                result = (fn(fighter_id, sk, cfg, ctx) if nargs >= 4 else fn(fighter_id, sk, cfg)) or {}
+            elif hasattr(mod, "ANIMATIONS"):
+                result = {n: f(sk, cfg) for n, f in mod.ANIMATIONS.get(fighter_id, {}).items()}
+            for name, a in result.items():
+                found[name] = (_as_anim(a), "moves/" + rel)
+        except Exception as exc:  # a broken move file must not break the shared build
+            print(f"[sprites3d] skipping moves/{rel}: {type(exc).__name__}: {exc}", flush=True)
+    return found
+
+
+def _as_anim(a):
+    if isinstance(a, shared.Anim):
+        return a
+    if isinstance(a, dict):
+        return shared.Anim(**a)
+    poses, fps, *rest_ = a
+    return shared.Anim(list(poses), fps, loop=rest_[0] if rest_ else False)
+
+
+def head_skin(cfg):
+    """The 3D skin takes the 2D head's neck tone, so the composite has no colour seam at the neck."""
+    views = headmeta.discover(HEADS, cfg["id"])
+    path = views.get("threequarter") or next(iter(views.values()), None)
+    if not path or not cfg.get("skin_from_head", True):
+        return None
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]
+    bpy.data.images.remove(img)
+    view_cfg = (cfg.get("head") or {}).get("views", {}).get("threequarter", {})
+    m = headmeta.measure((px * 255).astype(np.uint8), {**headmeta.sidecar(path), **view_cfg})
+    return m["skin"]
+
+
 def main():
     args = parse_args()
     with open(args.config) as fh:
         cfg = json.load(fh)
+    skin = head_skin(cfg)
+    if skin:
+        cfg["skin"] = skin
     body, rig, rest, feet, objs = build(cfg)
     sk = gait.Skeleton(rest, feet)
 
@@ -189,28 +259,27 @@ def main():
     id_mat = toon.make_id_material()
     head_rest = rest_head_px(rig, cam)
 
-    gcfg = cfg.get("gait", {})
-    anims = args.anims.split(",")
-    for name in anims:
-        if name in ("walk", "run"):
-            p = gait.params_from(gait.WALK if name == "walk" else gait.RUN, gcfg.get(name))
-            poses = gait.fit_pelvis(sk, rest, gait.locomotion(sk, p), posing)
-            stride_px = 2 * p.step * sk.leg * ppm
-            target = gcfg.get(name, {}).get("speed", cfg.get("speeds", {}).get(name, 200))
-            fps = max(6, round(p.frames * target / stride_px))
-        elif name == "stance":
-            poses, fps = gait.fighting_stance(sk, 8), 8
-        elif name == "idle":
-            poses, fps = gait.idle_breathing(sk, 8), 8
-        elif name == "dash":
-            poses, fps = gait.dash_forward(sk, 6), 15
-        else:
-            raise ValueError(name)
-        render_animation(name, poses, fps, rig, rest, sk, cam, ppm, os.path.join(args.out, name), id_mat, feet, head_rest)
-        print(f"[sprites3d] rendered {name}: {len(poses)} frames at {fps} fps", flush=True)
+    only = None if args.anims == "all" else set(args.anims.split(","))
+    anims = {n: (a, "shared") for n, a in shared.shared_states(sk, rest, posing, cfg, ppm, only).items()}
+    if not args.no_moves:
+        ctx = {"rest": rest, "posing": posing, "ppm": ppm, "skeleton": sk}
+        for name, (a, src) in discover_moves(cfg["id"], sk, cfg, ctx).items():
+            if only and name not in only:
+                continue
+            if name in anims:
+                print(f"[sprites3d] {src} overrides the shared {name}", flush=True)
+            anims[name] = (a, src)
+
+    records = []
+    for name, (a, src) in anims.items():
+        render_animation(name, a.poses, a.fps, rig, rest, sk, cam, ppm, os.path.join(args.out, name), id_mat, feet,
+                         head_rest)
+        records.append({"name": name, "fps": a.fps, "loop": a.loop, "events": a.events, "head": a.head,
+                        "locomotion": a.locomotion, "derived": a.derived, "source": src, "frames": len(a.poses)})
+        print(f"[sprites3d] rendered {name}: {len(a.poses)} frames at {a.fps} fps ({src})", flush=True)
 
     with open(os.path.join(args.out, "build.json"), "w") as fh:
-        json.dump({"id": cfg["id"], "ppm": ppm, "height_m": hi - lo, "anims": anims,
+        json.dump({"id": cfg["id"], "ppm": ppm, "height_m": hi - lo, "anims": records, "skin": cfg["skin"],
                    "supersample": args.supersample}, fh, indent=1)
     if args.save_blend:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.path.abspath(args.out), "fighter.blend"))

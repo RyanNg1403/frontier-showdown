@@ -1,127 +1,173 @@
 # sprites3d: 3D-to-pixel fighter sprites
 
-This pipeline renders fighter locomotion from a rigged 3D body and turns the renders into pixel-art atlas cells,
-the way Dead Cells did. Poses come from code, so feet plant exactly and every frame keeps the same silhouette and
-scale. Each fighter's face comes from a 2D likeness head that is composited over the 3D head.
+This pipeline produces every fighter's atlas, the way Dead Cells made its sprites. A parametric, rigged 3D body is
+posed in code and rendered with toon shading, then reduced to pixel art. A 2D likeness head is composited at the
+head bone. Poses come from code, so feet plant exactly, and every frame keeps the same silhouette and scale.
 
 ```
-fighters/<id>.json ──► blender/build.py (headless Blender + MPFB) ──► beauty + part-id renders, meta.json
-                                                                        │
-heads/<id>.png ───────────────────────► post/process.py ◄──────────────┘
-                                         │  mode downscale · likeness head · inner lines · 1px outline · palette
-                                         ▼
-                        atlas.png + atlas.json (strideSpeed measured from foot travel) + preview GIFs
+fighters/<id>.json ─► blender/build.py ─► shared states (blender/shared.py) + move modules (blender/moves/**)
+                       (headless Blender + MPFB)            │ beauty + part-id renders, meta.json, build.json
+heads/<id>[-<view>].png ─► post/process.py ◄────────────────┘
+                            mode downscale · head view per animation · inner lines · outline · palette
+                            ▼
+              assets/fighters/<id>/atlas.png + atlas.json  (+ contact sheet and GIFs in build/<id>/preview)
 ```
 
 ## Setup and use
 
 ```bash
-tools/sprites3d/setup.sh                                  # Blender 4.5 LTS, MPFB 2.0.18, numpy/pillow/scipy
-tools/sprites3d/build_fighter.sh sam assets/fighters/sam/3d
+tools/sprites3d/setup.sh                                # Blender 4.5 LTS, MPFB 2.0.18, numpy/pillow/scipy
+tools/sprites3d/build_fighter.sh sam assets/fighters/sam  # one fighter: render, post-process, atlas
+JOBS=4 tools/sprites3d/build_all.sh                      # all 16 fighters (about 6 min on 8 CPU cores)
 python3 tools/sprites3d/post/compare.py --old assets/frontier-sam-run-atlas.png \
-    --atlas assets/fighters/sam/3d --out assets/fighters/sam/3d/preview/compare.png
+    --atlas assets/fighters/sam --out compare.png        # old vs new side by side
 ```
 
-`build_fighter.sh <id> [out_dir] [anims]` writes to `tools/sprites3d/build/<id>/out` by default (gitignored). Building
-all five animations takes about 25 s on CPU, and the output is deterministic.
+`build_fighter.sh <id> [out_dir] [anims]` renders every shared state plus every move module that covers the
+fighter. The output is deterministic. Scratch renders, previews and contact sheets go to `tools/sprites3d/build/<id>/`,
+which is gitignored.
 
-## Stages
+## Atlas
 
-**Body (`blender/human.py`).** The body is the MakeHuman base mesh through MPFB: macros (gender, age, muscle, weight,
-proportions, height, race) plus named MakeHuman targets from the config, such as `measure-shoulder-dist-decr` or
-`stomach-pregnant-incr`. A name starting with `lr-` applies the target to both sides. The rig is MPFB's
-`game_engine` skeleton. Height in pixels comes from `height_px`: the camera is scaled so that the clothed figure,
-hair included, measures exactly that.
+`assets/fighters/<id>/atlas.json` follows `internal/fighter-contract.md`: 256 px cells, anchor `{128, 244}`, and
+frames packed into a 12-column grid with one rect per frame.
 
-**Outfit (`blender/outfit.py`).** Garments are copies of the body's faces in a region, pushed out along the normals
-and smoothed. They keep the skin weights, so they deform with the rig and need no cloth fitting. Each vertex's region
-comes from its dominant bone and its position along the limb.
-
-| kind | options |
+| Entry | Contents |
 | --- | --- |
-| `top`, `outer` | `sleeve` (0 to 1, from shoulder to wrist), `collar` (`crew`, `turtle`, `open`, `vneck`, `shirt`), `hem`, `open_front` and `open_from` (jackets), `v_depth`, `v_width` |
-| `bottom` | `length` (0 to 1, from hip to ankle), `waist`, `flare` |
-| `shoes` | `sole`, `collar` (ankle height); leave shoes out for bare feet |
-| `tie`, `belt` | `width`, `bottom`, `waist` |
+| `fps`, `loop` | On every animation; one-shot states have `"loop": false` |
+| `strideSpeed` | On `walk_fwd`, `walk_back` and `run`: the planted heel or ball's median travel between frames × fps, measured from the evaluated rig. Foot slip is under 0.4 px. |
+| `events` | `{"frame", "type": "footstep", "foot"}` on every landing frame of `walk_fwd`, `walk_back` and `run`, plus any events a move module declares (`hit` and so on) |
 
-Every garment also takes `color`, `thickness` (later layers must be thicker), `smooth`, `trim` (darkened rings at
-cuffs, hems and collars) and `contrast` (for example, gloss on a leather jacket).
+The shared states, the same for every fighter, are: `idle` (breathing orthodox guard), `walk_fwd`, `walk_back` (the
+walk reversed at 80% speed), `run`, `dash_fwd`, `dash_back`, `jump_start`, `jump_air`, `jump_land`, `crouch`,
+`block`, `crouch_block`, `hit_high`, `hit_low`, `knockdown`, `getup`, `ko`, `dazed`, `thrown`, `tag_in` and `tag_out`.
+Move modules add the rest of the contract's states for each fighter.
 
-**Materials (`blender/toon.py`).** All materials are emission-only toon: a fixed light direction dotted with the world
-normal gives three hue-shifted bands. Limbs on the far side are darker. With emission only, Cycles is exact at one
-sample per pixel and needs no GPU or lamps.
+## Authoring animation
 
-**Animation (`blender/gait.py`, `blender/posing.py`).** Poses are authored in armature space and keyed per frame:
+**Shared states (`blender/shared.py`).** Each state is a list of keyframes. A key is a dict merged over `GUARD`, the
+orthodox guard; `pose_from` turns a key into a pose and `keyed` turns a list of keys into poses. Lead means the
+rig's left (the far side), rear means the rig's right (the camera side). Lengths are in leg lengths and angles in
+degrees.
 
-- `walk` has 12 frames: contact, down, passing and up for each foot, with heel strike, foot roll, toe-off,
-  pelvis bob, yaw and roll, spine counter-rotation, arm counter-swing and a stabilised head.
-- `run` has 10 frames: a 38% duty factor gives a flight phase. The heel kicks toward the butt, the knee drives,
-  the torso leans 15° forward and the arms pump with bent elbows.
-- `idle` is Sam's relaxed guard with loose fists at chest height and a visible breath. `stance` is a full orthodox
-  guard with the far foot and fist leading and the chest open to the camera. `dash` is 6 frames: push off, glide
-  with the lead knee up, land.
-- Legs use an analytic two-bone IK. During stance the foot pivots on the heel, then lies flat, then pivots on the
-  ball, and the pivot never moves relative to the ground. A cycle is in place: the planted foot moves backwards at
-  exactly the speed the engine must move the fighter.
-- `fit_pelvis` lowers the hips on any frame where a planted leg could not reach its target, so a straight leg never
-  drags the foot.
-- Per-fighter overrides go in `gait.walk` or `gait.run` (any `GaitParams` field).
+| Parameters | Meaning |
+| --- | --- |
+| `lead_f`, `rear_f`, `lead_x`, `rear_x` | Foot placement forward and sideways |
+| `*_lift`, `*_pitch`, `*_toe` | Foot lift, pitch, toe-out |
+| `crouch` or `pelvis_h` | Pelvis drop, or absolute pelvis height |
+| `fwd` | Pelvis forward offset |
+| `yaw`, `lean`, `chest_yaw`, `chest_lean` | Hip and chest twist and lean |
+| `neck`, `head`, `head_roll` | Neck and head pitch, head roll |
+| `lead_arm`, `rear_arm` | `(swing, elbow, splay)` relative to the chest |
+| `fist`, `fist_lead`, `fist_rear`, `twist` | Fist amount and wrist twist (40 gives a guard fist with knuckles forward) |
+| `body` | Whole-body pitch: −90 is lying on the back, 180 is inverted |
+| `roll` | Whole-body roll |
+| `lead_fk`, `rear_fk` | `(hip, knee, foot)` FK legs in the pelvis frame, for sitting, kneeling and lying |
 
-**Rendering (`blender/build.py`).** An orthographic side camera renders at 4x supersampling, with the feet at
-`y = 244` of a 256 px cell and the fighter turned 20° toward the viewer (`view_yaw`). Each frame is rendered twice: a
-beauty pass and a part-id pass (head, hair, torso, near and far limbs, shoes). `meta.json` stores the projected heel,
-ball, toe and head-bone positions of every frame, taken from the evaluated rig.
+Legs default to an analytic two-bone IK on the foot targets. A foot planted with a positive pitch pivots on its
+ball.
 
-**Pixel stage (`post/process.py`).** Each step:
+**Locomotion (`blender/gait.py`).** The walk and run are cycles generated from `GaitParams`: duty factor, step,
+keyed swing path, heel strike, foot roll, toe-off, pelvis bob, yaw and roll, spine counter-rotation and arm swing.
+The run leans 19° forward. During stance the foot pivots on the heel, then lies flat, then pivots on the ball, and
+the pivot never moves relative to the ground. `fit_pelvis` lowers the hips wherever a planted leg could not reach
+its target. Per-fighter overrides go in `gait.walk` and `gait.run` in the config.
 
-1. Mode downscale: each output pixel takes its block's most common part, then that part's most common toon colour.
-   Nothing is blended, so edges stay hard.
-2. Likeness head: the 3D head and hair are erased and `heads/<id>.png` is pasted at the head bone. The sprite is
-   prepared once, at 1/`heads_tall` of the height, and tilt steps are cached. It is aligned to the 3D crown and face
-   on the first frame and then follows the bone, so it bobs with the body without jittering. Near limbs and the
-   collar stay in front of it.
-3. Inner lines where a nearer limb overlaps a farther part, then a 1 px outer outline.
-4. One shared palette (64 colours by default, `palette_colors`) across all animations.
-5. `strideSpeed` = median travel of the planted heel or ball between consecutive frames × fps. The report also
-   gives the worst deviation from that median, which is the foot slip (Sam: under 0.4 px).
+**Move modules (`blender/moves/**/*.py`).** Discovery is recursive; files and folders starting with `_` are skipped.
+A module defines one of:
 
-**Atlas.** `atlas.json` follows `internal/fighter-contract.md`: 256 px cells, anchor `{128, 244}`, and `fps`, `loop`
-and `strideSpeed` on `walk_fwd`, `walk_back` (the walk reversed at 80% speed) and `run`. It also has `idle`,
-`stance` and `dash_fwd`.
+```python
+from shared import Anim, GUARD, keyed
+
+def animations(fighter_id, sk, cfg, ctx=None):          # ctx: rest, posing, ppm, skeleton
+    if fighter_id != "sam":
+        return {}
+    return {"light_punch": Anim(keyed(sk, [GUARD, dict(lead_arm=(90, 10, 4)), GUARD]), fps=20, loop=False,
+                                events=[{"frame": 1, "type": "hit"}])}
+
+ANIMATIONS = {"sam": {"light_punch": lambda sk, cfg: Anim(...)}}   # the table form also works
+```
+
+`Anim` fields:
+
+- `poses`, `fps`, `loop`
+- `events`
+- `head`: the head view, `threequarter`, `profile`, `hurt` or a custom name
+- `locomotion`: True adds `strideSpeed` and footstep events
+- `derived`: extra atlas entries, such as a reversed copy
+
+A move with the same name as a shared state overrides it, and the log says so. A module that raises is skipped
+with a warning, and the shared build still completes.
 
 ## Likeness heads
 
-The 3D head is a generic MakeHuman face, so each fighter needs a 2D head:
+The post stage composites `tools/sprites3d/heads/<id>.png` (the three-quarter view) and `<id>-<view>.png`, for
+example `-profile`, `-hurt` or `-victory`. Each animation picks a view: run uses `profile`; `hit_high`, `hit_low`,
+`knockdown`, `ko`, `dazed` and `thrown` use `hurt`. A missing view falls back to the three-quarter head, and without
+any head image the generic 3D head stays.
 
-1. Generate a head-and-neck image: three-quarter view facing right, level gaze, on a flat background. Use the
-   CC-licensed reference photos linked in the fighter's section 3 entry of `docs/roster-and-moves.md` as image
-   references, and follow that entry's hair, glasses, facial-hair and "common mistakes" notes.
-2. Run `python3 tools/sprites3d/post/prep_head.py generated.jpg tools/sprites3d/heads/<id>.png`.
-3. In the config's `head` block, fill in the source image's `crown`, `chin` and `neck_cut` rows (pixel rows of the
-   source image) and `source_height`.
+- **Image format:** head and neck, facing right, on a transparent background.
+- **Measurements:** `post/headmeta.py` finds the crown (top of the alpha), the chin (where the face edge recedes
+  fastest into the neck) and the neck cut. Override any of them with a sidecar `<id>-<view>.json` such as
+  `{"crown": 51, "chin": 360, "neck_cut": 390, "flip": false}` in image rows, or under `head.views.<view>` in the
+  fighter config.
+- **Size and placement:** the head is scaled to 1/`heads_tall` of the fighter's height (default 7.2). It is aligned
+  to the 3D crown and face on the idle pose, then rotated about that pivot with the head bone, so it stays attached
+  when the fighter tilts, falls, lies down or flips.
+- **Neck seam:** the 3D skin takes the head's neck tone (`skin_from_head`, on by default). In a narrow band above
+  the neck cut, the 3D neck and collar draw over the 2D head.
+- **Generated heads:** `post/prep_head.py` keys a generated head off a flat background.
 
-Without a head image, `process.py` keeps the 3D head and prints a notice. Only Sam has a head so far. The other 15
-configs carry a `todo` in their `head` block.
-
-Sam's head, `heads/sam.png`, was generated with these reference photos from Wikimedia Commons:
+Sam's current head, `heads/sam.png`, was generated from these reference photos from Wikimedia Commons:
 
 - [Meeting with Masayoshi Son and Sam Altman (February 3, 2025)](https://commons.wikimedia.org/wiki/File:Meeting_with_Masayoshi_Son_and_Sam_Altman_(February_3,_2025)_(3x4_cropped_on_Altman).jpg),
   Office of the Prime Minister of Japan, CC BY 4.0.
 - [Ilya Sutskever and Sam Altman in TAU](https://commons.wikimedia.org/wiki/File:Ilya_Sutskever_and_Sam_Altman_in_TAU.jpg),
   Eladkarmel, CC BY-SA 4.0.
 
-The approved style frame `media/fighters/progress-12-style-test-v3-roster-likeness.png` was also a reference. The
-photos themselves are not stored in the repo.
+## Bodies, outfits, rendering
+
+**Body (`blender/human.py`).** The body is the MakeHuman base mesh through MPFB. It takes macros plus named targets
+from the config; `lr-` applies a target to both sides. Every fighter gets `lr-foot-scale-decr` 0.35 unless the
+config overrides it. The rig is MPFB's `game_engine` skeleton, and `height_px` sets the clothed height in pixels.
+
+**Outfit (`blender/outfit.py`).** Garments are body regions pushed out along the normals, so they keep the skin
+weights.
+
+| Kind | Options |
+| --- | --- |
+| `top`, `outer` | `sleeve`, `collar` (`crew`, `turtle`, `open`, `vneck`, `shirt`), `hem`, `open_front`, `v_depth`, `v_width` |
+| `bottom` | `length`, `waist`, `flare` |
+| `shoes` | Smoothed shell with a flat `sole` and a darker sole band; leave shoes out for bare feet |
+| `tie`, `belt` | Strips |
+
+Every garment also takes `color`, `thickness` (later layers must be thicker), `smooth`, `trim` and `contrast`.
+
+**Hands (`blender/posing.py`).** A fist curls 85/100/70° per finger joint, with the thumb wrapped (`FIST`). Guard
+and run poses add a 35–40° wrist twist so the knuckles read.
+
+**Materials and rendering.** All materials are emission-only toon in three hue-shifted bands, with darker far-side
+limbs, trims and sole bands. Each frame is rendered in Cycles at one sample per pixel and 4x supersampling, through
+an orthographic camera with the fighter turned 20° toward the viewer. A part-id pass is rendered alongside the
+beauty pass.
+
+**Pixel stage (`post/process.py`).** Each step:
+
+1. Mode downscale, with no blending.
+2. Head composite.
+3. Inner lines where a nearer limb overlaps a farther part.
+4. A 1 px outline.
+5. One 64-colour palette per fighter.
 
 ## Licences
 
 MPFB is GPL-3.0 and is installed by `setup.sh`, not vendored. The MakeHuman base mesh, targets and rigs it ships are
-CC0. Everything rendered here comes from those CC0 assets and the code in this folder.
+CC0.
 
 ## Known limits
 
-- Clothing is skin-tight geometry pushed outwards: no cloth simulation, no open jacket flaps, no hoods. Long hair
-  (Fei-Fei) and caps (Noam) have to come from the 2D head, which is drawn behind the torso below the neck.
-- The 2D head is a single three-quarter view. It can tilt in steps but cannot turn, which is fine for side-on
-  locomotion and stances but will need extra views for turnarounds.
-- Only the locomotion set, idle, stance and dash are authored. Attacks and reactions still need poses in `gait.py`.
+- Clothing is pushed-out body geometry: no cloth simulation, jacket flaps or hoods.
+- Long hair and caps must come from the 2D head, which is drawn behind the torso near the neck.
+- The 2D head turns only between the views supplied. Within a view it rotates in the image plane.
+- Only Sam has a likeness head so far. The other fighters show the generic 3D head until their heads land in
+  `heads/`; then rebuild them with `build_all.sh`.

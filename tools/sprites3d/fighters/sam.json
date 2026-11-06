@@ -2,11 +2,21 @@
   "id": "sam",
   "name": "Sam Altman",
   "height_px": 198,
-  "speeds": {"walk": 210, "run": 470},
+  "speeds": {
+    "walk": 210,
+    "run": 470
+  },
   "view_yaw": 20,
   "body": {
-    "gender": 1.0, "age": 0.62, "muscle": 0.32, "weight": 0.3, "proportions": 0.6, "height": 0.42,
-    "race": {"caucasian": 1.0},
+    "gender": 1.0,
+    "age": 0.62,
+    "muscle": 0.32,
+    "weight": 0.3,
+    "proportions": 0.6,
+    "height": 0.42,
+    "race": {
+      "caucasian": 1.0
+    },
     "targets": {
       "measure-shoulder-dist-decr": 0.7,
       "torso-scale-horiz-decr": 0.25,
@@ -18,17 +28,49 @@
     }
   },
   "skin": "#dda27c",
-  "hair": {"color": "#6b4f3a", "thickness": 0.007, "top": 0.022, "forward": 0.012, "coverage": 0.5},
+  "hair": {
+    "color": "#6b4f3a",
+    "thickness": 0.007,
+    "top": 0.022,
+    "forward": 0.012,
+    "coverage": 0.5
+  },
   "outfit": [
-    {"kind": "bottom", "name": "jeans", "color": "#262b3b", "thickness": 0.008, "length": 0.985, "waist": 0.06,
-     "flare": 0.006, "smooth": 0.4, "trim": 1},
-    {"kind": "shoes", "name": "sneakers", "color": "#ecebe6", "thickness": 0.008, "sole": 0.012, "collar": 0.025,
-     "contrast": 0.6},
-    {"kind": "top", "name": "sweater", "color": "#3a3c42", "thickness": 0.013, "sleeve": 0.97, "collar": "crew",
-     "hem": 0.0, "smooth": 0.6, "trim": 2}
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#262b3b",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "flare": 0.006,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "sneakers",
+      "color": "#ecebe6",
+      "thickness": 0.005,
+      "sole": 0.006,
+      "contrast": 0.6
+    },
+    {
+      "kind": "top",
+      "name": "sweater",
+      "color": "#3a3c42",
+      "thickness": 0.013,
+      "sleeve": 0.97,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
   ],
-  "head": {"image": "heads/sam.png", "source_height": 1024, "crown": 101, "chin": 728, "neck_cut": 830,
-           "heads_tall": 7.0, "colors": 18, "front_bias": 0, "top_bias": 0, "collar_drop": 2,
-           "source": "Generated from the CC-licensed reference photos linked in roster doc section 3.1"},
+  "head": {
+    "heads_tall": 7.0,
+    "colors": 18,
+    "source": "heads/sam.png, generated from the CC-licensed reference photos in roster doc section 3.1"
+  },
   "likeness": "Section 3.1 of docs/roster-and-moves.md: slim, narrow shoulders, slightly large head on a lean neck; charcoal crew-neck knit, dark jeans, white running sneakers."
 }

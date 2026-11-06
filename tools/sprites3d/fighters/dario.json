@@ -45,9 +45,8 @@
       "kind": "shoes",
       "name": "shoes",
       "color": "#2a211c",
-      "thickness": 0.008,
-      "sole": 0.01,
-      "collar": 0.02
+      "thickness": 0.005,
+      "sole": 0.006
     },
     {
       "kind": "top",
@@ -62,13 +61,8 @@
     }
   ],
   "head": {
-    "image": "heads/dario.png",
-    "source_height": 1024,
-    "crown": 0,
-    "chin": 0,
-    "neck_cut": 0,
-    "heads_tall": 7.5,
-    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+    "heads_tall": 7.2,
+    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
   },
   "likeness": "Mid-blue open-collar button-down, dark chinos, dark shoes; soft medium build, slightly rounded shoulders. Glasses and curls come from the 2D head."
 }

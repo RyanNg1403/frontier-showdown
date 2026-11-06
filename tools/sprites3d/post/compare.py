@@ -2,7 +2,7 @@
 """Side-by-side of the old run atlas against the new 3D-pipeline cycles, same 1 atlas px = 1 world px scale.
 
     python3 tools/sprites3d/post/compare.py --old assets/frontier-sam-run-atlas.png --old-row 3 \
-        --atlas assets/fighters/sam/3d --out compare.png [--zoom 2]
+        --atlas assets/fighters/sam --out compare.png [--zoom 2]
 """
 
 import argparse

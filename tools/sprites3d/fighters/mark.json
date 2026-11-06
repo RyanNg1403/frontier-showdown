@@ -75,13 +75,8 @@
     }
   ],
   "head": {
-    "image": "heads/mark.png",
-    "source_height": 1024,
-    "crown": 0,
-    "chin": 0,
-    "neck_cut": 0,
-    "heads_tall": 7.5,
-    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+    "heads_tall": 7.2,
+    "note": "drop the likeness head views at tools/sprites3d/heads/<id>.png, <id>-profile.png and <id>-hurt.png"
   },
   "likeness": "Fight-night: black BJJ gi top with a dark belt, black shorts over spats, barefoot; compact, athletic upper body. Gold chain belongs on the 2D head/neck."
 }
