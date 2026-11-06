@@ -202,10 +202,10 @@ export function mountUI(rootEl, game, options = {}) {
   resetStats();
   const offs = [
     listen(game, "hit", (e) => {
-      const st = ui.session.stats.sides[e.attacker ?? e.side ?? 0];
+      const st = ui.session.stats.sides[e.side ?? 0];
       if (!st) return;
       st.damage += e.damage || 0;
-      st.maxCombo = Math.max(st.maxCombo, e.combo?.hits || 1);
+      st.maxCombo = Math.max(st.maxCombo, (typeof e.combo === "number" ? e.combo : e.combo?.hits) || 1);
     }),
     listen(game, "special", (e) => { const st = ui.session.stats.sides[e.side ?? 0]; if (st) st.specials++; }),
     listen(game, "super", (e) => { const st = ui.session.stats.sides[e.side ?? 0]; if (st) st.supers++; }),

@@ -3,7 +3,9 @@ import { asset, portraitImg } from "../core/assets.js";
 
 const atlasCache = new Map();
 
-function loadAtlas(id) {
+/** Skip the fetch when the roster says there is no atlas yet (`hasAtlas` from game.listCharacters). */
+function loadAtlas(id, hasAtlas) {
+  if (hasAtlas === false) return Promise.resolve(null);
   if (!atlasCache.has(id)) {
     atlasCache.set(id, (async () => {
       try {
@@ -67,7 +69,7 @@ export function createSpritePreview() {
       cancelAnimationFrame(raf);
       atlas = null;
       const wrap = h("div", { class: "fs-sprite-wrap" }, portraitImg(fighter, "fs-sprite-fallback", { alt: "" }));
-      loadAtlas(fighter.id).then((loaded) => {
+      loadAtlas(fighter.id, fighter.hasAtlas).then((loaded) => {
         if (!loaded || my !== token) return;
         atlas = loaded;
         anim = "idle";
