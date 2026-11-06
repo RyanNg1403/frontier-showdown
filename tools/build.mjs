@@ -106,7 +106,9 @@ const uiFiles = walk("assets/ui").filter((f) => /\.(png|jpe?g|webp|woff2|svg|txt
 const vfxFiles = ["assets/vfx/vfx-atlas.json", "assets/vfx/vfx-atlas.png"].filter(exists);
 const audioFiles = [...walk("assets/audio").filter((f) => /\.wav$/i.test(f)), "assets/frontier-soundtrack.mp3"].filter(exists);
 const docFiles = ["assets/ATTRIBUTIONS.md", "assets/audio/ATTRIBUTIONS.md", "assets/stages/SOURCES.md", "assets/ui/fonts/OFL.txt"].filter(exists);
-const plainFiles = ["index.html", "favicon.svg", "styles/ui.css"].filter(exists);
+// Install manifest and home-screen icons: copied as-is, since their URLs are fixed in the manifest and index.html.
+const appFiles = walk("assets/app");
+const plainFiles = ["index.html", "favicon.svg", "styles/ui.css", ...appFiles].filter(exists);
 
 // ---------------------------------------------------------------------------------- output
 
@@ -262,7 +264,7 @@ const precache = [
   "./",
   "index.html",
   "manifest.json",
-  ...[...written.keys()].filter((f) => f.endsWith(".js") || f.endsWith(".css") || f === "favicon.svg"),
+  ...[...written.keys()].filter((f) => f.endsWith(".js") || f.endsWith(".css") || f === "favicon.svg" || appFiles.includes(f)),
   ...Object.keys(hashes).filter((f) => SHELL_ASSETS.some((re) => re.test(f)) && !/\.(txt|md)$/.test(f)).map((f) => `${f}?v=${hashes[f]}`),
 ].filter((v, i, a) => a.indexOf(v) === i);
 
