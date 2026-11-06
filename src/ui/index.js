@@ -83,6 +83,24 @@ export function mountUI(rootEl, game, options = {}) {
       voice.announce("ann.fight");
     };
   }
+  if (game?.audio?.play) {
+    // Menu and HUD cues play the audio module's recorded sounds instead of the oscillator fallback.
+    const sfx = game.audio;
+    const cues = {
+      move: ["ui.move"],
+      confirm: ["ui.confirm"],
+      back: ["ui.back"],
+      error: ["ui.back", { pitch: -5 }],
+      lock: ["ui.lock"],
+      whoosh: ["whoosh.medium", { gainDb: -8 }],
+      gong: ["stinger.tag", { gainDb: -3 }],
+      tick: ["ui.move", { pitch: 4, volume: 0.6 }],
+    };
+    audio.play = (name) => {
+      const cue = cues[name];
+      if (cue) sfx.play(cue[0], { variation: 0.5, ...cue[1] });
+    };
+  }
 
   const screensEl = h("div", { class: "fs-ui__screens" });
   const hudEl = h("div", { class: "fs-ui__hud" });

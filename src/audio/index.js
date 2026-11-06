@@ -254,35 +254,21 @@ export function createAudio(options = {}) {
     if (opts.interrupt) { (active.get(id) ?? []).forEach((v) => stopVoice(v)); voiceQueueEnd = now; }
     const startAt = Math.max(now + (opts.delay ?? 0), voiceQueueEnd + (opts.gap ?? 0.12));
     if (!id) {
-      speak(String(line), startAt - now);
-      voiceQueueEnd = startAt + 1.2;
+      console.warn(`[audio] no recorded announcer line for "${line}"`);
       return null;
     }
     const handle = play(id, { ...opts, delay: startAt - now });
-    // Lines are heard for roughly the first half of the file; the rest is reverb tail.
-    if (handle) voiceQueueEnd = startAt + Math.min(handle.duration, Math.max(0.6, handle.duration * 0.45));
+    // The last quarter second of each line is room tail, which the next line may overlap.
+    if (handle) voiceQueueEnd = startAt + Math.max(0.5, handle.duration - 0.25);
     return handle;
   }
 
   function announceWinner(lab, opts = {}) {
     const id = labId(lab);
     if (id && VOICE[`ann.wins.${id}`]) return announce(`ann.wins.${id}`, opts);
-    // Labs without a recorded line use the side's recorded line rather than speaking a raw id.
+    // Labs the catalog doesn't know use the side's line, or the plain "Winner!".
     if (Number.isInteger(opts.side)) return announce(`ann.wins.player${opts.side + 1}`, opts);
-    const name = typeof lab === "object" ? lab?.name ?? lab?.lab ?? "" : String(lab ?? "");
-    return announce(name ? `${name} wins!` : "ann.wins.player1", opts);
-  }
-
-  function speak(text, delay = 0) {
-    const synth = globalThis.speechSynthesis;
-    if (!synth || !globalThis.SpeechSynthesisUtterance) return;
-    setTimeout(() => {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = 0.6;
-      u.rate = 0.9;
-      u.volume = (muted.master || muted.voice) ? 0 : volumes.master * volumes.voice;
-      synth.speak(u);
-    }, Math.max(0, delay * 1000));
+    return announce("ann.winner", opts);
   }
 
   // ---- music --------------------------------------------------------------------------
