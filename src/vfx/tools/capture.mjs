@@ -4,6 +4,7 @@
 //   node src/vfx/preview-server.mjs &
 //   node src/vfx/tools/capture.mjs sheet hits out.png
 //   node src/vfx/tools/capture.mjs sheet all out.png
+//   node src/vfx/tools/capture.mjs overview all out.png
 //   node src/vfx/tools/capture.mjs gif showcase out.gif     # needs ffmpeg
 //
 // CHROME_PATH overrides the browser binary (default /usr/local/bin/google-chrome).
@@ -19,7 +20,7 @@ const puppeteer = require("puppeteer-core");
 const [mode, what, outPath] = process.argv.slice(2);
 const url = process.env.VFX_PREVIEW_URL || "http://127.0.0.1:4180/src/vfx/preview.html";
 if (!mode || !what || !outPath) {
-  console.error("usage: capture.mjs sheet <family|all|a,b> <out.png> | gif <script> <out.gif>");
+  console.error("usage: capture.mjs sheet <family|all|a,b> <out.png> | overview all <out.png> | gif <script|family> <out.gif>");
   process.exit(1);
 }
 
@@ -41,11 +42,14 @@ try {
     const opts = JSON.parse(process.env.SHEET_OPTS || "{}");
     const data = await page.evaluate((f, o) => window.vfxPreview.sheet(f, o), family, opts);
     await writeFile(outPath, Buffer.from(data.split(",")[1], "base64"));
+  } else if (mode === "overview") {
+    const data = await page.evaluate(() => window.vfxPreview.overview());
+    await writeFile(outPath, Buffer.from(data.split(",")[1], "base64"));
   } else if (mode === "gif") {
-    const frames = await page.evaluate((name) => window.vfxPreview.recordScript(name), what);
+    const { frames, fps: pageFps } = await page.evaluate((name) => window.vfxPreview.recordScript(name), what);
     const dir = await mkdtemp(join(tmpdir(), "vfx-gif-"));
     await Promise.all(frames.map((d, i) => writeFile(join(dir, `f${String(i).padStart(4, "0")}.png`), Buffer.from(d.split(",")[1], "base64"))));
-    const fps = Number(process.env.GIF_FPS || 30);
+    const fps = Number(process.env.GIF_FPS || pageFps);
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(fps), "-i", join(dir, "f%04d.png"),
       "-vf", "split[a][b];[a]palettegen=max_colors=200:stats_mode=full[p];[b][p]paletteuse=dither=none", outPath]);
     await rm(dir, { recursive: true, force: true });

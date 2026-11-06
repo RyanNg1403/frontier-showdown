@@ -551,4 +551,4 @@ for (const id of LAB_IDS) {
   };
 }
 
-export const labEffects = { ...templates, ...perLab };
+export const labEffects = { ...perLab, ...templates };

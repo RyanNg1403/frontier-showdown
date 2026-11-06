@@ -363,6 +363,51 @@ function sheet(family, o = {}) {
   return out.toDataURL("image/png");
 }
 
+const PEAK = { hits: 4, dust: 9, motion: 8, cinematic: 22, labs: 28, "lab-templates": 16 };
+
+// One thumbnail per effect at its most readable frame.
+function overview(o = {}) {
+  const items = effectCatalog();
+  const cols = o.cols || 7;
+  const tw = o.thumbW || 320;
+  const th = o.thumbH || 180;
+  const label = 22;
+  const head = 44;
+  const rows = Math.ceil(items.length / cols);
+  const out = document.createElement("canvas");
+  out.width = cols * (tw + 6) + 6;
+  out.height = head + rows * (th + label + 6) + 6;
+  const oc = out.getContext("2d");
+  oc.imageSmoothingEnabled = false;
+  oc.fillStyle = "#0b0a10";
+  oc.fillRect(0, 0, out.width, out.height);
+  oc.fillStyle = "#ffb02e";
+  oc.font = "bold 20px monospace";
+  oc.fillText(o.title || `Frontier Showdown combat VFX - ${items.length} effects`, 10, 28);
+  const scratch = document.createElement("canvas");
+  scratch.width = W;
+  scratch.height = H;
+  const sc = scratch.getContext("2d");
+  items.forEach((item, i) => {
+    resetScene(4321 + i);
+    runDemo(item, state.vfx, false);
+    const n = item.demo.peak ?? PEAK[item.family] ?? 10;
+    for (let k = 0; k < n; k += 1) simStep(STEP);
+    render(sc);
+    const s = sceneInfo();
+    const focus = item.family === "hits" ? s.hit : item.family === "dust" ? { x: s.p1.x, y: s.ground - 80 } : item.family === "motion" ? { x: s.p1.x - 20, y: s.ground - 130 } : null;
+    const x = 6 + (i % cols) * (tw + 6);
+    const y = head + Math.floor(i / cols) * (th + label + 6);
+    if (focus) oc.drawImage(scratch, Math.round(focus.x - tw * 0.75), Math.round(focus.y - th * 0.75), tw * 1.5, th * 1.5, x, y, tw, th);
+    else oc.drawImage(scratch, 0, 0, W, H, x, y, tw, th);
+    oc.fillStyle = "#e9e4f5";
+    oc.font = "12px monospace";
+    oc.fillText(item.label.slice(0, 44), x + 2, y + th + 15);
+  });
+  resetScene();
+  return out.toDataURL("image/png");
+}
+
 // Steps a scripted timeline and returns PNG frames for GIF assembly.
 function record(script, o = {}) {
   resetScene(o.seed || 99);
@@ -396,7 +441,7 @@ function record(script, o = {}) {
     }
   }
   resetScene();
-  return frames;
+  return { frames, fps: 60 / every };
 }
 
 // Named timelines for GIF captures. Frame numbers are 60 Hz sim steps.
@@ -410,7 +455,7 @@ const SCRIPTS = {
       script.push({ at, type: item.type });
       at += Math.round((item.demo.hold ?? HOLDS[item.type] ?? 0.9) * 60);
     }
-    return record(script, { frames: at + 20, every: 3 });
+    return record(script, { frames: at + 20, every: 3, scale: 0.4 });
   },
 };
 
@@ -519,4 +564,4 @@ async function boot() {
   requestAnimationFrame(frame);
 }
 
-window.vfxPreview = { ready: boot(), sheet, record, recordScript, catalog: effectCatalog, labs: LAB_IDS, state };
+window.vfxPreview = { ready: boot(), sheet, overview, record, recordScript, catalog: effectCatalog, labs: LAB_IDS, state };
