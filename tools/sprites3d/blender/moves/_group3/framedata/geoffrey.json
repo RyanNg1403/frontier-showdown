@@ -78,7 +78,7 @@
   },
   "c_lk": {
    "name": "Shin Correction",
-   "anim": "crouch_light",
+   "anim": "crouch_light_kick",
    "startup": 8,
    "active": 2,
    "recovery": 15,
@@ -108,7 +108,7 @@
   },
   "c_hk": {
    "name": "Long Division Sweep",
-   "anim": "crouch_heavy",
+   "anim": "crouch_heavy_kick",
    "startup": 13,
    "active": 3,
    "recovery": 29,
@@ -138,7 +138,7 @@
   },
   "j_k": {
    "name": "Professorial Boot",
-   "anim": "air_attack",
+   "anim": "air_kick",
    "startup": 8,
    "active": 7,
    "recovery": 8,
@@ -153,7 +153,7 @@
   },
   "f_hp": {
    "name": "Capsule",
-   "anim": "heavy_punch",
+   "anim": "heavy_punch_forward",
    "startup": 20,
    "active": 3,
    "recovery": 21,
@@ -232,7 +232,7 @@
  },
  "source": {
   "ref": "origin/main",
-  "commit": "e106653",
+  "commit": "c94b39e",
   "file": "src/characters/geoffrey.js"
  }
 }
