@@ -123,6 +123,30 @@ test("when a point fighter is KO'd the partner tags in automatically", () => {
   assert.equal(events(m, "roundEnd")[0].winner, 0);
 });
 
+test("a mid-round 2v2 KO gets a heavy hit spark; only the round-ending KO gets the KO ring", () => {
+  const m = tagMatch();
+  const koVfx = () => events(m, "vfx").filter((v) => v.type === "ko");
+  place(m, -40, 40);
+  m.point(1).health = 10;
+  tap(m, 0, BTN.LP);
+  hold(m, 6);
+  const first = events(m, "ko")[0];
+  assert.equal(first.roundOver, false);
+  assert.equal(koVfx().length, 0, "no KO ring while the partner fights on");
+  const spark = events(m, "vfx").find((v) => v.type === "hit_heavy" && v.opts.scale > 1);
+  assert.ok(spark, "a scaled heavy hit marks the fall");
+  until(m, () => events(m, "tag").length > 0, 120);
+  until(m, () => m.point(1).isNeutral, 60);
+  hold(m, 10);
+  m.point(1).health = 10;
+  place(m, -40, 40);
+  tap(m, 0, BTN.LP);
+  hold(m, 6);
+  assert.equal(m.phase, "ko");
+  assert.equal(events(m, "ko")[1].roundOver, true);
+  assert.equal(koVfx().length, 1, "the round-ending KO gets the ring");
+});
+
 test("time-up in 2v2 compares team health share", () => {
   const m = tagMatch({ timer: 1 });
   m.sides[1].members[1].health = 300;

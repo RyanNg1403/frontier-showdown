@@ -136,6 +136,7 @@ export function mountUI(rootEl, game, options = {}) {
     closeOverlay,
     closeAllOverlays() { while (overlayStack.length) closeOverlay(true); },
     get screen() { return currentId; },
+    get overlayOpen() { return overlayStack.length > 0; },
     emit(type, payload) { subscribers.get(type)?.forEach((fn) => fn(payload)); },
     on(type, fn) {
       if (!subscribers.has(type)) subscribers.set(type, new Set());

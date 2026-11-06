@@ -50,9 +50,13 @@ export function createTitleScreen(ui) {
       el.classList.remove("is-leaving");
       ui.game.endMatch?.();
       syncLabels();
-      setTimeout(() => { ready = true; prompt.focus({ preventScroll: true }); }, 350);
+      setTimeout(() => {
+        ready = true;
+        if (!ui.overlayOpen) prompt.focus({ preventScroll: true });
+      }, 350);
     },
     leave() { ready = false; },
+    overlayClosed() { prompt.focus({ preventScroll: true }); },
     input(evt) {
       if (evt.action === "confirm") go();
       else if (evt.action === "start" || evt.action === "info") {

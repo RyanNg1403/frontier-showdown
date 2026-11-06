@@ -529,7 +529,7 @@ const mimeTypes = {
   ".mjs": "text/javascript; charset=utf-8",
 };
 const publicFiles = new Set([
-  "index.html", "legacy.html", "game.js", "styles.css", "favicon.svg",
+  "index.html", "favicon.svg",
 ]);
 const publicDirs = ["assets/", "src/", "styles/"];
 

@@ -1017,7 +1017,7 @@ export class Match {
 
   // ------------------------------------------------------------------ KO, finish, round end
 
-  koFighter(f, by, dir = null, double = false) {
+  koFighter(f, by, dir = null, double = false, roundOver = true) {
     if (f.ko) return;
     f.ko = true;
     f.health = 0;
@@ -1030,8 +1030,10 @@ export class Match {
     f.y = Math.min(f.y, -2);
     f.facing = -d;
     this.shakeFrames = Math.max(this.shakeFrames, 12);
-    this.emit("ko", { fighter: f.id, side: f.side, by: by?.id ?? null, round: this.round, x: f.x, double });
-    this.vfx("ko", f.x, f.y - 100, { facing: d, side: f.side, characterId: f.id });
+    this.emit("ko", { fighter: f.id, side: f.side, by: by?.id ?? null, round: this.round, x: f.x, double, roundOver });
+    // The full-screen KO ring is reserved for the KO that ends the round.
+    if (roundOver) this.vfx("ko", f.x, f.y - 100, { facing: d, side: f.side, characterId: f.id });
+    else this.vfx("hit_heavy", f.x, f.y - 100, { facing: -d, side: by?.side ?? 1 - f.side, scale: 1.3 });
   }
 
   checkKOs() {
@@ -1043,7 +1045,7 @@ export class Match {
       const s = this.sides[f.side];
       const partnerAlive = s.members.some((m) => m !== f && m.health > 0 && !m.ko);
       if (partnerAlive) {
-        this.koFighter(f, this.point(1 - f.side));
+        this.koFighter(f, this.point(1 - f.side), null, false, false);
         s.forcedTagIn = 70;
         s.lastStanding = true;
         this.emit("lastStanding", { side: f.side, fighter: s.members.find((m) => m !== f).id });
