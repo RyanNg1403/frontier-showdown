@@ -54,7 +54,31 @@ export function adaptVfx(module, instance) {
     return null;
   }
 
+  // A super spawns `super_flash` and then its `special_cast` in the same call. That cast gets
+  // the lab's full `signature_<lab>` showpiece at the caster's feet; specials keep the hand flash.
+  let pendingSuper = null;
+
+  function superSignature(opts) {
+    const cast = pendingSuper;
+    pendingSuper = null;
+    if (!cast || cast.characterId !== opts.characterId) return null;
+    const hint = typeof opts.vfx === "string" ? opts.vfx : null;
+    const named = hint && hint.startsWith("special_");
+    // A super that names an effect the module registers (e.g. lab_beam) keeps it.
+    if (hint && !named && has(hint)) return null;
+    const lab = vfxLab(named ? hint.slice("special_".length) : opts.labId);
+    const type = `signature_${lab}`;
+    if (!lab || !types || !types.has(type)) return null;
+    return instance.spawn(type, cast.x, cast.y, { ...opts, dir: opts.dir ?? opts.facing ?? 1, lab });
+  }
+
   function spawn(type, x, y, opts = {}) {
+    if (type === "special_cast" && pendingSuper) {
+      const showpiece = superSignature(opts);
+      if (showpiece) return showpiece;
+    }
+    // fighter.startMove spawns super_flash 120 px above the caster's feet.
+    pendingSuper = type === "super_flash" ? { characterId: opts.characterId, x, y: y + 120 } : null;
     const t = resolve(type, opts);
     if (!t) return null;
     const o = { ...opts, dir: opts.dir ?? opts.facing ?? 1 };
@@ -87,7 +111,7 @@ export function adaptVfx(module, instance) {
         if (!h) {
           const type = projectileType(vfxLab(p.labId));
           if (!type) continue;
-          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: vfxLab(p.labId), manual: true, life: 30, scale: p.scale ?? 1 });
+          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: vfxLab(p.labId), manual: true, life: 30, scale: p.scale ?? 1, hitbox: p.hitbox });
           if (!h) continue;
           tracked.set(p.id, h);
         }

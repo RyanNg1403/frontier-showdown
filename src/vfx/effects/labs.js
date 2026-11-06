@@ -16,6 +16,36 @@ function setup(fx) {
   fx.orb = fx.opts.orb || lab.orb;
 }
 
+// Projectile core box in world px: the engine hitbox when given, else a
+// 56 px square times `scale` (Sam's Prompt Burst hitbox).
+// `dx`/`dy` is the box centre relative to the projectile origin (dx facing-local).
+function coreOf(opts = {}) {
+  const hb = opts.hitbox;
+  if (hb && hb.w > 0 && hb.h > 0) {
+    return { w: hb.w, h: hb.h, dx: hb.x === undefined ? 0 : hb.x + hb.w / 2, dy: hb.y === undefined ? 0 : hb.y + hb.h / 2 };
+  }
+  const d = (opts.size ?? 56) * (opts.scale ?? 1);
+  return { w: d, h: d, dx: 0, dy: 0 };
+}
+
+// Engine contact events name the projectile (`vfx: "projectile_<lab>"`).
+function labFromVfx(opts = {}) {
+  if (opts.lab && LABS[opts.lab]) return opts;
+  const m = typeof opts.vfx === "string" && /^projectile_(.+)$/.exec(opts.vfx);
+  return m && LABS[m[1]] ? { ...opts, lab: m[1] } : opts;
+}
+
+// Stamps an atlas sprite so it covers `w` x `h` world px (aspect capped at 2:1).
+function stampFit(p, name, x, y, w, h, o = {}) {
+  const f = p.atlas && p.atlas.frames[name];
+  if (!f) return false;
+  let sx = w / (f.w * p.scale);
+  let sy = h / (f.h * p.scale);
+  if (sy > sx * 2) sy = sx * 2;
+  if (sx > sy * 2) sx = sy * 2;
+  return p.stamp(name, x, y, { ...o, scaleX: sx, scaleY: sy });
+}
+
 // Procedural lab motifs drawn on the shared pixel grid.
 export function drawMotif(p, motif, x, y, r, t, c, a = 1, dir = 1) {
   switch (motif) {
@@ -122,18 +152,21 @@ function drawParts(p, parts) {
 
 const templates = {
   // Self-moving projectile. Call `handle.impact()` on contact; the engine may
-  // also drive `handle.x/y` itself with opts.manual = true.
+  // also drive `handle.x/y` itself with opts.manual = true. Everything is sized
+  // to the core box (`opts.hitbox` {w, h}, else 56 px x `opts.scale`) so the
+  // visible orb matches what can actually hit.
   projectile: {
     life: 1.6,
     init(fx, vfx) {
       setup(fx);
+      fx.core = coreOf(fx.opts);
       fx.vx = fx.opts.vx ?? fx.dir * (fx.opts.speed ?? 620);
       fx.vy = fx.opts.vy ?? 0;
       fx.emit = 0;
-      fx.impact = (x = fx.x, y = fx.y) => {
+      fx.impact = (x = fx.x + fx.dir * fx.core.dx, y = fx.y + fx.core.dy) => {
         if (!fx.alive) return null;
         fx.alive = false;
-        return vfx.spawn("lab_impact", x, y, { lab: fx.opts.lab, colors: fx.opts.colors, dir: fx.dir, scale: fx.opts.scale });
+        return vfx.spawn("projectile_fizzle", x, y, { lab: fx.opts.lab, colors: fx.opts.colors, dir: fx.dir, hitbox: { w: fx.core.w, h: fx.core.h } });
       };
       fx.ox = fx.x;
       fx.oy = fx.y;
@@ -143,42 +176,120 @@ const templates = {
         fx.x += fx.vx * dt;
         fx.y += fx.vy * dt;
       }
+      const { w, h, dx, dy } = fx.core;
+      const k = Math.min(w, h) / 56;
       fx.emit -= dt;
       while (fx.emit <= 0) {
-        fx.emit += 0.016;
+        fx.emit += 0.02;
         fx.parts.push(particle({
-          x: fx.x - fx.dir * 14 + (fx.rand() - 0.5) * 8,
-          y: fx.y + (fx.rand() - 0.5) * 22,
-          vx: -fx.dir * (40 + fx.rand() * 80),
-          vy: (fx.rand() - 0.5) * 60,
-          life: 0.18 + fx.rand() * 0.2,
-          size: 2 + Math.floor(fx.rand() * 4),
+          x: fx.x + fx.dir * (dx - w * 0.4),
+          y: fx.y + dy + (fx.rand() - 0.5) * h * 0.7,
+          vx: -fx.dir * (30 + fx.rand() * 50) * k,
+          vy: (fx.rand() - 0.5) * 30 * k,
+          life: 0.12 + fx.rand() * 0.12,
+          size: 2 + Math.floor(fx.rand() * 2),
           color: fx.colors[1 + Math.floor(fx.rand() * 2)],
         }));
       }
       stepParticles(fx.parts, dt);
     },
     end(fx, vfx) {
-      if (fx.t >= fx.life && fx.opts.impactOnExpire) vfx.spawn("lab_impact", fx.x, fx.y, { lab: fx.opts.lab, colors: fx.opts.colors, scale: 0.6 });
+      if (fx.t >= fx.life && fx.opts.impactOnExpire) fx.impact();
     },
     draw(fx, p) {
-      const s = fx.opts.scale ?? 1;
       const c = fx.colors;
+      const { w, h, dx, dy } = fx.core;
+      const m = Math.min(w, h);
+      const x = fx.x + fx.dir * dx;
+      const y = fx.y + dy;
       drawParts(p, fx.parts);
       if (fx.t < 0.1) {
         const k = fx.t / 0.1;
-        p.stamp("impact.flash", fx.ox, fx.oy, { scale: 0.9 * (1 - k) + 0.3 });
-        p.ring(fx.ox, fx.oy, lerp(10, 50, k), c[1], 3, 1 - k);
+        const ox = fx.ox + fx.dir * dx;
+        stampFit(p, "impact.flash", ox, fx.oy + dy, m * (1.1 - 0.6 * k), m * (1.1 - 0.6 * k));
+        p.ring(ox, fx.oy + dy, lerp(m * 0.25, m * 0.6, k), c[1], 2, 1 - k);
       }
-      for (let i = 1; i <= 3; i += 1) {
-        p.disc(fx.x - fx.dir * i * 14 * s, fx.y, (16 - i * 4) * s, c[2], 0.7 - i * 0.15);
+      for (let i = 1; i <= 2; i += 1) {
+        p.disc(x - fx.dir * w * 0.3 * i, y, m * 0.3 * (1 - i * 0.3), c[2], 0.6 - i * 0.2);
       }
-      const pulse = 1 + (frame(fx) % 6 < 3 ? 0.06 : -0.04);
-      if (!p.stamp(fx.orb, fx.x, fx.y, { scale: 0.85 * s * pulse, rot: fx.motif === "slash" || fx.motif === "gust" ? 0 : fx.t * 6, flipX: fx.dir < 0 })) {
-        p.disc(fx.x, fx.y, 18 * s, c[2]);
+      // Short outer glow: a few px past the core, never more.
+      p.disc(x, y, w / 2 + 3, c[3], 0.5, "add", h / w);
+      const pulse = frame(fx) % 6 < 3 ? 1.04 : 0.97;
+      const spin = fx.motif === "slash" || fx.motif === "gust" ? 0 : fx.t * 6;
+      if (!stampFit(p, fx.orb, x, y, w * pulse, h * pulse, { rot: spin, flipX: fx.dir < 0 })) {
+        p.disc(x, y, w / 2, c[2], 1, "add", h / w);
       }
-      drawMotif(p, fx.motif, fx.x, fx.y, 18 * s, fx.t, c, 0.7, fx.dir);
-      p.disc(fx.x, fx.y, 6 * s, c[0]);
+      drawMotif(p, fx.motif, x, y, m * 0.3, fx.t, c, 0.7, fx.dir);
+      p.disc(x, y, Math.max(2, m * 0.1), c[0]);
+    },
+  },
+
+  // Contact burst for a projectile hit, block or clash; sized to the projectile.
+  projectile_hit: {
+    life: 0.32,
+    init(fx, vfx) {
+      fx.opts = labFromVfx(fx.opts);
+      setup(fx);
+      fx.core = coreOf(fx.opts);
+      const m = Math.min(fx.core.w, fx.core.h);
+      fx.parts = burstParticles(fx.rand, 12, { x: fx.x, y: fx.y, speed: [m * 3, m * 9], life: [0.1, 0.28], drag: 5, size: [2, 4], colors: fx.colors.slice(0, 3) });
+      if (fx.opts.shake !== false) vfx.shake(3, 6);
+    },
+    update(fx, dt) { stepParticles(fx.parts, dt); },
+    draw(fx, p) {
+      const c = fx.colors;
+      const m = Math.min(fx.core.w, fx.core.h);
+      const k = fx.t / fx.life;
+      if (frame(fx) < 3) stampFit(p, "impact.flash", fx.x, fx.y, m * 1.3, m * 1.3);
+      p.ring(fx.x, fx.y, lerp(m * 0.3, m * 0.9, easeOutCubic(k)), c[1], 3, 1 - k);
+      stampFit(p, fx.orb, fx.x, fx.y, m * lerp(1, 1.15, easeOut(k)), m * lerp(1, 1.15, easeOut(k)), { alpha: 1 - k, rot: k * 2 });
+      drawMotif(p, fx.motif, fx.x, fx.y, m * lerp(0.3, 0.8, easeOut(k)), fx.t, c, 1 - k, fx.dir);
+      drawParts(p, fx.parts);
+    },
+  },
+
+  // A projectile that expires or is absorbed collapses where it is.
+  projectile_fizzle: {
+    life: 0.26,
+    init(fx) {
+      fx.opts = labFromVfx(fx.opts);
+      setup(fx);
+      fx.core = coreOf(fx.opts);
+      const m = Math.min(fx.core.w, fx.core.h);
+      fx.parts = burstParticles(fx.rand, 6, { x: fx.x, y: fx.y, speed: [m * 1.5, m * 3], life: [0.12, 0.24], drag: 4, size: [2, 3], colors: fx.colors.slice(0, 3) });
+    },
+    update(fx, dt) { stepParticles(fx.parts, dt); },
+    draw(fx, p) {
+      const c = fx.colors;
+      const { w, h } = fx.core;
+      const k = fx.t / fx.life;
+      const shrink = lerp(1, 0.2, easeOut(k));
+      stampFit(p, fx.orb, fx.x, fx.y, w * shrink, h * shrink, { alpha: 1 - k * 0.5 });
+      p.ring(fx.x, fx.y, lerp(Math.min(w, h) * 0.2, Math.min(w, h) * 0.6, k), c[1], 2, 0.6 * (1 - k));
+      drawParts(p, fx.parts);
+    },
+  },
+
+  // Small hand flash for a special's startup; `opts.size` is its diameter.
+  lab_cast: {
+    family: "lab-templates",
+    label: "Template: cast flash",
+    life: 0.28,
+    init(fx) {
+      setup(fx);
+      const m = fx.opts.size ?? 44;
+      fx.m = m;
+      fx.parts = burstParticles(fx.rand, 8, { x: fx.x, y: fx.y, speed: [m * 3, m * 7], life: [0.1, 0.22], drag: 6, size: [2, 3], colors: fx.colors.slice(0, 3) });
+    },
+    update(fx, dt) { stepParticles(fx.parts, dt); },
+    draw(fx, p) {
+      const c = fx.colors;
+      const m = fx.m;
+      const k = fx.t / fx.life;
+      if (frame(fx) < 4) stampFit(p, "impact.flash", fx.x, fx.y, m * 1.2, m * 1.2);
+      p.ring(fx.x, fx.y, lerp(m * 0.3, m * 0.9, easeOutCubic(k)), c[1], 2, 1 - k);
+      drawMotif(p, fx.motif, fx.x, fx.y, m * lerp(0.3, 0.55, easeOut(k)), fx.t, c, 1 - k, fx.dir);
+      drawParts(p, fx.parts);
     },
   },
 
@@ -494,7 +605,7 @@ const templates = {
       setup(fx);
       fx.parts = Array.from({ length: 22 }, () => {
         const ang = fx.rand() * TAU;
-        const r = 70 + fx.rand() * 70;
+        const r = 44 + fx.rand() * 44;
         return { ang, r, size: 2 + Math.floor(fx.rand() * 3), color: fx.colors[Math.floor(fx.rand() * 3)], d: fx.rand() * 0.15 };
       });
     },
@@ -508,8 +619,8 @@ const templates = {
         const y = fx.y + Math.sin(q.ang + u * 2) * r;
         p.line(x, y, x + Math.cos(q.ang) * 10 * (1 - u), y + Math.sin(q.ang) * 10 * (1 - u), q.color, q.size, 1 - u * 0.3);
       }
-      p.stamp(fx.orb, fx.x, fx.y, { scale: lerp(0.2, 0.9, k), rot: fx.t * 12 });
-      p.disc(fx.x, fx.y, lerp(3, 10, k), c[0]);
+      p.stamp(fx.orb, fx.x, fx.y, { scale: lerp(0.15, 0.5, k), rot: fx.t * 12 });
+      p.disc(fx.x, fx.y, lerp(2, 6, k), c[0]);
     },
   },
 };
@@ -540,8 +651,18 @@ for (const id of LAB_IDS) {
       templates.projectile.init(fx, vfx);
     },
   };
-  // Signature special: x/y are the caster's feet; composes the templates.
+  // Cast flourish the engine spawns at the caster's hand when a special starts.
+  // Kept hand-sized so it never reads as part of the move's hitbox.
   perLab[`special_${id}`] = {
+    family: "labs",
+    label: `${LABS[id].name} cast flash`,
+    life: 0.01,
+    init(fx, vfx) {
+      vfx.spawn("lab_cast", fx.x, fx.y, { ...fx.opts, lab: id, dir: fx.dir });
+    },
+  };
+  // Full-screen signature showpiece: x/y are the caster's feet; composes the templates.
+  perLab[`signature_${id}`] = {
     family: "labs",
     label: `${LABS[id].name}: ${SIGNATURES[id].name}`,
     life: 0.01,

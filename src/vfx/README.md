@@ -46,8 +46,9 @@ VFX never pauses the simulation itself; the engine reads these:
 - **dust** (x/y = ground contact, `dir` = movement direction, `tint: {light, mid, dark}`): `dust_step`, `dust_run_start`, `dust_skid`, `dust_dash`, `dust_jump`, `dust_land`, `dust_knockdown`
 - **motion:** `afterimage` (`sprite: {image, sx, sy, sw, sh, anchorX, anchorY, scale, flip, x, y}`), `afterimage_trail` (`sprite: () => spriteRef`), `motion_trail` (`follow: t => {x, y} | null`), `slash_arc`, `speed_lines`
 - **cinematic:** `super_freeze` (`lab`, `side`, `portrait: {image, sx, sy, sw, sh}` or `drawPortrait(ctx, rect)` for the portrait slot), `ko`, `tag_in`, `tag_out`
-- **labs:** `projectile_<lab>` and `special_<lab>` (signature combos) for `openai, anthropic, deepmind, xai, meta, nvidia, mistral, deepseek`
-- **templates** (take `lab` or `colors`): `projectile`, `lab_impact`, `lab_burst`, `lab_pillar`, `lab_beam` (`length`), `lab_slash_x`, `lab_aura` (`follow`), `lab_ground_wave`, `lab_vortex`, `lab_charge`
+- **labs:** for `openai, anthropic, deepmind, xai, meta, nvidia, mistral, deepseek`: `projectile_<lab>`, `special_<lab>` (hand-sized cast flash the engine spawns when a special starts) and `signature_<lab>` (full-screen showpiece composed from the templates; x/y = feet)
+- **projectiles** are sized to `opts.hitbox` (`{x, y, w, h}` relative to the projectile origin, as in character data), falling back to a 56 px square times `scale`. The orb fills the box with only a few px of glow. `projectile_hit` and `projectile_fizzle` are the matching contact and expiry effects.
+- **templates** (take `lab` or `colors`): `projectile`, `lab_cast` (`size`), `lab_impact`, `lab_burst`, `lab_pillar`, `lab_beam` (`length`), `lab_slash_x`, `lab_aura` (`follow`), `lab_ground_wave`, `lab_vortex`, `lab_charge`
 
 Character data can reference these directly, for example `special.vfx = { type: "lab_beam", dy: -120, opts: { length: 640 } }`; the bridge spawns it on the `special` event.
 

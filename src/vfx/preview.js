@@ -173,9 +173,10 @@ const TEMPLATE_DEMOS = {
   lab_ground_wave: (v, s, o) => v.spawn("lab_ground_wave", s.p1.x + 40, s.ground, o),
   lab_vortex: (v, s, o) => v.spawn("lab_vortex", s.mid.x + 80, s.mid.y, o),
   lab_charge: (v, s, o) => v.spawn("lab_charge", s.p1.x + 60, s.ground - 120, o),
+  lab_cast: (v, s, o) => v.spawn("lab_cast", s.p1.x + 60, s.ground - 120, o),
 };
 
-const TEMPLATE_LAB = { lab_burst: "openai", lab_pillar: "anthropic", lab_beam: "deepmind", lab_slash_x: "xai", lab_aura: "meta", lab_ground_wave: "nvidia", lab_vortex: "deepseek", lab_charge: "mistral" };
+const TEMPLATE_LAB = { lab_cast: "openai", lab_burst: "openai", lab_pillar: "anthropic", lab_beam: "deepmind", lab_slash_x: "xai", lab_aura: "meta", lab_ground_wave: "nvidia", lab_vortex: "deepseek", lab_charge: "mistral" };
 
 function templateLabFor(type) {
   const pick = document.getElementById("optLab")?.value;
@@ -187,11 +188,12 @@ function labDemo(item, v, s) {
   s.mid.x = (s.p1.x + s.p2.x) / 2;
   if (item.type.startsWith("projectile_")) {
     const x0 = s.p1.x + 70;
-    const fx = v.spawn(item.type, x0, s.ground - 130, { dir: 1, speed: 700 });
+    const fx = v.spawn(item.type, x0, s.ground - 130, { dir: 1, speed: 700, hitbox: { w: 56, h: 56 } });
     after((s.p2.x - 50 - x0) / 700, () => fx && fx.impact());
     return fx;
   }
-  if (item.type.startsWith("special_")) return v.spawn(item.type, s.p1.x + 20, s.ground, { dir: 1 });
+  if (item.type.startsWith("special_")) return v.spawn(item.type, s.p1.x + 50, s.ground - 120, { dir: 1 });
+  if (item.type.startsWith("signature_")) return v.spawn(item.type, s.p1.x + 20, s.ground, { dir: 1 });
   const lab = item.demo.lab || templateLabFor(item.type);
   return TEMPLATE_DEMOS[item.type](v, s, { dir: 1, lab });
 }
