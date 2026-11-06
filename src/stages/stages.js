@@ -128,10 +128,15 @@ const DEFINITIONS = [
     },
     location: "1455 Third St, Mission Bay, San Francisco · after hours",
     fieldNotes:
-      "OpenAI's headquarters at 1455 Third Street, Mission Bay, San Francisco: leased in October 2023 and formally opened in March 2025. Two former Uber towers joined by a sky bridge, rain on the glass, and nobody left to hold the door.",
+      "OpenAI's headquarters at 1455 Third Street, Mission Bay, San Francisco: leased in October 2023 and formally opened in March 2025. It has glass-and-timber atriums and sky bridges, with Chase Center lit up across the plaza. Rain on the glass, and nobody left to hold the door.",
     sources: [
       { label: "SF Standard: OpenAI leases 1455 and 1515 Third St (27 Oct 2023)", url: "https://sfstandard.com/2023/10/27/openai-uber-headquarters-mission-bay/" },
       { label: "The Real Deal: Mission Bay HQ grand opening in March 2025", url: "https://therealdeal.com/san-francisco/2025/06/16/openai-searches-for-offices-amid-glean-lease/" },
+      { label: "Commercial Search: the Mission Bay campus next to Chase Center; 1455 and 1515 Third St subleased to OpenAI", url: "https://www.commercialsearch.com/news/uber-jv-lands-500m-for-san-francisco-hq/" },
+      { label: "The Architect's Newspaper: glazed buildings, open atrium and pedestrian bridges", url: "https://www.archpaper.com/2022/06/uber-focuses-employee-needs-new-san-francisco-headquarters/" },
+    ],
+    referencePhotos: [
+      { label: "Chase Center San Francisco (Wikimedia Commons, CC BY 2.0)", url: "https://commons.wikimedia.org/wiki/File:Chase_Center_San_Francisco.jpg" },
     ],
     palette: {
       note: "Pale limestone and warm oak lit by brushed-gold pendants, cut with deep night teal from the glass. Keep fighters' rim light warm; shadows fall to teal-black.",
@@ -160,13 +165,18 @@ const DEFINITIONS = [
     },
     location: "500 Howard St, SoMa, San Francisco · the hour before close",
     fieldNotes:
-      "Anthropic's headquarters at 500 Howard Street, San Francisco: home since late 2023 and locked in with a direct lease in April 2026. This is the reading-room floor on 'AI Alley', reimagined in oak and ivy. The lamps flicker on every heavy.",
+      "Anthropic's headquarters at 500 Howard Street, San Francisco: home since late 2023 and locked in with a direct lease in April 2026. Salesforce Tower looms next door over the SoMa skyline, beyond a reading-room floor of oak and ivy. The lamps flicker on every heavy.",
     sources: [
       { label: "CoStar: Anthropic converts 500 Howard St sublease to a direct lease (7 Apr 2026)", url: "https://www.costar.com/article/390354131/how-anthropic-is-growing-its-office-empire-in-downtown-san-francisco" },
       { label: "Bisnow: Anthropic cements 240K SF lease on Howard Street", url: "https://www.bisnow.com/news/san-francisco/office/anthropic-cements-240k-sf-lease-howard-street-133989" },
+      { label: "SF Tech Map: 500 Howard beside Salesforce Park, Salesforce Tower next door", url: "https://sftechmap.app/t/big-tech-hq-walk" },
+    ],
+    referencePhotos: [
+      { label: "Salesforce Tower, April 2022 (Wikimedia Commons, CC BY 2.0)", url: "https://commons.wikimedia.org/wiki/File:San_Francisco,_California_April_2022_Salesforce_Tower.jpg" },
+      { label: "San Francisco skyline at night (Wikimedia Commons, CC BY-SA 4.0)", url: "https://commons.wikimedia.org/wiki/File:San_Francisco_Skyline_at_night.jpg" },
     ],
     palette: {
-      note: "Honey oak and terracotta warmed by amber lamplight, with moss-green living walls and a violet-to-ember dusk sky in the windows. Shadows are deep umber; the only cool hue is the window sky.",
+      note: "Honey oak and terracotta warmed by amber lamplight, with moss-green living walls, and a violet-to-ember dusk sky and cool glass towers in the windows. Shadows are deep umber; the only cool hues are the window sky and skyline.",
       key: "#f0a64a",
       shadow: "#0f0804",
     },
@@ -192,13 +202,19 @@ const DEFINITIONS = [
     },
     location: "S2, Handyside St, King's Cross, London · 2 a.m.",
     fieldNotes:
-      "Google DeepMind's headquarters in the S2 building on Handyside Street, King's Cross, London, which DeepMind has occupied since 2020. Rain over London, a wall-sized Go board replaying AlphaGo, and a protein fold turning in its case.",
+      "Google DeepMind's headquarters in the S2 building on Handyside Street, King's Cross, London, which DeepMind has occupied since 2020. Rain falls on the Gasholder Park frames, the St Pancras clock tower, the Granary Square fountains and the Coal Drops Yard roofs. Inside, AlphaGo replays on the wall.",
     sources: [
       { label: "King's Cross: S2 Handyside, fully let to Google", url: "https://www.kingscross.co.uk/s2-handyside" },
       { label: "Bisnow: Google allocates S2 to DeepMind, occupancy in 2020", url: "https://www.bisnow.com/news/london/technology/the-180k-sf-tech-office-move-that-the-whole-of-london-property-missed-98006" },
     ],
+    referencePhotos: [
+      { label: "Gasholder Park, King's Cross (geograph 5683879, CC BY-SA 2.0)", url: "https://commons.wikimedia.org/wiki/File:Gasholder_Park,_King%27s_Cross,_London_-_geograph.org.uk_-_5683879.jpg" },
+      { label: "St Pancras clock tower, 2022 (Wikimedia Commons, CC BY-SA 4.0)", url: "https://commons.wikimedia.org/wiki/File:St_Pancras_clock_tower_1_-_2022-09-02.jpg" },
+      { label: "Granary Square fountains at night (geograph 6023307, CC BY-SA 2.0)", url: "https://commons.wikimedia.org/wiki/File:View_of_the_fountains_in_Granary_Square_at_night_-_geograph.org.uk_-_6023307.jpg" },
+      { label: "Coal Drops Yard from the south, 2025 (Wikimedia Commons, CC0)", url: "https://commons.wikimedia.org/wiki/File:Coal_Drops_Yard_(view_from_the_south)_2025-09-18.jpg" },
+    ],
     palette: {
-      note: "Midnight navy and cool grey under electric-blue screen light, with violet accents on the hologram and a few warm-white windows across the city. Blue does the key light; violet is the rim.",
+      note: "Midnight navy and cool grey under electric-blue screen light, with violet hologram accents, warm St Pancras brick and amber Coal Drops shopfronts, and candy-coloured fountain jets. Blue does the key light; violet is the rim.",
       key: "#7aa8ff",
       shadow: "#01030c",
     },
@@ -206,9 +222,9 @@ const DEFINITIONS = [
       { type: "glow", layer: "far", amp: 0.55, speed: 0.9, flicker: 0.03 },
       { type: "glow", layer: "mid", amp: 0.6, speed: 1.1, flicker: 0.03 },
       { type: "glow", layer: "near", amp: 0.6, speed: 1.2, flicker: 0.04 },
-      { type: "rain", region: { y0: 40, y1: 440 }, count: 80, color: "#8fa6d8", alpha: 0.2, parallax: 0.15, layerClip: { layer: "far", x0: 0, x1: 383 } },
-      { type: "scan", layer: "far", rect: [447, 37, 208, 141], color: "#7fb2ff", period: 3.2 },
-      { type: "scan", layer: "far", rect: [393, 168, 87, 107], color: "#b48cff", period: 2.1 },
+      { type: "rain", region: { y0: 40, y1: 498 }, count: 90, color: "#8fa6d8", alpha: 0.2, parallax: 0.15, layerClip: { layer: "far", x0: 0, x1: 413 } },
+      { type: "scan", layer: "far", rect: [438, 84, 141, 94], color: "#7fb2ff", period: 3.2 },
+      { type: "scan", layer: "far", rect: [590, 71, 82, 131], color: "#b48cff", period: 2.1 },
       { type: "motes", count: 18, region: { y0: 200, y1: 560 }, color: "#8fb6ff", parallax: 0.7, drift: "float" },
     ],
   },
@@ -226,23 +242,29 @@ const DEFINITIONS = [
     },
     location: "Hacker Square, 1 Hacker Way, Menlo Park · dusk",
     fieldNotes:
-      "Hacker Square at Meta's 1 Hacker Way campus in Menlo Park, home since December 2011. The courtyard has HACK in the paving, nine grey crosswalk stripes and a main street of cafés. Festoon lights come on at dusk and the hackathon turns physical.",
+      "Hacker Square at Meta's 1 Hacker Way campus in Menlo Park, home since December 2011. HACK is set into the paving, ringed by low cream buildings with red stairs and Meta-blue awnings, live oaks and a big thumbs-up sign. At dusk the hackathon turns physical.",
     sources: [
       { label: "CNBC: Hacker Square and its 'HACK' paving", url: "https://www.cnbc.com/2019/07/18/facebook-illegal-crosswalk-showed-early-hack-ethic.html" },
       { label: "City of Menlo Park: Meta Campus, 1 Hacker Way", url: "https://www.menlopark.gov/Government/Departments/Community-Development/Projects/Completed-projects/Meta-Campus" },
       { label: "Youseum: campus laid out like a small town since 2011", url: "https://youseum.org/?key=7&num=SiliconValley" },
     ],
+    referencePhotos: [
+      { label: "Facebook HQ 'Hacker One' (Wikimedia Commons, CC BY)", url: "https://commons.wikimedia.org/wiki/File:Facebook_HQ_%22Hacker_One%22.jpg" },
+      { label: "Inside the Facebook campus (Wikimedia Commons, CC BY-SA)", url: "https://commons.wikimedia.org/wiki/File:Inside_the_Facebook_campus.jpg" },
+      { label: "Facebook Like sign, 1601 Willow Road (Wikimedia Commons, CC BY 2.0)", url: "https://commons.wikimedia.org/wiki/File:Facebook_Like_sign.jpg" },
+      { label: "Aerial view of the Menlo Park campus, 2019 (Wikimedia Commons)", url: "https://commons.wikimedia.org/wiki/File:Aerial_view_of_Facebook_campus_in_Menlo_Park,_September_2019.JPG" },
+    ],
     palette: {
-      note: "Dusk violet sky over brick red, mustard and teal storefronts, with warm cream festoon bulbs and window light. Violet carries the shadows; the bulbs are the only near-white.",
-      key: "#ffd27a",
-      shadow: "#0a0614",
+      note: "Cream stucco and signal-red steel stairs under a blue-to-peach dusk, with Meta-blue awnings and signage, dark live-oak and redwood greens, and pale concrete HACK lettering in the grey plaza. Blue carries the accents; red carries the energy.",
+      key: "#ffd9a8",
+      shadow: "#070a12",
     },
     ambient: [
       { type: "glow", layer: "far", amp: 0.6, speed: 1.0, flicker: 0.02 },
       { type: "glow", layer: "mid", amp: 0.55, speed: 1.2, flicker: 0.02 },
       { type: "glow", layer: "near", amp: 0.5, speed: 1.0 },
-      { type: "motes", count: 16, region: { y0: 0, y1: 560 }, color: "#c9925a", parallax: 0.9, drift: "fall" },
-      { type: "fireflies", count: 14, region: { y0: 200, y1: 520 }, color: "#ffe2a0", parallax: 0.5 },
+      { type: "motes", count: 16, region: { y0: 0, y1: 560 }, color: "#8a7a3e", parallax: 0.9, drift: "fall" },
+      { type: "shafts", layer: "far", xs: [80, 330, 560], top: 30, color: "#ffc98a", alpha: 0.06 },
     ],
   },
   {
@@ -322,25 +344,29 @@ const DEFINITIONS = [
       date: "2026-06-23",
       dateLabel: "fully operational 23 June 2026",
     },
-    location: "Fairwater, Mount Pleasant, Wisconsin · cold aisle",
+    location: "Fairwater, Mount Pleasant, Wisconsin · two-storey data hall at dusk",
     fieldNotes:
-      "Microsoft's Fairwater AI datacenter in Mount Pleasant, Wisconsin, fully operational since 23 June 2026. Microsoft calls it the world's most powerful supercomputer. Cold air rises through the floor and red beacons sweep at thermal limits.",
+      "Microsoft's Fairwater AI datacenter in Mount Pleasant, Wisconsin, fully operational since 23 June 2026. A two-storey hall of liquid-cooled NVIDIA racks on closed-loop manifolds, with Wisconsin farmland at dusk through the loading doors. Microsoft calls it the world's most powerful supercomputer.",
     sources: [
       { label: "Microsoft Source: first Mount Pleasant facility complete (23 Jun 2026)", url: "https://news.microsoft.com/source/2026/06/23/microsoft-completes-construction-on-first-datacenter-facility-in-mount-pleasant-wisconsin/" },
       { label: "DCD: Fairwater campus now operational", url: "https://www.datacenterdynamics.com/en/news/microsofts-first-data-center-at-mount-pleasant-wisconsin-campus-now-operational/" },
+      { label: "Microsoft blog: two-storey racks and closed-loop liquid cooling (18 Sep 2025)", url: "https://blogs.microsoft.com/blog/2025/09/18/inside-the-worlds-most-powerful-ai-datacenter/" },
+    ],
+    referencePhotos: [
+      { label: "Microsoft Source: Fairwater photos (GB200 NVL72 racks, two-storey design, aerial)", url: "https://news.microsoft.com/source/features/ai/from-wisconsin-to-atlanta-microsoft-connects-datacenters-to-build-its-first-ai-superfactory/" },
     ],
     palette: {
-      note: "Near-black rack steel in a cold teal haze, pricked by green and cyan status LEDs, with yellow cable ladders and rare red warning beacons. Keep the midtones blue-green; red is for alarms only.",
-      key: "#5fe0d0",
-      shadow: "#020409",
+      note: "Steel-grey racks under cyan-white LED bars, with gold cable bundles, blue supply and red return manifolds, and a warm orange-violet Wisconsin dusk framed by the loading door. Cool light inside; the door is the only warm light.",
+      key: "#d8f0ff",
+      shadow: "#04060a",
     },
     ambient: [
       { type: "glow", layer: "far", amp: 0.8, speed: 1.8, flicker: 0.08, blink: true },
       { type: "glow", layer: "mid", amp: 0.8, speed: 2.2, flicker: 0.1, blink: true },
       { type: "glow", layer: "near", amp: 0.6, speed: 1.4, flicker: 0.05 },
-      { type: "beacon", layer: "far", points: [[131, 30], [534, 87], [148, 140]], color: "#ff3b30", rate: 1.3 },
-      { type: "haze", y: 430, h: 120, color: "#1f6f73", alpha: 0.35, parallax: 0.25, speed: 4 },
-      { type: "steam", world: true, emitters: [{ x: 420, y: 560 }, { x: 1180, y: 560 }, { x: 1720, y: 560 }], color: "#9fe3e8", alpha: 0.26, rise: 170, period: 4.4 },
+      { type: "shafts", layer: "far", xs: [585, 635], top: 30, color: "#ffb070", alpha: 0.09 },
+      { type: "haze", y: 440, h: 110, color: "#3c5466", alpha: 0.28, parallax: 0.25, speed: 3 },
+      { type: "motes", count: 24, region: { y0: 120, y1: 560 }, color: "#ffd2a0", parallax: 0.5, drift: "float" },
     ],
   },
   {

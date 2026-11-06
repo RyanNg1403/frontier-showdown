@@ -192,12 +192,18 @@ function drawFloor(ctx, stage, cam) {
   const px = stage.meta.px;
   const [f0, f1] = layer.parallax;
   const tileW = img.width * px;
+  const decal = stage.images.floorDecal;
+  const decalMeta = stage.meta.layers.floorDecal;
   for (let r = 0; r < img.height; r += 1) {
     const y = FLOOR_TOP + r * px - Math.round(cam.y);
     const f = f0 + ((f1 - f0) * (FLOOR_TOP + r * px - FLOOR_TOP)) / (GROUND_Y - FLOOR_TOP);
     const off = Math.round(cam.x * f);
     let x = -(((off % tileW) + tileW) % tileW);
     for (; x < VIEW_W; x += tileW) ctx.drawImage(img, 0, r, img.width, 1, x, y, tileW, px);
+    // Floor lettering shares the row's parallax so it stays glued to the pavement.
+    if (decal && r < decal.height) {
+      ctx.drawImage(decal, 0, r, decal.width, 1, decalMeta.x - off, y, decal.width * px, px);
+    }
   }
 }
 

@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[3]
 SRC = ROOT / "assets/stages/_source"
@@ -41,11 +41,12 @@ STAGES = {
     "musk-v-openai-oakland": dict(mid=dict(h=150, gap=118), near=dict(h=58, strip=True), floor_crop=(0.22, 1.0), fg=0),
     "openai-mission-bay": dict(mid=dict(h=150, gap=86), near=dict(h=44, gap=54), floor_crop=(0.07, 0.62), floor_cols=(0.3, 0.7), fg=0),
     "anthropic-500-howard": dict(mid=dict(h=150, gap=80), near=dict(h=52, gap=50), floor_crop=(0.38, 1.0), fg=1),
-    "deepmind-kings-cross": dict(mid=dict(h=140, gap=84), near=dict(h=48, gap=50), floor_crop=(0.25, 1.0), fg=0),
-    "meta-hacker-square": dict(mid=dict(h=150, gap=84), near=dict(h=40, gap=52), floor_crop=(0.25, 1.0), fg=0),
+    "deepmind-kings-cross": dict(mid=dict(h=140, gap=112), near=dict(h=48, gap=50), floor_crop=(0.25, 1.0), fg=0),
+    "meta-hacker-square": dict(mid=dict(h=150, gap=96), near=dict(h=40, gap=52), floor_crop=(0.25, 1.0), fg=1,
+                               floor_decal=dict(text="HACK", x=960, width=310, rows=(14, 84), color=(176, 174, 168), edge=(98, 100, 104), alpha=165)),
     "nvidia-voyager": dict(mid=dict(h=150, gap=80), near=dict(h=40, gap=50), floor_crop=(0.25, 1.0), fg=0),
     "xai-colossus-memphis": dict(mid=dict(h=150, gap=66), near=dict(h=44, gap=48), floor_crop=(0.25, 1.0), fg=0),
-    "microsoft-fairwater": dict(mid=dict(h=146, gap=60, despeckle=True), near=dict(h=44, gap=46), floor_crop=(0.25, 1.0), fg=2),
+    "microsoft-fairwater": dict(mid=dict(h=150, gap=64), near=dict(h=42, gap=48), floor_crop=(0.32, 1.0), fg=3),
     "deepseek-hangzhou": dict(mid=dict(h=146, gap=84), near=dict(h=42, gap=52), floor_crop=(0.25, 1.0), fg=3),
     "ami-labs-paris": dict(mid=dict(h=150, gap=104), near=dict(h=42, gap=50), floor_crop=(0.25, 1.0), fg=0),
 }
@@ -265,6 +266,44 @@ def build_floor(path, crop, col_crop=(0.18, 0.82)):
     return np.dstack([body, np.full(body.shape[:2], 255, np.float32)])
 
 
+def build_floor_decal(cfg, floor_h):
+    """Lettering set into the floor plane, foreshortened to match the generated floor perspective."""
+    font = ImageFont.truetype(cfg.get("font", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"), 420)
+    text = cfg["text"]
+    tmp = Image.new("L", (420 * len(text) + 200, 560), 0)
+    ImageDraw.Draw(tmp).text((60, 40), text, font=font, fill=255)
+    mask = np.asarray(tmp, np.float32) / 255
+    ys, xs = np.where(mask > 0.5)
+    mask = mask[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    hp, wp = mask.shape
+    solid = mask > 0.5
+    edge = solid & ~(np.roll(solid, 6, 0) & np.roll(solid, -6, 0) & np.roll(solid, 6, 1) & np.roll(solid, -6, 1))
+    rng = np.random.default_rng(7)
+    plane = np.zeros((hp, wp, 4), np.float32)
+    base = np.array(cfg.get("color", (206, 202, 192)), np.float32)
+    plane[..., :3] = base + rng.normal(0, 7, (hp, wp, 1))
+    plane[..., :3] = np.where(edge[..., None], np.array(cfg.get("edge", (70, 72, 76)), np.float32), plane[..., :3])
+    plane[..., 3] = np.where(solid, 255, 0)
+
+    width_n = cfg["width"]
+    out_w = int(width_n * 1.3)
+    out = np.zeros((floor_h, out_w, 4), np.float32)
+    r0, r1 = cfg["rows"]
+    depth = np.linspace(0.55, 1.0, floor_h) ** 0.8
+    for r in range(r0, r1 + 1):
+        t = (r - r0) / (r1 - r0)
+        v = 1 - (1 - t) ** 1.6
+        src_row = plane[int(round(v * (hp - 1)))]
+        row_w = max(2, int(round(width_n * (0.72 + 0.5 * t))))
+        idx = np.clip((np.arange(row_w) * wp / row_w).astype(int), 0, wp - 1)
+        row = src_row[idx]
+        x0 = (out_w - row_w) // 2
+        out[r, x0:x0 + row_w] = row
+        out[r, :, :3] *= depth[r]
+    out[..., 3] = np.where(out[..., 3] > 0, cfg.get("alpha", 225), 0)
+    return out
+
+
 def build_fg(sprites, which, key_light):
     w = layer_width(PARALLAX["fg"])
     h = VIEW_H // PX
@@ -386,6 +425,15 @@ def build_stage(sid, cfg):
                 info["glow"] = {"src": f"assets/stages/{sid}/{name}-glow.png", "tile": GLOW_TILE, "tiles": tiles}
         meta["layers"][name] = info
     meta["layers"]["floor"]["parallax"] = list(FLOOR_PARALLAX)
+    if "floor_decal" in cfg:
+        decal = quantize(build_floor_decal(cfg["floor_decal"], floor.shape[0]), 20)
+        save(decal, out / "floor-decal.png")
+        meta["layers"]["floorDecal"] = {
+            "src": f"assets/stages/{sid}/floor-decal.png", "w": int(decal.shape[1]), "h": int(decal.shape[0]),
+            "x": int(cfg["floor_decal"]["x"] - decal.shape[1] * PX / 2),
+        }
+    else:
+        (out / "floor-decal.png").unlink(missing_ok=True)
     meta["layers"]["near"]["baseY"] = near_base * PX
     return meta
 

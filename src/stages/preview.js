@@ -66,7 +66,8 @@ function renderInfo(meta) {
   ui.notes.textContent = meta.fieldNotes;
   const rw = meta.realWorld;
   ui.real.textContent = `${rw.event} · ${rw.venue}, ${rw.city} · ${rw.dateLabel} · labs: ${meta.labs.join(", ")}`;
-  ui.sources.replaceChildren(...meta.sources.map((src) => {
+  const refs = (meta.referencePhotos ?? []).map((src) => ({ ...src, label: `Reference photo: ${src.label}` }));
+  ui.sources.replaceChildren(...[...meta.sources, ...refs].map((src) => {
     const li = document.createElement("li");
     const a = document.createElement("a");
     a.href = src.url;
