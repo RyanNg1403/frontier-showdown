@@ -111,7 +111,7 @@ export default defineCharacter({
       parry: {
         from: 3, to: 22, levels: ["high", "mid", "low", "overhead"], lock: 40, levelBonus: 0,
         counter: {
-          name: "Foresight Palm", damage: 90, startup: 10, active: 4, recovery: 22, hitstun: 30,
+          name: "Foresight Palm", anim: "foresight_palm", damage: 90, startup: 10, active: 4, recovery: 22, hitstun: 30,
           hitbox: { x: 0, y: -190, w: 120, h: 190 }, knockback: { x: 360, y: 520 }, knockdown: true,
           teleport: { vanish: 2, frame: 7, to: "behind", distance: 70 },
         },

@@ -55,7 +55,7 @@ export default defineCharacter({
       hits: 2, hitInterval: 3, cancelInto: ["special", "super"], description: "A cyclist double kick.",
     },
     f_hk: {
-      name: "Breakaway Kick", startup: 14, active: 5, recovery: 20, damage: 62, hitstun: 22, blockstun: 17,
+      name: "Breakaway Kick", anim: "breakaway_kick", startup: 14, active: 5, recovery: 20, damage: 62, hitstun: 22, blockstun: 17,
       hitbox: { x: 20, y: -150, w: 118, h: 70 }, knockback: { x: 320 }, level: "mid", meterGain: 5,
       velocity: [{ from: 2, to: 16, vx: 420 }], cancelInto: ["special", "super"],
       description: "A flying kick; from a run (forward + HK) it carries his momentum.",

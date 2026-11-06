@@ -99,7 +99,7 @@ export default defineCharacter({
       hitbox: { x: 8, y: -94, w: 104, h: 48 }, knockback: { x: 200 }, level: "overhead", meterGain: 4,
     },
     b_hp: {
-      name: "Optimal Brain Damage", startup: 18, active: 5, recovery: 20, damage: 40, hitstun: 18, blockstun: 14,
+      name: "Optimal Brain Damage", anim: "optimal_brain_damage", startup: 18, active: 5, recovery: 20, damage: 40, hitstun: 18, blockstun: 14,
       hitbox: { x: 20, y: -170, w: 120, h: 110 }, knockback: { x: 220 }, level: "mid", meterGain: 4,
       mech: { prune: true },
       description: "A slow pruning swipe that removes one enemy projectile, trap or barrier it touches.",
