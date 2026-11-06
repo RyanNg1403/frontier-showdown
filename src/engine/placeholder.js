@@ -190,6 +190,53 @@ function limb(ctx, x, y, a1, l1, a2, l2, color, width) {
   return { x: ex, y: ey };
 }
 
+/** Hair shapes for `palette.hairStyle` (or `hairLength: "shoulder"`). */
+function drawHair(ctx, pal, x, y) {
+  const style = pal.hairStyle || (pal.hairLength === "shoulder" ? "shoulder" : "default");
+  ctx.fillStyle = pal.hair;
+  ctx.beginPath();
+  switch (style) {
+    case "shaved":
+      ctx.globalAlpha = 0.45;
+      ctx.arc(x - 1, y - 2, 15.8, Math.PI * 0.95, Math.PI * 2.02);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    case "receding":
+      ctx.arc(x - 3, y - 2, 15.6, Math.PI * 0.85, Math.PI * 1.55);
+      ctx.lineTo(x - 3, y - 2);
+      ctx.fill();
+      return;
+    case "swept":
+      ctx.arc(x - 2, y - 4, 16, Math.PI * 0.95, Math.PI * 2.0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x - 4, y - 15, 12, 6, -0.25, 0, TAU);
+      ctx.fill();
+      return;
+    case "flop":
+      ctx.arc(x - 2, y - 3, 15.8, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + 8, y - 9, 9, 5, 0.5, 0, TAU);
+      ctx.fill();
+      return;
+    case "bangs":
+      ctx.arc(x - 2, y - 3, 15.8, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.fill();
+      ctx.fillRect(x - 4, y - 12, 18, 6);
+      return;
+    case "shoulder":
+      ctx.arc(x - 2, y - 3, 16.5, Math.PI * 0.9, Math.PI * 2.05);
+      ctx.fill();
+      ctx.fillRect(x - 18, y - 4, 13, 26);
+      return;
+    default:
+      ctx.arc(x - 2, y - 3, 15.5, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.fill();
+  }
+}
+
 function shoe(ctx, foot, color) {
   ctx.fillStyle = "rgba(10,10,18,0.85)";
   ctx.beginPath();
@@ -207,7 +254,8 @@ export function drawPlaceholder(ctx, f) {
   const rot = bodyRotation(f);
   ctx.save();
   ctx.translate(f.x, f.y);
-  ctx.scale(f.facing, 1);
+  const scale = (f.def.stats.height || 200) / 200;
+  ctx.scale(f.facing * scale, scale);
   if (rot) {
     ctx.translate(0, -16 * Math.min(1, Math.abs(rot) / (Math.PI / 2)));
     ctx.rotate(rot);
@@ -253,11 +301,30 @@ export function drawPlaceholder(ctx, f) {
     ctx.lineTo(neckX * 0.6 + 2, neckY + 34);
     ctx.closePath();
     ctx.fill();
-  } else {
+  } else if (!pal.zip) {
     ctx.fillStyle = pal.accent;
     ctx.beginPath();
     ctx.arc(neckX * 0.55 + 6, neckY + 22, 3.5, 0, TAU);
     ctx.fill();
+  }
+  if (pal.tie) {
+    ctx.fillStyle = pal.tie;
+    ctx.beginPath();
+    ctx.moveTo(neckX * 0.9 - 1, neckY + 6);
+    ctx.lineTo(neckX * 0.9 + 4, neckY + 6);
+    ctx.lineTo(neckX * 0.5 + 5, neckY + 38);
+    ctx.lineTo(neckX * 0.5 + 1, neckY + 42);
+    ctx.lineTo(neckX * 0.5 - 2, neckY + 37);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (pal.zip) {
+    ctx.strokeStyle = pal.zip;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(neckX * 0.9 + 3, neckY + 5);
+    ctx.lineTo(4, hipY - 6);
+    ctx.stroke();
   }
 
   const fFoot = limb(ctx, 4, hipY, pose.fThigh, THIGH, pose.fThigh + pose.fShin, SHIN, pal.secondary, 14);
@@ -273,14 +340,31 @@ export function drawPlaceholder(ctx, f) {
   ctx.beginPath();
   ctx.arc(headX, headY, 15.5, 0, TAU);
   ctx.fill();
-  ctx.fillStyle = pal.hair;
-  ctx.beginPath();
-  ctx.arc(headX - 2, headY - 3, 15.5, Math.PI * 0.95, Math.PI * 2.05);
-  ctx.fill();
+  drawHair(ctx, pal, headX, headY);
+  if (pal.beard) {
+    ctx.fillStyle = pal.beard;
+    ctx.beginPath();
+    ctx.arc(headX + 2, headY + 3, 14, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.lineTo(headX - 6, headY + 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (pal.cap) {
+    ctx.fillStyle = pal.cap;
+    ctx.beginPath();
+    ctx.arc(headX, headY - 4, 16.5, Math.PI, TAU);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(headX + 4, headY - 6, 18, 4);
+  }
   if (pal.glasses) {
     ctx.strokeStyle = pal.glasses;
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(headX + 3, headY - 4, 10, 7);
+    const style = pal.glassesStyle || "square";
+    ctx.lineWidth = style === "rimless" ? 1.2 : 2.5;
+    ctx.beginPath();
+    if (style === "round") ctx.arc(headX + 8, headY - 0.5, 4.5, 0, TAU);
+    else ctx.rect(headX + 3, headY - 4, 10, 7);
+    ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(headX + 3, headY - 1);
     ctx.lineTo(headX - 8, headY - 2);

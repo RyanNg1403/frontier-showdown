@@ -113,6 +113,8 @@ export class Fighter {
     this.lastDx = 0;
     this.shake = 0;
     this.dazedPending = false;
+    this.floorY = 0;
+    this.intangible = false;
     this.pendingLanding = null;
     this.jumpDir = 0;
     this.runJump = false;
@@ -135,8 +137,16 @@ export class Fighter {
 
   // ------------------------------------------------------------------ queries
 
+  /** `floorY` is the surface under the fighter (0 = stage floor, negative = a platform). */
   get airborne() {
-    return this.y < -0.01 || this.vy < 0;
+    return this.y < this.floorY - 0.01 || this.vy < 0;
+  }
+
+  /** Skips pushbox resolution: set `intangible` from a mechanic, or `passThrough: {from, to}` on a move. */
+  get passesThrough() {
+    if (this.intangible) return true;
+    const p = this.state === "attack" ? this.move?.passThrough : null;
+    return Boolean(p && this.moveFrame >= p.from && this.moveFrame <= p.to);
   }
 
   get crouching() {
@@ -318,7 +328,7 @@ export class Fighter {
 
   toNeutral(env) {
     this.vy = 0;
-    this.y = Math.min(0, this.y);
+    this.y = Math.min(this.floorY, this.y);
     if (this.dazedPending) {
       this.vx = 0;
       this.setState("dazed");
@@ -407,7 +417,11 @@ export class Fighter {
     let g = PHYS.gravity * (this.def.stats.weight || 1);
     if (this.state === "juggle") g *= 1 + RULES.juggleGravityStep * this.juggleHits;
     const lockedVy = this.velocityWindow()?.vy !== undefined;
-    if (this.airborne || this.y < 0) {
+    if (this.isNeutral && this.y < this.floorY - 1) {
+      this.setState("jump");
+      this.airAttackUsed = true;
+    }
+    if (this.airborne || this.y < this.floorY) {
       if (!lockedVy) this.vy += g * DT;
     } else if (this.friction) {
       const dec = PHYS.groundFriction * DT;
@@ -415,9 +429,9 @@ export class Fighter {
     }
     this.x += this.vx * DT;
     this.y += this.vy * DT;
-    if (this.y >= 0 && (this.vy > 0 || this.y > 0)) {
-      const wasAir = this.y > 0 || this.vy > 0;
-      this.y = 0;
+    if (this.y >= this.floorY && (this.vy > 0 || this.y > this.floorY)) {
+      const wasAir = this.y > this.floorY || this.vy > 0;
+      this.y = this.floorY;
       const impact = this.vy;
       this.vy = 0;
       if (wasAir) this.land(env, impact);
@@ -537,7 +551,8 @@ export class Fighter {
       if (age >= 0) return sup;
     }
     for (const sp of def.specialsByRank) {
-      if (air && !sp.air) continue;
+      if (air ? !sp.air : sp.airOnly) continue;
+      if (air && sp.groundOnly) continue;
       if (!this.allowedBy(filter, sp)) continue;
       if (sp.projectile && env.hasProjectile?.(this)) continue;
       const age = matchMotion(b, sp.motion, this.facing);
@@ -769,7 +784,7 @@ export class Fighter {
       this.runJump = false;
       this.airAttackUsed = false;
       this.setState("jump");
-      this.y = -0.02;
+      this.y = this.floorY - 0.02;
       env.emit("jump", { fighter: this.id, side: this.side, x: this.x });
       env.vfx("dust_jump", this.x, 0, { facing: this.facing, side: this.side });
     }

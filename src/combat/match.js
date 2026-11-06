@@ -231,6 +231,7 @@ export class Match {
     }
 
     const hitstop = this.fighters.some((f) => f.hitstop > 0);
+    for (const f of this.fighters) f.floorY = this.floorAt(f);
     for (const f of [...this.fighters]) f.update(this.envFor(f));
     this.updateAssists();
     this.updateRunway();
@@ -553,13 +554,50 @@ export class Match {
       const hw = f.push.w / 2;
       f.x = Math.max(left + hw, Math.min(right - hw, f.x));
     }
-    if (a.canFight && b.canFight && a.state !== "thrown" && b.state !== "thrown" && !a.isLying && !b.isLying) {
+    if (a.canFight && b.canFight && a.state !== "thrown" && b.state !== "thrown" && !a.isLying && !b.isLying && !a.passesThrough && !b.passesThrough) {
       resolvePush(a, b, left, right);
     }
+    this.resolveWalls();
     const half = PHYS.maxSeparation / 2;
     if (a.canFight && b.canFight) {
       for (const f of [a, b]) {
         f.x = Math.max(prevMid - half, Math.min(prevMid + half, f.x));
+      }
+    }
+  }
+
+  /** Solid rects from entities: `solid: {x, y, w, h, platform?: true, wall?: false}` or a function returning rect(s). */
+  solids() {
+    const out = [];
+    for (const e of this.entities) {
+      if (e.dead || !e.solid) continue;
+      const s = typeof e.solid === "function" ? e.solid(this) : e.solid;
+      if (Array.isArray(s)) out.push(...s);
+      else if (s) out.push(s);
+    }
+    return out;
+  }
+
+  /** Highest standable surface at or below the fighter's feet (stage floor is 0). */
+  floorAt(f) {
+    let floor = 0;
+    for (const r of this.solids()) {
+      if (r.platform === false || f.x < r.x || f.x > r.x + r.w) continue;
+      if (r.y >= f.y - 2 && r.y < floor) floor = r.y;
+    }
+    return floor;
+  }
+
+  /** Push fighters out of `wall: true` solids horizontally. */
+  resolveWalls() {
+    for (const r of this.solids()) {
+      if (!r.wall) continue;
+      for (const f of this.fighters) {
+        if (f.state === "bench" || f.passesThrough) continue;
+        const hw = f.push.w / 2;
+        if (f.y - f.push.h >= r.y + r.h || f.y <= r.y + 0.5) continue;
+        if (f.x + hw <= r.x || f.x - hw >= r.x + r.w) continue;
+        f.x = f.x < r.x + r.w / 2 ? r.x - hw : r.x + r.w + hw;
       }
     }
   }
@@ -806,6 +844,13 @@ export class Match {
 
     const airAttack = !projectile && a.airborne;
     const level = airAttack && props.level !== "low" ? "overhead" : props.level;
+
+    const hurtCtx = { match: this, attacker: a, defender: d, props, projectile, level, at, dir };
+    const dMove = d.state === "attack" ? d.move : null;
+    if (moveMechanic(dMove)?.beforeHurt?.(d, hurtCtx) || d.mechanicHooks.some((h) => h.beforeHurt?.(d, hurtCtx))) {
+      this.emit("absorb", { ...payloadBase, fighter: d.id });
+      return;
+    }
 
     if (!projectile && d.inParry && d.move.parry.levels.includes(level) && a.canFight) {
       this.parry(a, d, at);

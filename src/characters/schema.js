@@ -80,7 +80,7 @@ function canonicalMove(raw) {
   return m;
 }
 
-function normalizeMove(id, raw, category, extra = {}) {
+export function normalizeMove(id, raw, category = "special", extra = {}) {
   const m = { ...canonicalMove(raw), ...extra };
   const light = category === "normal" && LIGHT.has(id);
   const kind = category === "normal" ? (light ? "light" : "heavy") : category;
@@ -123,7 +123,10 @@ function normalizeMove(id, raw, category, extra = {}) {
     barrier: m.barrier ? normalizeBarrier(m.barrier, startup) : null,
     lastHit: m.lastHit ? { ...m.lastHit } : null,
     juggle: m.juggle ?? defaultJuggle(id, m, category),
-    air: Boolean(m.air || id.startsWith("j_")),
+    air: Boolean(m.air || m.airOnly || id.startsWith("j_")),
+    airOnly: Boolean(m.airOnly),
+    groundOnly: Boolean(m.groundOnly),
+    passThrough: m.passThrough ? { from: m.passThrough.from ?? 1, to: m.passThrough.to ?? startup + active + recovery } : null,
     vfx: m.vfx || null,
     description: m.description || "",
     input: m.input || null,
@@ -144,7 +147,7 @@ function normalizeMove(id, raw, category, extra = {}) {
   return move;
 }
 
-function normalizeProjectile(p, startup) {
+export function normalizeProjectile(p, startup = 1) {
   const vys = Array.isArray(p.spread) ? p.spread : [p.vy ?? 0];
   return Object.freeze({
     speed: p.speed ?? 480,
