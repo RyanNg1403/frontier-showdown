@@ -12,6 +12,7 @@ import { loadManifest, loadModules } from "./modules.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { adaptVfx } from "./vfx-adapter.js";
+import { SCREEN_MUSIC, applyUiSettings, decorateEvent, decorateSnapshot, normalizeMatchConfig, uiRoster, uiStages } from "./ui-adapter.js";
 import { adaptStageDef, listModuleStages, stageCamera } from "./stage-adapter.js";
 
 const DEFAULT_STAGES = [{ id: "default", name: "Training Lab" }];
@@ -101,8 +102,13 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
   /** VFX timing helpers (hitstop, freeze, shake, slow-mo) when the VFX module provides them. */
   const fx = () => (vfx !== fallbackVfx ? vfx.module : null);
   let holdFrames = 0;
+  const uiOptions = { screenShake: true, gameplay: null };
+  let uiInstance = null;
+  let sidePlayers = [0, 1];
   let lastShake = 0;
   let hudFailed = !modules.ui?.drawHud;
+  let uiMounted = false;
+  let domHud = false;
   const hudCall = guarded("ui", () => {
     hudFailed = true;
     return undefined;
@@ -129,14 +135,20 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       return;
     }
     if (name === "slowmo" && payload.active && fx()?.slowmo) vfxCall(() => fx().slowmo(payload.rate, payload.seconds));
-    events.emit(name, payload);
+    events.emit(name, decorateEvent(name, payload));
+    if (name === "finishThem" && uiInstance?.hud?.announce) {
+      setTimeout(() => {
+        uiInstance.hud.clearAnnouncer?.();
+        uiInstance.hud.announce("Final Commit!", "finish");
+      }, 0);
+    }
   }
 
   function buildSnapshot() {
     if (!match) {
       return { phase: loading ? "loading" : "menu", paused: false, sides: [], fighters: [], announce: null, winner: null, stage: stageDef.id, camera: camera.toJSON() };
     }
-    return { ...match.snapshot(), paused, camera: camera.toJSON() };
+    return decorateSnapshot({ ...match.snapshot(), paused, camera: camera.toJSON() }, charMap);
   }
 
   function refreshSnapshot() {
@@ -173,7 +185,8 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     }
   }
 
-  async function startMatch(config = {}) {
+  async function startMatch(rawConfig = {}) {
+    const config = normalizeMatchConfig(rawConfig);
     const mode = config.mode === "2v2" ? "2v2" : "1v1";
     const fallbackIds = characters.map((c) => c.id);
     const sides = [0, 1].map((i) => {
@@ -182,9 +195,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       const need = mode === "2v2" ? 2 : 1;
       while (team.length < need) team.push(fallbackIds[(i + team.length) % fallbackIds.length]);
       team = team.slice(0, need);
-      return { team, control: s.control === "cpu" ? "cpu" : s.control === "human" ? "human" : i === 0 ? "human" : "cpu", difficulty: s.difficulty || "normal" };
+      return { team, control: s.control === "cpu" ? "cpu" : s.control === "human" ? "human" : i === 0 ? "human" : "cpu", difficulty: s.difficulty || "normal", player: Number.isInteger(s.player) ? s.player : i };
     });
     lastConfig = { ...config, mode, sides };
+    sidePlayers = sides.map((s) => s.player);
     loading = true;
     paused = false;
     match = null;
@@ -274,31 +288,32 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
   }
 
   devices.onKey((code) => {
-    if (code === "Escape") togglePause();
+    if (code === "Escape" && !uiMounted) togglePause();
     if (code === "F1") debug = !debug;
   });
 
   function step() {
-    if (devices.startPressed(0) || devices.startPressed(1)) togglePause();
+    if ((devices.startPressed(0) || devices.startPressed(1)) && !uiMounted) togglePause();
     if (!match || paused) {
       loop.timeScale = 1;
       return;
     }
-    const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(s.side) : null));
+    const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(sidePlayers[s.side] ?? s.side) : null));
     const helpers = fx();
     const vfxHold = Boolean(helpers && vfxCall(() => helpers.isHitstopped?.() || helpers.isFrozen?.()));
     holdFrames = vfxHold ? holdFrames + 1 : 0;
     match.step(inputs, { hold: vfxHold && holdFrames <= 90 });
     if (helpers?.timeScale) loop.timeScale = vfxCall(() => helpers.timeScale()) ?? 1;
     else loop.timeScale = match.slowmo ? match.slowmo.rate : 1;
-    if (match.shakeFrames > lastShake && helpers?.shake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
+    if (match.shakeFrames > lastShake && helpers?.shake && uiOptions.screenShake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
     lastShake = match.shakeFrames;
     if (vfx.syncProjectiles) {
       vfxCall(() => vfx.syncProjectiles(match.projectiles.map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
     }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
     const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
-    camera.update(targets, match.bounds, match.shakeFrames, Math.random, offset || null);
+    if (uiOptions.screenShake) camera.update(targets, match.bounds, match.shakeFrames, Math.random, offset || null);
+    else camera.update(targets, match.bounds, 0, Math.random, { x: 0, y: 0 });
     if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, snapshot));
     refreshSnapshot();
   }
@@ -361,6 +376,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       ctx.restore();
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (domHud) return;
     if (!hudFailed) {
       ctx.save();
       hudCall(() => modules.ui.drawHud(ctx, snapshot));
@@ -371,8 +387,27 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
 
   const loop = createLoop({ step, render });
 
+  function endMatch() {
+    match = null;
+    paused = false;
+    loop.timeScale = 1;
+    vfx.clearProjectiles?.();
+    refreshSnapshot();
+    events.emit("matchClosed", {});
+  }
+
   const game = {
     events,
+    getRoster: () => uiRoster(listCharacters()),
+    get roster() {
+      return uiRoster(listCharacters());
+    },
+    getStages: () => uiStages(listStages()),
+    get stages() {
+      return uiStages(listStages());
+    },
+    endMatch,
+    applySettings: (settings) => applyUiSettings(settings, { devices, audio, options: uiOptions }),
     get state() {
       return snapshot;
     },
@@ -403,11 +438,16 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     loop,
   };
 
-  let uiMounted = false;
   if (modules.ui?.mountUI) {
     try {
-      await modules.ui.mountUI(uiRoot, game);
+      uiInstance = await modules.ui.mountUI(uiRoot, game);
       uiMounted = true;
+      domHud = Boolean(uiInstance?.hud);
+      if (audio && typeof uiInstance?.on === "function") {
+        uiInstance.on("screen", ({ id }) => {
+          if (SCREEN_MUSIC[id]) audioCall(() => audio.music(SCREEN_MUSIC[id]));
+        });
+      }
     } catch (error) {
       console.error("[engine] mountUI failed; using the built-in menu.", error);
     }

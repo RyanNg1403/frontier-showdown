@@ -14,7 +14,8 @@ export const DEFAULT_BINDINGS = Object.freeze({
   },
 });
 
-const PAD_BUTTONS = { LP: [2], HP: [3], LK: [0], HK: [1], BLOCK: [5, 7], TAG: [4], ASSIST: [6] };
+const PAD_BUTTONS = { up: [12], down: [13], left: [14], right: [15], LP: [2], HP: [3], LK: [0], HK: [1], BLOCK: [5, 7], TAG: [4], ASSIST: [6] };
+const clonePad = () => Object.fromEntries(Object.entries(PAD_BUTTONS).map(([k, v]) => [k, [...v]]));
 const DEADZONE = 0.45;
 
 function cloneBindings() {
@@ -29,6 +30,7 @@ export class InputDevices {
   constructor(target = window) {
     this.down = new Set();
     this.bindings = cloneBindings();
+    this.padBindings = { p1: clonePad(), p2: clonePad() };
     this.listeners = new Set();
     this.padStart = [false, false];
     this.boundCodes = new Set();
@@ -80,17 +82,19 @@ export class InputDevices {
     }
     const pad = this.pads()[player];
     if (pad) {
+      const map = this.padBindings[player === 0 ? "p1" : "p2"];
       const pressed = (i) => Boolean(pad.buttons[i]?.pressed || pad.buttons[i]?.value > 0.5);
-      let px = (pressed(15) ? 1 : 0) - (pressed(14) ? 1 : 0);
-      let py = (pressed(12) ? 1 : 0) - (pressed(13) ? 1 : 0);
+      const any = (list) => (list || []).some(pressed);
+      let px = (any(map.right) ? 1 : 0) - (any(map.left) ? 1 : 0);
+      let py = (any(map.up) ? 1 : 0) - (any(map.down) ? 1 : 0);
       const ax = pad.axes[0] || 0;
       const ay = pad.axes[1] || 0;
       if (Math.abs(ax) > DEADZONE) px = Math.sign(ax);
       if (Math.abs(ay) > DEADZONE) py = -Math.sign(ay);
       if (px) x = px;
       if (py) y = py;
-      for (const [name, idx] of Object.entries(PAD_BUTTONS)) {
-        if (idx.some(pressed)) buttons |= BTN[name];
+      for (const name of ["LP", "HP", "LK", "HK", "BLOCK", "TAG", "ASSIST"]) {
+        if (any(map[name])) buttons |= BTN[name];
       }
       if (pressed(9)) buttons |= BTN.START;
     }
