@@ -1,0 +1,100 @@
+{
+  "id": "dario",
+  "name": "Dario Amodei",
+  "height_px": 198,
+  "speeds": {
+    "walk": 180,
+    "run": 430
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.638,
+    "muscle": 0.38,
+    "weight": 0.58,
+    "proportions": 0.45,
+    "height": 0.5,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "stomach-pregnant-incr": 0.15,
+      "torso-vshape-decr": 0.3
+    }
+  },
+  "skin": "#d9a47c",
+  "hair": {
+    "color": "#3b2a1e",
+    "thickness": 0.012,
+    "top": 0.03,
+    "forward": 0.004,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "chinos",
+      "color": "#4a3b2e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#2a211c",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#5b7fc4",
+      "thickness": 0.011,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.5,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/dario_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/dario_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 732,
+        "neck_cut": 834
+      },
+      "profile": {
+        "image": "heads/dario_profile.png",
+        "source_height": 1024,
+        "crown": 112,
+        "chin": 742,
+        "neck_cut": 844
+      },
+      "hurt": {
+        "image": "heads/dario_hurt.png",
+        "source_height": 1024,
+        "crown": 114,
+        "chin": 744,
+        "neck_cut": 846
+      },
+      "shout": {
+        "image": "heads/dario_shout.png",
+        "source_height": 1024,
+        "crown": 116,
+        "chin": 746,
+        "neck_cut": 848
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Mid-blue open-collar button-down, dark chinos, dark shoes; soft medium build, slightly rounded shoulders. Glasses and curls come from the 2D head."
+}

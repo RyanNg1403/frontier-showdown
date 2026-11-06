@@ -1,0 +1,91 @@
+{
+  "id": "demis",
+  "name": "Demis Hassabis",
+  "height_px": 192,
+  "speeds": {
+    "walk": 195,
+    "run": 450
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.692,
+    "muscle": 0.4,
+    "weight": 0.4,
+    "proportions": 0.55,
+    "height": 0.3,
+    "race": {
+      "caucasian": 0.5,
+      "asian": 0.5
+    }
+  },
+  "skin": "#d6a57f",
+  "hair": null,
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#1a1a1e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#141416",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "crewneck",
+      "color": "#17171a",
+      "thickness": 0.012,
+      "sleeve": 0.97,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/demis_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/demis_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/demis_profile.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "hurt": {
+        "image": "heads/demis_hurt.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "shout": {
+        "image": "heads/demis_shout.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "All black: black crewneck, black trousers; short, slight, upright. Shaved head, beard and cobalt glasses come from the 2D head."
+}

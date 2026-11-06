@@ -1,0 +1,450 @@
+{
+ "andrej_hurt": {
+  "image": "heads/andrej_hurt.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "andrej_profile": {
+  "image": "heads/andrej_profile.png",
+  "source_height": 1024,
+  "crown": 106,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "andrej_shout": {
+  "image": "heads/andrej_shout.png",
+  "source_height": 1024,
+  "crown": 106,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "andrej_tq": {
+  "image": "heads/andrej_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "arthur_hurt": {
+  "image": "heads/arthur_hurt.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "arthur_profile": {
+  "image": "heads/arthur_profile.png",
+  "source_height": 1024,
+  "crown": 104,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "arthur_shout": {
+  "image": "heads/arthur_shout.png",
+  "source_height": 1024,
+  "crown": 118,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "arthur_tq": {
+  "image": "heads/arthur_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 726,
+  "neck_cut": 828
+ },
+ "chris_hurt": {
+  "image": "heads/chris_hurt.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "chris_profile": {
+  "image": "heads/chris_profile.png",
+  "source_height": 1024,
+  "crown": 104,
+  "chin": 730,
+  "neck_cut": 832
+ },
+ "chris_shout": {
+  "image": "heads/chris_shout.png",
+  "source_height": 1024,
+  "crown": 106,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "chris_tq": {
+  "image": "heads/chris_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "dario_hurt": {
+  "image": "heads/dario_hurt.png",
+  "source_height": 1024,
+  "crown": 114,
+  "chin": 744,
+  "neck_cut": 846
+ },
+ "dario_profile": {
+  "image": "heads/dario_profile.png",
+  "source_height": 1024,
+  "crown": 112,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "dario_shout": {
+  "image": "heads/dario_shout.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 746,
+  "neck_cut": 848
+ },
+ "dario_tq": {
+  "image": "heads/dario_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "demis_hurt": {
+  "image": "heads/demis_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "demis_profile": {
+  "image": "heads/demis_profile.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "demis_shout": {
+  "image": "heads/demis_shout.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "demis_tq": {
+  "image": "heads/demis_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "elon_hurt": {
+  "image": "heads/elon_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "elon_profile": {
+  "image": "heads/elon_profile.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 838
+ },
+ "elon_shout": {
+  "image": "heads/elon_shout.png",
+  "source_height": 1024,
+  "crown": 118,
+  "chin": 744,
+  "neck_cut": 846
+ },
+ "elon_tq": {
+  "image": "heads/elon_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "feifei_hurt": {
+  "image": "heads/feifei_hurt.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 944
+ },
+ "feifei_profile": {
+  "image": "heads/feifei_profile.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 938
+ },
+ "feifei_shout": {
+  "image": "heads/feifei_shout.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 942
+ },
+ "feifei_tq": {
+  "image": "heads/feifei_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 936
+ },
+ "geoffrey_hurt": {
+  "image": "heads/geoffrey_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "geoffrey_profile": {
+  "image": "heads/geoffrey_profile.png",
+  "source_height": 1024,
+  "crown": 106,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "geoffrey_shout": {
+  "image": "heads/geoffrey_shout.png",
+  "source_height": 1024,
+  "crown": 112,
+  "chin": 738,
+  "neck_cut": 840
+ },
+ "geoffrey_tq": {
+  "image": "heads/geoffrey_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "ilya_hurt": {
+  "image": "heads/ilya_hurt.png",
+  "source_height": 1024,
+  "crown": 114,
+  "chin": 740,
+  "neck_cut": 842
+ },
+ "ilya_profile": {
+  "image": "heads/ilya_profile.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "ilya_shout": {
+  "image": "heads/ilya_shout.png",
+  "source_height": 1024,
+  "crown": 118,
+  "chin": 744,
+  "neck_cut": 846
+ },
+ "ilya_tq": {
+  "image": "heads/ilya_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "jensen_hurt": {
+  "image": "heads/jensen_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "jensen_profile": {
+  "image": "heads/jensen_profile.png",
+  "source_height": 1024,
+  "crown": 106,
+  "chin": 732,
+  "neck_cut": 834
+ },
+ "jensen_shout": {
+  "image": "heads/jensen_shout.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 838
+ },
+ "jensen_tq": {
+  "image": "heads/jensen_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "liang_hurt": {
+  "image": "heads/liang_hurt.png",
+  "source_height": 1024,
+  "crown": 112,
+  "chin": 738,
+  "neck_cut": 840
+ },
+ "liang_profile": {
+  "image": "heads/liang_profile.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "liang_shout": {
+  "image": "heads/liang_shout.png",
+  "source_height": 1024,
+  "crown": 112,
+  "chin": 738,
+  "neck_cut": 840
+ },
+ "liang_tq": {
+  "image": "heads/liang_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "mark_hurt": {
+  "image": "heads/mark_hurt.png",
+  "source_height": 1024,
+  "crown": 112,
+  "chin": 738,
+  "neck_cut": 840
+ },
+ "mark_profile": {
+  "image": "heads/mark_profile.png",
+  "source_height": 1024,
+  "crown": 118,
+  "chin": 744,
+  "neck_cut": 846
+ },
+ "mark_shout": {
+  "image": "heads/mark_shout.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "mark_tq": {
+  "image": "heads/mark_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "mustafa_hurt": {
+  "image": "heads/mustafa_hurt.png",
+  "source_height": 1024,
+  "crown": 114,
+  "chin": 740,
+  "neck_cut": 842
+ },
+ "mustafa_profile": {
+  "image": "heads/mustafa_profile.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 838
+ },
+ "mustafa_shout": {
+  "image": "heads/mustafa_shout.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "mustafa_tq": {
+  "image": "heads/mustafa_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "noam_hurt": {
+  "image": "heads/noam_hurt.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "noam_profile": {
+  "image": "heads/noam_profile.png",
+  "source_height": 1024,
+  "crown": 110,
+  "chin": 736,
+  "neck_cut": 838
+ },
+ "noam_shout": {
+  "image": "heads/noam_shout.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "noam_tq": {
+  "image": "heads/noam_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "sam_hurt": {
+  "image": "heads/sam_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "sam_profile": {
+  "image": "heads/sam_profile.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "sam_shout": {
+  "image": "heads/sam_shout.png",
+  "source_height": 1024,
+  "crown": 104,
+  "chin": 730,
+  "neck_cut": 832
+ },
+ "sam_tq": {
+  "image": "heads/sam_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ },
+ "yann_hurt": {
+  "image": "heads/yann_hurt.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "yann_profile": {
+  "image": "heads/yann_profile.png",
+  "source_height": 1024,
+  "crown": 108,
+  "chin": 734,
+  "neck_cut": 836
+ },
+ "yann_shout": {
+  "image": "heads/yann_shout.png",
+  "source_height": 1024,
+  "crown": 116,
+  "chin": 742,
+  "neck_cut": 844
+ },
+ "yann_tq": {
+  "image": "heads/yann_tq.png",
+  "source_height": 1024,
+  "crown": 102,
+  "chin": 728,
+  "neck_cut": 830
+ }
+}

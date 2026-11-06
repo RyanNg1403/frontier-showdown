@@ -1,0 +1,100 @@
+{
+  "id": "andrej",
+  "name": "Andrej Karpathy",
+  "height_px": 204,
+  "speeds": {
+    "walk": 215,
+    "run": 480
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.615,
+    "muscle": 0.35,
+    "weight": 0.35,
+    "proportions": 0.65,
+    "height": 0.6,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "measure-upperarm-length-incr": 0.3,
+      "measure-lowerarm-length-incr": 0.3
+    }
+  },
+  "skin": "#edc3a4",
+  "hair": {
+    "color": "#2a1f1a",
+    "thickness": 0.007,
+    "top": 0.012,
+    "forward": 0.004,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#262b3b",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#8e9096",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#d89aa0",
+      "thickness": 0.012,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": -0.06,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/andrej_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/andrej_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/andrej_profile.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      },
+      "hurt": {
+        "image": "heads/andrej_hurt.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "shout": {
+        "image": "heads/andrej_shout.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Untucked dusty-pink button-down, dark jeans, grey sneakers; lean, slightly lanky, long arms."
+}

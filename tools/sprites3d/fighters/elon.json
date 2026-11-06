@@ -1,0 +1,117 @@
+{
+  "id": "elon",
+  "name": "Elon Musk",
+  "height_px": 214,
+  "speeds": {
+    "walk": 225,
+    "run": 520
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.731,
+    "muscle": 0.55,
+    "weight": 0.78,
+    "proportions": 0.5,
+    "height": 0.7,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "measure-shoulder-dist-incr": 0.5,
+      "neck-scale-horiz-incr": 0.45,
+      "stomach-pregnant-incr": 0.3
+    }
+  },
+  "skin": "#e9bc9c",
+  "hair": {
+    "color": "#6a4a33",
+    "thickness": 0.008,
+    "top": 0.03,
+    "forward": -0.01,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#262b3b",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#141416",
+      "thickness": 0.005,
+      "sole": 0.006,
+      "collar": 0.07
+    },
+    {
+      "kind": "top",
+      "name": "tee",
+      "color": "#1e1e22",
+      "thickness": 0.01,
+      "sleeve": 0.35,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "outer",
+      "name": "blazer",
+      "color": "#16161a",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/elon_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/elon_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/elon_profile.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 736,
+        "neck_cut": 838
+      },
+      "hurt": {
+        "image": "heads/elon_hurt.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "shout": {
+        "image": "heads/elon_shout.png",
+        "source_height": 1024,
+        "crown": 118,
+        "chin": 744,
+        "neck_cut": 846
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Black blazer over a black tee, dark jeans, black boots; tall, broad, heavy-set with a thick neck and slight paunch."
+}
