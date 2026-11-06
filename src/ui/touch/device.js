@@ -56,16 +56,16 @@ export function safeInsets() {
 
 /**
  * Size the 16:9 game box to the largest fit inside the safe area, snapping to a whole number of
- * device pixels per canvas pixel when that costs little, so pixel art stays even. When the canvas
- * is shown below 1:1 device pixels, smoothing beats dropped pixel columns.
+ * device pixels per logical pixel when that costs little. The engine's quality tier sizes the
+ * canvas backing store from this box, so a snapped box gives it an integer render scale.
  */
-export function fitScreen(screenEl, canvas, { portrait = false } = {}) {
+export function fitScreen(screenEl) {
   const vv = window.visualViewport;
   const W = Math.round(vv?.width || window.innerWidth);
   const H = Math.round(vv?.height || window.innerHeight);
   const ins = safeInsets();
   const availW = Math.max(1, W - ins.left - ins.right);
-  const availH = Math.max(1, (portrait ? Math.min(H * 0.5, availW * (LOGICAL_H / LOGICAL_W)) : H) - ins.top - ins.bottom);
+  const availH = Math.max(1, H - ins.top - ins.bottom);
   const dpr = window.devicePixelRatio || 1;
   let scale = Math.min(availW / LOGICAL_W, availH / LOGICAL_H);
   const device = scale * dpr;
@@ -74,6 +74,5 @@ export function fitScreen(screenEl, canvas, { portrait = false } = {}) {
   const h = Math.floor(LOGICAL_H * scale);
   screenEl.style.width = `${w}px`;
   screenEl.style.height = `${h}px`;
-  if (canvas) canvas.style.imageRendering = scale * dpr >= 1 ? "pixelated" : "auto";
   return { width: w, height: h, scale, devicePerPixel: scale * dpr, viewport: { width: W, height: H }, insets: ins };
 }

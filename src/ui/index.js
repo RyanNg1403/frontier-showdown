@@ -94,7 +94,6 @@ export function mountUI(rootEl, game, options = {}) {
   rootEl.append(root);
 
   const screenEl = rootEl.parentElement?.id === "screen" ? rootEl.parentElement : null;
-  const canvas = screenEl?.querySelector("canvas");
   const touchDevice = hasTouch();
   root.classList.toggle("is-lite", touchDevice);
   const fit = () => {
@@ -106,7 +105,7 @@ export function mountUI(rootEl, game, options = {}) {
   const ro = new ResizeObserver(fit);
   ro.observe(rootEl);
   fit();
-  const fitBox = () => { if (screenEl) fitScreen(screenEl, canvas); };
+  const fitBox = () => { if (screenEl) fitScreen(screenEl); };
   let fitRaf = 0;
   const onViewport = () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitBox); };
   fitBox();

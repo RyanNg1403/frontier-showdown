@@ -224,7 +224,7 @@ export function createSelectScreen(ui) {
     preview.dataset.side = String(previewSide);
     const rows = moves.map((m, k) => h("li", { class: ["fs-preview__move", m.kind === "Super" && "is-super"], dataset: { k: String(k) } },
       h("span", { class: "fs-preview__kind" }, m.kind),
-      h("span", { class: "fs-preview__name" }, m.name),
+      h("span", { class: "fs-preview__name", title: m.name }, m.name),
       h("span", { class: "fs-preview__input" }, renderInput(m.input, { size: "sm" }))));
     replace(preview,
       h("header", { class: "fs-preview__head" },
@@ -249,6 +249,7 @@ export function createSelectScreen(ui) {
       const m = moves[k];
       const n = glyphCount(m.input);
       [...items].forEach((li, idx) => li.classList.toggle("is-playing", idx === k));
+      followPlaying(list.parentElement, items[k]);
       const slot = items[k].querySelector(".fs-preview__input");
       slot.replaceChildren(renderInput(m.input, { size: "sm", activeIndex: reduce ? -1 : Math.max(-1, step) }));
       if (step === n) sprite.play(m.kind === "Super" ? "super" : `special_${k + 1}`);
@@ -261,6 +262,15 @@ export function createSelectScreen(ui) {
     };
     tick();
     cycleTimer = setInterval(tick, 150);
+  }
+
+  // Keep the demonstrated move in view when the list is taller than the panel (scrollTop only,
+  // so no ancestor of the stage scrolls).
+  function followPlaying(box, item) {
+    if (!box || box.scrollHeight <= box.clientHeight) return;
+    const top = item.offsetTop - box.offsetTop;
+    if (top < box.scrollTop) box.scrollTop = top;
+    else if (top + item.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top + item.offsetHeight - box.clientHeight;
   }
 
   function setCursor(si, idx, sound = true) {

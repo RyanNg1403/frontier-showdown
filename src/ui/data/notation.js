@@ -4,7 +4,7 @@ import { h } from "../core/dom.js";
 const ARROWS = { 1: "↙", 2: "↓", 3: "↘", 4: "←", 5: "•", 6: "→", 7: "↖", 8: "↑", 9: "↗" };
 const MOTIONS = {
   QCF: [2, 3, 6], QCB: [2, 1, 4], DP: [6, 2, 3], RDP: [4, 2, 1],
-  HCF: [4, 1, 2, 3, 6], HCB: [6, 3, 2, 1, 4], "360": [6, 3, 2, 1, 4, 7, 8, 9],
+  HCF: [4, 1, 2, 3, 6], HCB: [6, 3, 2, 1, 4],
   // MK-style taps: BF = back, forward; DB / DF = down then back / forward (two taps, not diagonals).
   BF: [4, 6], FB: [6, 4], DB: [2, 4], DF: [2, 6], DD: [2, 2], FF: [6, 6], BB: [4, 4],
   F: [6], B: [4], D: [2], U: [8], UF: [9], UB: [7], N: [5],
@@ -57,7 +57,9 @@ function pushPart(tokens, part) {
   const body = repeat ? repeat[1] : part;
   for (let i = 0; i < times; i++) {
     if (hold) tokens.push({ type: "sep", value: "hold" });
-    if (MOTIONS[body]) {
+    if (body === "360") {
+      tokens.push({ type: "spin", value: 360 });
+    } else if (MOTIONS[body]) {
       for (const d of MOTIONS[body]) tokens.push({ type: "dir", value: d });
     } else if (BUTTONS[body]) {
       tokens.push({ type: "btn", value: body });
@@ -77,6 +79,7 @@ function pushPart(tokens, part) {
 export function describeInput(input) {
   return parseInput(input).map((t) => {
     if (t.type === "dir") return ARROWS[t.value];
+    if (t.type === "spin") return "full circle";
     if (t.type === "btn") return BUTTONS[t.value].name;
     if (t.type === "sep") return t.value === "hold" ? "hold" : t.value === "+" ? "plus" : "then";
     return t.value;
@@ -96,6 +99,7 @@ export function renderInput(input, { size = "md", activeIndex = -1 } = {}) {
     const state = glyph === activeIndex ? " is-active" : glyph < activeIndex ? " is-done" : "";
     glyph++;
     if (t.type === "dir") el.append(h("span", { class: `fs-input__dir${state}`, "aria-hidden": "true" }, ARROWS[t.value]));
+    else if (t.type === "spin") el.append(h("span", { class: `fs-input__text is-spin${state}`, "aria-hidden": "true" }, "360°"));
     else if (t.type === "btn") {
       const b = BUTTONS[t.value];
       el.append(h("span", { class: `fs-input__btn is-${b.kind}${state}`, "aria-hidden": "true" }, b.label));
