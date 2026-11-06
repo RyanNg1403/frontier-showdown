@@ -27,6 +27,7 @@ async function offerResume(game, progress) {
     body: `${title}. ${detail}.`,
     yes: "Resume",
     no: "Discard",
+    primary: true,
     onYes() {
       resumed = true;
       ui.closeOverlay(true);
