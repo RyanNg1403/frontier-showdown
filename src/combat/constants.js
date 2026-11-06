@@ -113,6 +113,7 @@ export const ANIM_FALLBACKS = Object.freeze({
   finished: ["dazed", "hit_high"],
   finisher: ["super", "special_1"],
   assist: ["special_1"],
+  air_dive: ["air_attack"],
   tag_out: ["dash_back", "walk_back"],
   thrown: ["hit_high"],
   run: ["walk_fwd"],

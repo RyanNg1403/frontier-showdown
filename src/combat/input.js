@@ -1,4 +1,5 @@
 import { BTN, RULES } from "./constants.js";
+import { ROTATION_SEQ, rotationIn } from "./mechanics/rotation.js";
 
 const MIRROR = [0, 3, 2, 1, 6, 5, 4, 9, 8, 7];
 
@@ -176,8 +177,10 @@ export function parseMotion(raw) {
     body = body.slice(chargeMatch[0].length);
   }
   const tokens = body.split(",").filter(Boolean);
+  const rotation = tokens.includes("360");
   for (const token of tokens) {
-    if (NAMED[token]) seq.push(...NAMED[token]);
+    if (token === "360") seq.push(...ROTATION_SEQ);
+    else if (NAMED[token]) seq.push(...NAMED[token]);
     else if (/^[1-9]+$/.test(token)) seq.push(...token.split("").map(Number));
     else throw new Error(`Unknown motion token "${token}" in "${raw}"`);
   }
@@ -191,7 +194,7 @@ export function parseMotion(raw) {
     }
     all = parts.length > 1;
   }
-  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all });
+  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all, rotation });
   cache.set(raw, parsed);
   return parsed;
 }
@@ -236,6 +239,7 @@ function sequenceBefore(buffer, motion, facing, pressAge) {
     earliest = Math.max(0, last - ok.sinceEnd - 1);
   }
   if (seq.length === 0) return true;
+  if (motion.rotation) return rotationIn(chrono);
 
   for (let start = earliest; start <= last; start += 1) {
     if (chrono[start] !== seq[0]) continue;

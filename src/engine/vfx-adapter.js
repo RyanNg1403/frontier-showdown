@@ -28,6 +28,8 @@ const ALIASES = {
   barrier_break: ["lab_burst"],
   alignment_block: ["block"],
   guardrail: ["guard_break", "block"],
+  guard_crack: ["block"],
+  ground_bounce: ["dust_knockdown", "dust_land"],
 };
 
 const SCALE = { hit_super: 1.5, hit_special: 1.15, finisher: 1.6, clash: 0.9 };

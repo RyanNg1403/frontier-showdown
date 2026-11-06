@@ -4,6 +4,9 @@ import { InputBuffer, NEUTRAL_INPUT, isBack, matchMotion } from "./input.js";
 import { anyOverlap, intersectionCenter, overlaps, resolvePush, toWorld } from "./boxes.js";
 import { addMeter, applyDamage, guardBlocks, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
 import { createRng } from "./rng.js";
+import { applyGroundBounce } from "./mechanics/air-dive.js";
+import { canGrab, grabTiming } from "./mechanics/grabs.js";
+import { afterBlock } from "./mechanics/guard-crush.js";
 
 const START_X = 230;
 
@@ -341,6 +344,7 @@ export class Match {
     env.frame = this.frame;
     env.bounds = this.bounds;
     env.backBlocks = this.backBlocks;
+    env.noJump = this.phase === "finish";
     return env;
   }
 
@@ -385,6 +389,7 @@ export class Match {
         lastHit: new Map(),
         vfx: p.vfx,
         palette: owner.def.palette,
+        move,
         dead: false,
       };
       this.projectiles.push(proj);
@@ -552,8 +557,7 @@ export class Match {
       const m = a.move;
       if (a.moveFrame < m.startup || a.moveFrame >= m.startup + m.active) continue;
       const d = this.point(1 - a.side);
-      if (!d || d.invulnTo("throw")) continue;
-      if (Math.abs(a.x - d.x) > m.grab.range || a.airborne) continue;
+      if (!canGrab(a, d, m.grab)) continue;
       attempts.push({ a, d, m });
     }
     if (attempts.length === 2 && attempts[0].m.grab.techable && attempts[1].m.grab.techable) {
@@ -563,17 +567,22 @@ export class Match {
     for (const { a, d, m } of attempts) {
       if (d.state === "throwing" || d.state === "thrown" || a.state !== "attack") continue;
       const back = this.sides[a.side].input && isBack(this.sides[a.side].input.dir(a.facing));
+      const timing = grabTiming(m);
       a.setState("throwing", { keepAnim: true });
       a.anim = { name: m.anim, t: 0 };
-      a.grab = { length: Math.max(30, m.recovery + 10), victim: d, move: m };
+      a.grab = { length: timing.length, victim: d, move: m };
+      const fromY = d.y;
       d.setState("thrown");
       d.combo = { hits: 0, damage: 0 };
       d.grab = {
         by: a,
         move: m,
         techable: m.grab.techable,
-        release: m.grab.techable ? RULES.throwTechWindow + 2 : 10,
-        damage: m.grab.damage,
+        release: timing.release,
+        lift: timing.lift,
+        liftFrames: timing.liftFrames,
+        fromY,
+        damage: Math.round(m.grab.damage * (a.damageMul ?? 1)),
         knockback: m.grab.knockback,
         back,
       };
@@ -610,15 +619,16 @@ export class Match {
     addMeter(this.sides[d.side], meterOnHit(g.move, dealt).defender);
     d.setState("juggle");
     d.juggleLocked = true;
-    d.y = -40;
+    d.y = Math.min(d.y, -40);
     d.vy = -(g.knockback.y || 650);
     d.vx = dir * (g.knockback.x || 280);
     d.facing = -dir;
     d.hitstop = 10;
     a.hitstop = 10;
     this.shakeFrames = Math.max(this.shakeFrames, 8);
-    this.emit("hit", { attacker: a.id, defender: d.id, side: a.side, moveId: g.move.id, kind: "throw", damage: dealt, combo: 1, comboDamage: dealt, counter: false, level: "unblockable", x: d.x, y: -100 });
-    this.vfx("hit_heavy", d.x, -100, { facing: a.facing, side: a.side, damage: dealt, combo: 1, palette: a.def.palette });
+    const isSuper = g.move.category === "super";
+    this.emit("hit", { attacker: a.id, defender: d.id, side: a.side, moveId: g.move.id, kind: isSuper ? "super" : "throw", damage: dealt, combo: 1, comboDamage: dealt, counter: false, level: "unblockable", x: d.x, y: -100 });
+    this.vfx(isSuper ? "hit_super" : "hit_heavy", d.x, -100, { facing: a.facing, side: a.side, damage: dealt, combo: 1, palette: a.def.palette });
   }
 
   // ------------------------------------------------------------------ strikes
@@ -698,6 +708,8 @@ export class Match {
       meterGain: p.def.meterGain,
       juggle: 2,
       special: p.category === "special",
+      move: p.move,
+      final: isLast,
     };
     this.applyContact(p.owner, d, props, at, { projectile: p, dir: p.facing });
     if (isLast) {
@@ -727,6 +739,8 @@ export class Match {
       meterGain: move.meterGain,
       juggle: idx === 0 ? move.juggle : 0,
       special: move.category === "special",
+      move,
+      final: isLast,
     };
     const dir = d.x === a.x ? a.facing : Math.sign(d.x - a.x);
     this.applyContact(a, d, props, at, { dir });
@@ -805,6 +819,7 @@ export class Match {
       this.emit("block", { ...payloadBase, chip: dealt, aligned });
       this.vfx(aligned ? "alignment_block" : "block", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
       if (aligned) this.emit("alignmentBlock", { fighter: d.id, side: d.side });
+      afterBlock(this, a, d, props, at);
       return;
     }
 
@@ -853,6 +868,7 @@ export class Match {
         d.vy = -lift / w;
         d.vx = dir * Math.max(90, props.knockback.x * 0.55) / w;
         d.y = Math.min(d.y, -2);
+        applyGroundBounce(d, props);
       } else {
         d.setState("hitstun", { keepAnim: true });
         d.stun = props.hitstun + (counter ? RULES.counterHitstun : 0) + (punish ? RULES.punishHitstun : 0);
@@ -1155,7 +1171,7 @@ export class Match {
     incoming.health = health;
     incoming.red = swapGuard ? red / 2 : red;
     incoming.onField = true;
-    incoming.script = { fromX, toX, frames: cancel ? 14 : swapGuard ? 18 : 24, arc: 170 };
+    incoming.script = { fromX, toX, frames: (cancel ? 14 : swapGuard ? 18 : 24) + (swapGuard ? 0 : incoming.passiveDef?.handoffEntryDelta ?? 0), arc: 170 };
     incoming.entryMove = swapGuard ? incoming.def.moves.get(incoming.def.assists.a) : null;
     incoming.setState("tag_in");
     this.emit("tag", { side: s.side, out: out.id, in: incoming.id, forced, swapGuard, cancel });
@@ -1196,7 +1212,7 @@ export class Match {
     for (const s of this.sides) {
       const a = s.assist;
       if (!a) continue;
-      if (a.state === "attack" || a.state === "assist_in" || a.state === "assist_out") continue;
+      if (a.state === "attack" || a.state === "throwing" || a.state === "assist_in" || a.state === "assist_out") continue;
       this.sendAssistHome(a);
     }
   }

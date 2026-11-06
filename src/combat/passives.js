@@ -22,6 +22,17 @@ const PASSIVES = {
     chipTakenMul: () => 0.7,
     alignmentWindow: () => 4,
   },
+  meta: {
+    name: "Move Fast (with Stable Infra)",
+    /** Forward dash 2 f shorter; in 2v2 the hand-off entry is 4 f faster. */
+    dashFwdDelta: -2,
+    handoffEntryDelta: -4,
+  },
+  xai: {
+    name: "Colossus Spin-up",
+    /** +15% Compute gain while below 50% health. */
+    meterGainMul: (f) => (f.health / f.maxHealth < 0.5 ? 1.15 : 1),
+  },
 };
 
 export function passiveFor(def) {

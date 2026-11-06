@@ -20,11 +20,12 @@ const NORMAL_ANIMS = {
   f_hk: "heavy_kick",
   b_hp: "heavy_punch",
   b_hk: "heavy_kick",
+  j_d_hp: "air_dive",
 };
 
 /** Standard normals every character has. Command normals (`f_hp`, `b_hk`, ...) are optional. */
 export const NORMAL_KEYS = Object.freeze(["lp", "hp", "lk", "hk", "c_lp", "c_hp", "c_lk", "c_hk", "j_p", "j_k"]);
-export const COMMAND_NORMAL_KEYS = Object.freeze(["f_hp", "f_hk", "b_hp", "b_hk"]);
+export const COMMAND_NORMAL_KEYS = Object.freeze(["f_hp", "f_hk", "b_hp", "b_hk", "j_d_hp"]);
 const BUTTONS = ["LP", "HP", "LK", "HK"];
 
 const DEFAULT_PALETTE = {
@@ -91,7 +92,7 @@ function normalizeMove(id, raw, category, extra = {}) {
     invuln: m.invuln ? { from: m.invuln.from ?? 1, to: m.invuln.to ?? startup, type: m.invuln.type || "all" } : null,
     armor: m.armor ? { from: m.armor.from ?? 1, to: m.armor.to ?? startup, hits: m.armor.hits ?? 1 } : null,
     projectile: m.projectile ? normalizeProjectile(m.projectile, startup) : null,
-    grab: m.grab ? { range: m.grab.range ?? 110, damage: m.grab.damage ?? 140, techable: Boolean(m.grab.techable), knockback: m.grab.knockback || { x: 260, y: 700 } } : null,
+    grab: m.grab ? { ...m.grab, range: m.grab.range ?? 110, damage: m.grab.damage ?? 140, techable: Boolean(m.grab.techable), knockback: m.grab.knockback || { x: 260, y: 700 } } : null,
     teleport: m.teleport ? { vanish: m.teleport.vanish ?? 4, frame: m.teleport.frame ?? startup - 2, to: m.teleport.to || "front", distance: m.teleport.distance ?? 72 } : null,
     parry: m.parry ? normalizeParry(m.parry) : null,
     barrier: m.barrier ? normalizeBarrier(m.barrier, startup) : null,
@@ -112,12 +113,15 @@ function normalizeMove(id, raw, category, extra = {}) {
     button: extra.button || null,
   };
   if (move.motion) move.rank = motionPriority(move.motion) + move.priority;
+  // Mechanic fields (src/combat/mechanics/*) such as guardCrush or lowProfile pass through as written.
+  for (const key of Object.keys(m)) if (!(key in move) && key !== "scaleUp") move[key] = m[key];
   return move;
 }
 
 function normalizeProjectile(p, startup) {
   const vys = Array.isArray(p.spread) ? p.spread : [p.vy ?? 0];
   return Object.freeze({
+    ...p,
     speed: p.speed ?? 480,
     hitbox: box(p.hitbox, { x: -26, y: -26, w: 52, h: 52 }),
     offset: { x: p.offset?.x ?? 70, y: p.offset?.y ?? -130 },
@@ -309,6 +313,7 @@ export function defineCharacter(def) {
     assist: assists.a,
     sharedSkills,
     moves,
+    ai: Object.freeze({ ...(def.ai || {}) }),
   };
   out.passive = passiveName(out);
   return Object.freeze(out);

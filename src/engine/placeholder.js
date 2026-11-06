@@ -207,7 +207,8 @@ export function drawPlaceholder(ctx, f) {
   const rot = bodyRotation(f);
   ctx.save();
   ctx.translate(f.x, f.y);
-  ctx.scale(f.facing, 1);
+  const k = (f.def.stats.height || 200) / 200;
+  ctx.scale(f.facing * k, k);
   if (rot) {
     ctx.translate(0, -16 * Math.min(1, Math.abs(rot) / (Math.PI / 2)));
     ctx.rotate(rot);

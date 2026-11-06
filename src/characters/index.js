@@ -1,7 +1,7 @@
 import { defineCharacter } from "./schema.js";
 
 /** Playable character ids, in select-screen order. Each has `src/characters/<id>.js`. */
-export const characterIds = Object.freeze(["sam", "dario"]);
+export const characterIds = Object.freeze(["sam", "dario", "mark", "elon"]);
 
 const cache = new Map();
 

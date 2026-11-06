@@ -3,6 +3,10 @@ import { isBack, isDown, isFwd, isUp, matchDoubleTap, matchMotion } from "./inpu
 import { DEFAULT_HURTBOXES, DEFAULT_PUSHBOX, toWorld } from "./boxes.js";
 import { LOCOMOTION, attackFrameIndex, cycleFrameIndex, resolveAnim } from "./anim.js";
 import { passiveFor } from "./passives.js";
+import { moveHurtboxes, stopOnContact } from "./mechanics/advancing.js";
+import { airCommandNormal, groundBounce, landingRecovery } from "./mechanics/air-dive.js";
+import { thrownHeight } from "./mechanics/grabs.js";
+import { prejumpMoves } from "./mechanics/rotation.js";
 
 const NEUTRAL = new Set(["idle", "walk_fwd", "walk_back", "crouch", "block", "crouch_block"]);
 const STUNNED = new Set(["hitstun", "juggle"]);
@@ -200,6 +204,8 @@ export class Fighter {
 
   localHurtboxes() {
     const set = this.def.hurtboxes || DEFAULT_HURTBOXES;
+    const moveBoxes = moveHurtboxes(this);
+    if (moveBoxes) return moveBoxes;
     const frameBoxes = this.atlasFrameBoxes("hurtboxes");
     if (frameBoxes) return frameBoxes;
     if (this.isLying) return set.down || DEFAULT_HURTBOXES.down;
@@ -429,13 +435,14 @@ export class Fighter {
       case "attack":
         if (this.move?.air || this.move?.velocity.some((v) => v.vy !== undefined)) {
           this.vx = 0;
-          const rec = this.move.landingRecovery;
+          const rec = landingRecovery(this);
           this.setState("jump_land");
           this.landingRecovery = rec;
           env.vfx("dust_land", this.x, 0, { facing: this.facing, side: this.side });
         }
         break;
       case "juggle":
+        if (groundBounce(this, env, impact)) break;
         this.vx *= 0.3;
         this.juggleCount = 0;
         this.juggleHits = 0;
@@ -530,7 +537,7 @@ export class Fighter {
       let move;
       if (air) {
         if (this.airAttackUsed) return null;
-        move = def.normals[bit === BTN.LP || bit === BTN.HP ? "j_p" : "j_k"];
+        move = airCommandNormal(def, bit, d) || def.normals[bit === BTN.LP || bit === BTN.HP ? "j_p" : "j_k"];
       } else if (isDown(d)) {
         move = def.normals[`c_${key}`];
       } else if (isFwd(d) && def.normals[`f_${key}`]) {
@@ -638,7 +645,7 @@ export class Fighter {
       return;
     }
     const d = b.dir(this.facing);
-    if (isUp(d)) {
+    if (isUp(d) && !env.noJump) {
       this.jumpDir = d === 9 ? 1 : d === 7 ? -1 : 0;
       this.vx = 0;
       this.setState("jump_start");
@@ -676,7 +683,7 @@ export class Fighter {
   }
 
   st_dash_fwd(env) {
-    const total = 18;
+    const total = 18 + (this.passiveDef?.dashFwdDelta ?? 0);
     const run = this.locomotionSpeed("run");
     const t = this.stateFrame / total;
     this.vx = this.facing * run * (1.05 - 0.55 * t);
@@ -730,6 +737,8 @@ export class Fighter {
   }
 
   st_jump_start(env) {
+    const rotations = prejumpMoves(this.def);
+    if (rotations.length && env.canAct && this.tryAct(env, { filter: rotations, normals: false, throws: false })) return;
     if (this.stateFrame >= 4) {
       const stats = this.def.stats;
       const g = PHYS.gravity * (stats.weight || 1);
@@ -766,6 +775,7 @@ export class Fighter {
       this.startMove(next, env, { cancel: true });
       return;
     }
+    stopOnContact(this);
     if (m.scaled && !m.isScaled && this.moveFrame <= RULES.scaleUpWindow && env.input?.pressedNow(BTN.BLOCK) && env.team.meter >= RULES.scaleUpCost && !this.assistMode) {
       env.team.meter -= RULES.scaleUpCost;
       this.move = m = m.scaled;
@@ -847,9 +857,8 @@ export class Fighter {
     const by = g.by;
     this.vx = 0;
     this.vy = 0;
-    const lift = Math.min(1, this.stateFrame / 6);
     this.x = by.x + by.facing * 58;
-    this.y = -30 * lift;
+    this.y = thrownHeight(g, this.stateFrame);
     this.facing = -by.facing;
     if (g.techable && this.stateFrame <= RULES.throwTechWindow && this.throwInput(env.input)) {
       env.input.consume();
