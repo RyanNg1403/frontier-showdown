@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test tests/",
+    "test": "node --test \"tests/*.test.mjs\"",
     "test:balance": "node test-ai-balance.mjs",
     "test:signal-tether": "node test-signal-tether.mjs",
     "test:soul-salvo": "node test-soul-salvo.mjs",

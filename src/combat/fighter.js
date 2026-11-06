@@ -307,7 +307,7 @@ export class Fighter {
     const keepVx = this.state === "run" ? this.vx * 0.5 : 0;
     this.setState("attack", { keepAnim: true });
     this.move = move;
-    this.moveFrame = 0;
+    this.moveFrame = 1;
     this.connected = false;
     this.hitLog = new Map();
     this.armorHits = 0;
@@ -693,7 +693,6 @@ export class Fighter {
       const next = this.pendingMove;
       this.pendingMove = null;
       this.startMove(next, env, { cancel: true });
-      this.moveFrame = 1;
       return;
     }
     const v = this.velocityWindow();
