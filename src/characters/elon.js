@@ -1,5 +1,30 @@
 import { defineCharacter } from "./schema.js";
-import { bodyFor } from "./body.js";
+import { bodyFor } from "../combat/mechanics/body-scale.js";
+import { registerAirDive } from "../combat/mechanics/air-dive.js";
+import "../combat/mechanics/grabs.js";
+import "../combat/mechanics/guard-crush.js";
+import "../combat/mechanics/finisher-inputs.js";
+
+/**
+ * "The Walrus" is jumping down+HP, a command normal the schema has no key for, so it is
+ * normalized on its own and started by the "elon-walrus" air-dive mechanic.
+ */
+const WALRUS = Object.freeze({
+  ...defineCharacter({
+    id: "elon",
+    normals: {
+      j_p: {
+        name: "The Walrus", startup: 9, active: 30, recovery: 4, damage: 70, hitstun: 22, blockstun: 18,
+        hitbox: { x: -34, y: -96, w: 124, h: 80 }, knockback: { x: 160 }, level: "overhead", knockdown: true,
+        velocity: [{ from: 6, to: 38, vx: 200, vy: 1150 }], landingRecovery: 14, meterGain: 5, hitstop: 12,
+        mechanic: "ground-bounce", mechanicData: { groundBounce: { bounce: 760, slam: 900 }, landingRecoveryOnHit: 4 },
+        description: "Belly-flop dive (jumping down+HP). Overhead; a hit slams the opponent into the floor for a ground bounce.",
+      },
+    },
+  }).normals.j_p,
+  id: "j_d_hp",
+});
+registerAirDive("elon-walrus", WALRUS);
 
 /**
  * Elon Musk, "The Technoking" (roster doc 3.4). Rushdown / wildcard and the tallest fighter:
@@ -13,6 +38,8 @@ export default defineCharacter({
   title: "The Technoking",
   lab: "SpaceX / xAI",
   labId: "xai",
+  archetype: "rushdown",
+  difficulty: 2,
   bio: "Technoking of Tesla and head of SpaceX, which owns xAI. Runs in, pressures with Not-a-Flamethrower, catches jump-outs with Mechazilla, and belly-flops in with The Walrus.",
   quotes: {
     intro: "I have this great move that I call 'The Walrus,' where I just lie on top of my opponent and do nothing.",
@@ -30,6 +57,7 @@ export default defineCharacter({
   },
   stats: { health: 1000, walkSpeed: 225, runSpeed: 520, jump: 225, weight: 1.1, height: 214 },
   ...bodyFor(214, 1.08),
+  mechanics: ["guard-crush", "elon-walrus", "finisher-no-jump"],
   normals: {
     lp: {
       name: "Quick Jab", startup: 7, active: 2, recovery: 12, damage: 24, hitstun: 16, blockstun: 13,
@@ -79,13 +107,6 @@ export default defineCharacter({
       name: "Booster Boot", startup: 7, active: 7, recovery: 8, damage: 62, hitstun: 20, blockstun: 16,
       hitbox: { x: 8, y: -98, w: 112, h: 48 }, knockback: { x: 210 }, level: "overhead", meterGain: 4,
     },
-    j_d_hp: {
-      name: "The Walrus", startup: 9, active: 30, recovery: 4, damage: 70, hitstun: 22, blockstun: 18,
-      hitbox: { x: -34, y: -96, w: 124, h: 80 }, knockback: { x: 160 }, level: "overhead", knockdown: true,
-      velocity: [{ from: 6, to: 38, vx: 200, vy: 1150 }], groundBounce: { vy: 760, slam: 900 },
-      landingRecovery: 14, landingRecoveryOnHit: 4, meterGain: 5, hitstop: 12,
-      description: "Belly-flop dive (jumping down+HP). Overhead; a hit slams the opponent into the floor for a ground bounce.",
-    },
     f_hk: {
       name: "Cybertruck Charge", anim: "heavy_punch", limb: "arm", startup: 16, active: 4, recovery: 22, damage: 70,
       hitstun: 22, blockstun: 18, hitbox: { x: 16, y: -176, w: 92, h: 120 }, knockback: { x: 380 }, level: "mid",
@@ -109,14 +130,15 @@ export default defineCharacter({
       id: "mechazilla_catch", name: "Mechazilla Catch", input: "DP+P", priority: 1,
       description: "Giant mechanical chopstick arms rise behind him and clamp an airborne opponent, lift them up the launch tower and drop them. Grounded opponents are not grabbed (punishable whiff). Scale Up: also grabs grounded opponents within 80 px.",
       startup: 7, active: 6, recovery: 34, damage: 0, meterGain: 12, vfx: "lab_pillar",
-      grab: { air: "only", range: 160, reach: 320, damage: 140, hold: 34, lift: 170, liftFrames: 14, knockback: { x: 160, y: 150 } },
-      scaleUp: { grab: { air: "also", range: 160, groundRange: 80, reach: 320, damage: 182, hold: 34, lift: 170, liftFrames: 14, knockback: { x: 160, y: 150 } } },
+      mechanic: "anti-air-grab",
+      mechanicData: { air: "only", range: 160, reach: 320, damage: 140, hold: 34, lift: 170, liftFrames: 14, knockback: { x: 160, y: 150 } },
+      scaleUp: { mechanicData: { air: "also", range: 160, groundRange: 80, reach: 320, damage: 182, hold: 34, lift: 170, liftFrames: 14, knockback: { x: 160, y: 150 } } },
     },
     {
       id: "armor_glass", name: "Armor Glass", input: "B,F+P",
       description: "Lobs a steel ball in an arc. On block the opponent's guard cracks: their next block within 2 s suffers +6 blockstun. Scale Up: two balls, the second on a lower arc.",
       startup: 18, active: 2, recovery: 28, damage: 0, meterGain: 6, vfx: "special_xai",
-      guardCrush: { crack: { frames: 120, blockstun: 6 } },
+      mechanicData: { guardCrush: { crack: { frames: 120, blockstun: 6 } } },
       projectile: {
         speed: 430, vy: -620, gravity: 1500, hitbox: { x: -20, y: -20, w: 40, h: 40 }, offset: { x: 60, y: -170 },
         lifetime: 120, damage: 60, chip: 7, hitstun: 22, blockstun: 18, knockback: { x: 240 }, vfx: "projectile_xai", meterGain: 8,
@@ -144,8 +166,8 @@ export default defineCharacter({
     pressure: ["not_a_flamethrower:LP", "not_a_flamethrower:HP", "f_hk"],
     punish: ["c_hp", "f_hk", "not_a_flamethrower:HP"],
     cancel: ["not_a_flamethrower:LP", "not_a_flamethrower:HP"],
-    jumpIn: "j_d_hp",
-    evade: "j_d_hp",
+    jumpIn: WALRUS,
+    evade: WALRUS,
     superRange: 200,
     projectileRange: [330, 520],
   },

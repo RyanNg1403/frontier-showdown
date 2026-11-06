@@ -20,12 +20,11 @@ const NORMAL_ANIMS = {
   f_hk: "heavy_kick",
   b_hp: "heavy_punch",
   b_hk: "heavy_kick",
-  j_d_hp: "air_dive",
 };
 
 /** Standard normals every character has. Command normals (`f_hp`, `b_hk`, ...) are optional. */
 export const NORMAL_KEYS = Object.freeze(["lp", "hp", "lk", "hk", "c_lp", "c_hp", "c_lk", "c_hk", "j_p", "j_k"]);
-export const COMMAND_NORMAL_KEYS = Object.freeze(["f_hp", "f_hk", "b_hp", "b_hk", "j_d_hp"]);
+export const COMMAND_NORMAL_KEYS = Object.freeze(["f_hp", "f_hk", "b_hp", "b_hk"]);
 const BUTTONS = ["LP", "HP", "LK", "HK"];
 
 const DEFAULT_PALETTE = {
@@ -55,8 +54,34 @@ function defaultJuggle(id, m, category) {
   return LIGHT.has(id) ? 1 : 2;
 }
 
+/** Section-7 style aliases accepted in character files. */
+const NORMAL_ALIASES = {
+  light_punch: "lp", heavy_punch: "hp", light_kick: "lk", heavy_kick: "hk",
+  crouch_light: "c_lp", crouch_light_punch: "c_lp", crouch_light_kick: "c_lk",
+  crouch_heavy: "c_hp", crouch_heavy_punch: "c_hp", crouch_heavy_kick: "c_hk", sweep: "c_hk",
+  air_attack: "j_p", air_punch: "j_p", air_kick: "j_k", jump_punch: "j_p", jump_kick: "j_k",
+  overhead: "f_hp",
+};
+
+function canonicalMove(raw) {
+  const m = { ...raw };
+  if (Array.isArray(m.invuln)) m.invuln = { from: m.invuln[0], to: m.invuln[1], type: m.invuln[2] || "all" };
+  if (typeof m.knockback === "number") m.knockback = { x: m.knockback * 10 };
+  if (m.cost !== undefined && m.meterCost === undefined) m.meterCost = m.cost;
+  if (m.projectile && (m.projectile.speedLP || m.projectile.speedHP) && !m.variants) {
+    const pxPerSecond = (v) => (v < 40 ? v * 60 : v);
+    m.variants = {
+      LP: { projectile: { speed: pxPerSecond(m.projectile.speedLP ?? m.projectile.speedHP) } },
+      HP: { projectile: { speed: pxPerSecond(m.projectile.speedHP ?? m.projectile.speedLP) } },
+    };
+    m.projectile = { ...m.projectile, speed: m.variants.LP.projectile.speed };
+  }
+  if (m.crossUpOnHK && m.teleport && !m.variants) m.variants = { LK: { teleport: { to: "front" } }, HK: { teleport: { to: "behind" } } };
+  return m;
+}
+
 function normalizeMove(id, raw, category, extra = {}) {
-  const m = { ...raw, ...extra };
+  const m = { ...canonicalMove(raw), ...extra };
   const light = category === "normal" && LIGHT.has(id);
   const kind = category === "normal" ? (light ? "light" : "heavy") : category;
   const startup = Math.max(1, m.startup ?? 6);
@@ -92,7 +117,7 @@ function normalizeMove(id, raw, category, extra = {}) {
     invuln: m.invuln ? { from: m.invuln.from ?? 1, to: m.invuln.to ?? startup, type: m.invuln.type || "all" } : null,
     armor: m.armor ? { from: m.armor.from ?? 1, to: m.armor.to ?? startup, hits: m.armor.hits ?? 1 } : null,
     projectile: m.projectile ? normalizeProjectile(m.projectile, startup) : null,
-    grab: m.grab ? { ...m.grab, range: m.grab.range ?? 110, damage: m.grab.damage ?? 140, techable: Boolean(m.grab.techable), knockback: m.grab.knockback || { x: 260, y: 700 } } : null,
+    grab: m.grab ? { range: m.grab.range ?? 110, damage: m.grab.damage ?? 140, techable: Boolean(m.grab.techable), knockback: m.grab.knockback || { x: 260, y: 700 } } : null,
     teleport: m.teleport ? { vanish: m.teleport.vanish ?? 4, frame: m.teleport.frame ?? startup - 2, to: m.teleport.to || "front", distance: m.teleport.distance ?? 72 } : null,
     parry: m.parry ? normalizeParry(m.parry) : null,
     barrier: m.barrier ? normalizeBarrier(m.barrier, startup) : null,
@@ -111,17 +136,17 @@ function normalizeMove(id, raw, category, extra = {}) {
     scaled: null,
     isScaled: Boolean(extra.isScaled),
     button: extra.button || null,
+    mechanic: m.mechanic || null,
+    mechanicData: m.mechanicData ?? m.data ?? null,
+    raw: Object.freeze({ ...raw }),
   };
   if (move.motion) move.rank = motionPriority(move.motion) + move.priority;
-  // Mechanic fields (src/combat/mechanics/*) such as guardCrush or lowProfile pass through as written.
-  for (const key of Object.keys(m)) if (!(key in move) && key !== "scaleUp") move[key] = m[key];
   return move;
 }
 
 function normalizeProjectile(p, startup) {
   const vys = Array.isArray(p.spread) ? p.spread : [p.vy ?? 0];
   return Object.freeze({
-    ...p,
     speed: p.speed ?? 480,
     hitbox: box(p.hitbox, { x: -26, y: -26, w: 52, h: 52 }),
     offset: { x: p.offset?.x ?? 70, y: p.offset?.y ?? -130 },
@@ -228,8 +253,11 @@ export function defineCharacter(def) {
   stats.backWalkSpeed = stats.backWalkSpeed ?? Math.round(stats.walkSpeed * 0.8);
   stats.jumpHeight = jumpHeight(stats);
   const normals = {};
+  const rawNormals = {};
+  for (const [k, v] of Object.entries(def.normals || {})) rawNormals[NORMAL_ALIASES[k] || k] ??= v;
+  if (rawNormals.j_p && !rawNormals.j_k) rawNormals.j_k = { ...rawNormals.j_p, limb: "leg" };
   for (const key of [...NORMAL_KEYS, ...COMMAND_NORMAL_KEYS]) {
-    const raw = def.normals?.[key];
+    const raw = rawNormals[key];
     if (raw) normals[key] = Object.freeze(normalizeMove(key, raw, "normal"));
   }
   const specials = (def.specials || []).map((sp, i) => buildSpecial(sp.id || `special_${i + 1}`, sp, "special", sp.anim || `special_${i + 1}`));
@@ -240,6 +268,7 @@ export function defineCharacter(def) {
     active: 3,
     recovery: 22,
     damage: RULES.throwDamage,
+    meterGain: 10,
     anim: "throw",
     ...(def.throw || {}),
     grab: { range: RULES.throwRange, damage: def.throw?.damage ?? RULES.throwDamage, techable: true, knockback: def.throw?.knockback || { x: 300, y: 650 } },
@@ -259,18 +288,43 @@ export function defineCharacter(def) {
     limb: "leg",
     ...(def.getupAttack || {}),
   }, "normal"));
-  const finisher = def.finisher
+  const tagEntry = Object.freeze(normalizeMove("tag_entry", {
+    name: "Hand-off Entry",
+    startup: 16,
+    active: 8,
+    recovery: 0,
+    damage: 40,
+    hitstun: 20,
+    blockstun: 14,
+    level: "overhead",
+    hitbox: { x: -20, y: -150, w: 110, h: 150 },
+    knockback: { x: 200 },
+    anim: "tag_in",
+    limb: "leg",
+    juggle: 1,
+    ...(def.tagEntry || {}),
+  }, "normal"));
+  const finisherDef = def.finisher || {
+    id: "model_deprecated",
+    name: "Model Deprecated",
+    input: "D,F,D+HP",
+    range: "close",
+    description: "Generic finisher: the loser pixel-dissolves into a \"Model deprecated\" toast and reappears as a 16x16 chibi icon.",
+    generic: true,
+  };
+  const finisher = finisherDef
     ? Object.freeze({
-        id: def.finisher.id || "finisher",
-        name: def.finisher.name || "Finisher",
-        input: def.finisher.input || "F,B,F+HP",
-        motion: parseMotion(def.finisher.input || "F,B,F+HP"),
-        range: typeof def.finisher.range === "number" ? def.finisher.range : { close: 160, mid: 320, far: 1400 }[def.finisher.range] ?? 220,
-        rangeName: typeof def.finisher.range === "string" ? def.finisher.range : null,
-        anim: def.finisher.anim || "finisher",
-        frames: def.finisher.frames ?? 150,
-        description: def.finisher.description || "",
-        vfx: def.finisher.vfx || "finisher",
+        id: finisherDef.id || "finisher",
+        name: finisherDef.name || "Finisher",
+        input: finisherDef.input || "F,B,F+HP",
+        motion: parseMotion(finisherDef.input || "F,B,F+HP"),
+        range: typeof finisherDef.range === "number" ? finisherDef.range : { close: 160, mid: 320, far: 1400 }[finisherDef.range] ?? 220,
+        rangeName: typeof finisherDef.range === "string" ? finisherDef.range : null,
+        anim: finisherDef.anim || "finisher",
+        frames: finisherDef.frames ?? 150,
+        description: finisherDef.description || "",
+        vfx: finisherDef.vfx || `finisher_${finisherDef.id || "generic"}`,
+        generic: Boolean(finisherDef.generic),
       })
     : null;
   const moves = new Map();
@@ -297,6 +351,8 @@ export function defineCharacter(def) {
     lab: def.lab || "",
     labId,
     bio: def.bio || "",
+    archetype: def.archetype || "",
+    difficulty: def.difficulty ?? null,
     quotes: Object.freeze({ ...(def.quotes || {}) }),
     palette: Object.freeze({ ...DEFAULT_PALETTE, ...(def.palette || {}) }),
     stats: Object.freeze(stats),
@@ -308,12 +364,15 @@ export function defineCharacter(def) {
     super: superMove,
     throw: throwMove,
     getupAttack,
+    tagEntry,
     finisher,
+    mechanics: Object.freeze([...(def.mechanics || [])]),
+    ai: Object.freeze({ ...(def.ai || {}) }),
+    raw: def,
     assists,
     assist: assists.a,
     sharedSkills,
     moves,
-    ai: Object.freeze({ ...(def.ai || {}) }),
   };
   out.passive = passiveName(out);
   return Object.freeze(out);
@@ -330,6 +389,8 @@ export function describeCharacter(c, hasAtlas = false) {
     lab: c.lab,
     labId: c.labId,
     bio: c.bio,
+    archetype: c.archetype,
+    difficulty: c.difficulty,
     quotes: c.quotes,
     palette: c.palette,
     stats: c.stats,

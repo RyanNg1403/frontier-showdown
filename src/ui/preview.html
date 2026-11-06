@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frontier Showdown · UI preview</title>
+  <link rel="icon" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../styles/ui.css">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    .host { position: fixed; inset: 0; }
+    #game {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      transform: translate(-50%, -50%);
+      image-rendering: pixelated;
+      background: #07080c;
+    }
+    #ui-root { position: absolute; inset: 0; }
+  </style>
+</head>
+<body>
+  <div class="host">
+    <canvas id="game" width="1280" height="720"></canvas>
+    <div id="ui-root"></div>
+  </div>
+  <script type="module" src="./preview.js"></script>
+</body>
+</html>

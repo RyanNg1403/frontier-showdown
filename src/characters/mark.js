@@ -1,5 +1,9 @@
 import { defineCharacter } from "./schema.js";
-import { bodyFor } from "./body.js";
+import { bodyFor } from "../combat/mechanics/body-scale.js";
+import "../combat/mechanics/rotation.js";
+import "../combat/mechanics/grabs.js";
+import "../combat/mechanics/advancing.js";
+import "../combat/mechanics/guard-crush.js";
 
 /**
  * Mark Zuckerberg, "Send Me Location" (roster doc 3.3). Grappler: a 360 command grab, a
@@ -12,6 +16,8 @@ export default defineCharacter({
   title: "Send Me Location",
   lab: "Meta",
   labId: "meta",
+  archetype: "grappler",
+  difficulty: 2,
   bio: "Brazilian jiu-jitsu competitor and Meta CEO. Conditions opponents to block Move Fast and Break Things, then takes them down with Send Me Location, and slides under fireballs on an electric hydrofoil.",
   quotes: {
     intro: "Send me location.",
@@ -30,6 +36,7 @@ export default defineCharacter({
   },
   stats: { health: 1080, walkSpeed: 200, runSpeed: 460, jump: 200, weight: 1.1, height: 192 },
   ...bodyFor(192),
+  mechanics: ["rotation-360", "grab-hold", "guard-crush"],
   normals: {
     lp: {
       name: "MMA Jab", startup: 6, active: 2, recovery: 11, damage: 24, hitstun: 16, blockstun: 13,
@@ -82,23 +89,23 @@ export default defineCharacter({
   },
   specials: [
     {
-      id: "send_me_location", name: "Send Me Location", input: "360+P", priority: 2,
+      id: "send_me_location", name: "Send Me Location", input: "HCB,F+P", priority: 2,
       description: "Drops a blue map pin on the opponent (\"Location received\"), steps in and hits a double-leg takedown. Unblockable command grab; 360 or HCB,F + P. LP 160, HP 170 with more range but 2 frames slower. Scale Up: armored startup and +40 damage.",
       startup: 6, active: 2, recovery: 46, damage: 0, meterGain: 12, vfx: "special_meta",
-      velocity: [{ from: 1, to: 5, vx: 120 }],
-      grab: { range: 82, damage: 160, hold: 24, knockback: { x: 120, y: 520 } },
+      velocity: [{ from: 1, to: 5, vx: 120 }], mechanicData: { rotation: true, hold: 24 },
+      grab: { range: 82, damage: 160, knockback: { x: 120, y: 520 } },
       variants: {
         LP: {
-          grab: { range: 82, damage: 160, hold: 24, knockback: { x: 120, y: 520 } },
-          scaleUp: { armor: { from: 1, to: 6, hits: 1 }, grab: { range: 82, damage: 200, hold: 24, knockback: { x: 120, y: 520 } } },
+          grab: { range: 82, damage: 160, knockback: { x: 120, y: 520 } },
+          scaleUp: { armor: { from: 1, to: 6, hits: 1 }, grab: { range: 82, damage: 200, knockback: { x: 120, y: 520 } } },
         },
         HP: {
           startup: 8,
-          grab: { range: 90, damage: 170, hold: 24, knockback: { x: 120, y: 520 } },
-          scaleUp: { armor: { from: 1, to: 8, hits: 1 }, grab: { range: 90, damage: 210, hold: 24, knockback: { x: 120, y: 520 } } },
+          grab: { range: 90, damage: 170, knockback: { x: 120, y: 520 } },
+          scaleUp: { armor: { from: 1, to: 8, hits: 1 }, grab: { range: 90, damage: 210, knockback: { x: 120, y: 520 } } },
         },
       },
-      scaleUp: { armor: { from: 1, to: 6, hits: 1 }, grab: { range: 82, damage: 200, hold: 24, knockback: { x: 120, y: 520 } } },
+      scaleUp: { armor: { from: 1, to: 6, hits: 1 }, grab: { range: 82, damage: 200, knockback: { x: 120, y: 520 } } },
     },
     {
       id: "hydrofoil_rush", name: "Hydrofoil Rush", input: "B,F+K",
@@ -106,7 +113,8 @@ export default defineCharacter({
       startup: 14, active: 20, recovery: 24, damage: 80, chip: 10, hitstun: 24, blockstun: 17,
       hitbox: { x: 8, y: -52, w: 104, h: 52 }, knockback: { x: 200, y: 300 }, knockdown: true, level: "low", meterGain: 8,
       velocity: [{ from: 4, to: 33, vx: 440 }], invuln: { from: 8, to: 33, type: "projectile" },
-      lowProfile: { from: 8, to: 33 }, stopOnContact: true, vfx: "lab_ground_wave", limb: "leg",
+      mechanic: "low-profile-slide", mechanicData: { lowProfile: { from: 8, to: 33 }, stopOnContact: true },
+      vfx: "lab_ground_wave", limb: "leg",
       variants: {
         LK: { velocity: [{ from: 4, to: 33, vx: 440 }] },
         HK: { velocity: [{ from: 4, to: 33, vx: 720 }] },
@@ -119,7 +127,7 @@ export default defineCharacter({
       startup: 13, active: 10, recovery: 22, damage: 22, chip: 3, hitstun: 18, blockstun: 19, hits: 4, hitInterval: 3,
       hitbox: { x: 18, y: -170, w: 92, h: 110 }, knockback: { x: 50 }, level: "mid", meterGain: 3, hitstop: 6,
       velocity: [{ from: 3, to: 22, vx: 170 }], lastHit: { knockback: { x: 330 } },
-      guardCrush: { runway: 40 }, vfx: "special_meta",
+      mechanicData: { guardCrush: { runway: 40 } }, vfx: "special_meta",
       scaleUp: { name: "Stable Infra", damage: 22, blockstun: 25, armor: { from: 1, to: 13, hits: 1 } },
     },
   ],
@@ -127,8 +135,8 @@ export default defineCharacter({
     id: "metaverse_submission", name: "Metaverse Submission", input: "QCF,QCF+HP", meterCost: 300, freeze: 30,
     description: "Breakthrough. A close-range unblockable grab: the stage dissolves into a low-poly VR dojo, Mark chains takedown, mount and armbar position, the opponent taps, and the scoreboard flashes \"GOLD (NO-GI)\". Whiffs beyond 100 px.",
     startup: 7, active: 3, recovery: 60, damage: 0, meterGain: 0, invuln: { from: 1, to: 7, type: "all" }, vfx: "special_meta",
-    velocity: [{ from: 1, to: 6, vx: 160 }],
-    grab: { range: 100, damage: 360, hold: 70, knockback: { x: 150, y: 560 } },
+    velocity: [{ from: 1, to: 6, vx: 160 }], mechanicData: { hold: 70 },
+    grab: { range: 100, damage: 360, knockback: { x: 150, y: 560 } },
   },
   throw: { name: "Back Take", damage: 120 },
   finisher: {

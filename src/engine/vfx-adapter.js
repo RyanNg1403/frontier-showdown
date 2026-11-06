@@ -28,11 +28,13 @@ const ALIASES = {
   barrier_break: ["lab_burst"],
   alignment_block: ["block"],
   guardrail: ["guard_break", "block"],
-  guard_crack: ["block"],
-  ground_bounce: ["dust_knockdown", "dust_land"],
 };
 
 const SCALE = { hit_super: 1.5, hit_special: 1.15, finisher: 1.6, clash: 0.9 };
+
+/** Roster lab ids that the VFX palette knows under a shorter name. */
+const LAB_ALIASES = { "google-deepmind": "deepmind", "spacex-xai": "xai" };
+const vfxLab = (id) => (id ? LAB_ALIASES[id] || id : id);
 
 export function adaptVfx(module, instance) {
   const types = typeof module?.effectTypes === "function" ? new Set(module.effectTypes()) : null;
@@ -56,7 +58,7 @@ export function adaptVfx(module, instance) {
     const t = resolve(type, opts);
     if (!t) return null;
     const o = { ...opts, dir: opts.dir ?? opts.facing ?? 1 };
-    if (!o.lab && opts.labId) o.lab = opts.labId;
+    if (!o.lab && opts.labId) o.lab = vfxLab(opts.labId);
     if (SCALE[type] && o.scale === undefined && t !== type) o.scale = SCALE[type];
     if (type === "super_flash" && t === "super_freeze") return instance.spawn(t, x, y + 20, o);
     return instance.spawn(t, x, y, o);
@@ -83,9 +85,9 @@ export function adaptVfx(module, instance) {
         live.add(p.id);
         let h = tracked.get(p.id);
         if (!h) {
-          const type = projectileType(p.labId);
+          const type = projectileType(vfxLab(p.labId));
           if (!type) continue;
-          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: p.labId, manual: true, life: 30, scale: p.scale ?? 1 });
+          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: vfxLab(p.labId), manual: true, life: 30, scale: p.scale ?? 1 });
           if (!h) continue;
           tracked.set(p.id, h);
         }

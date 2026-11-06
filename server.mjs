@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile, readFileSync } from "node:fs";
+import { existsSync, readFile, readFileSync, readdirSync } from "node:fs";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
@@ -564,7 +564,49 @@ function serveFile(request, response) {
   });
 }
 
+const NON_CHARACTER_FILES = new Set(["index.js", "schema.js"]);
+
+/** Character modules present in src/characters, with whether their atlas exists. */
+function listCharacters() {
+  const dir = join(projectRoot, "src", "characters");
+  let files = [];
+  try {
+    files = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  return files
+    .filter((f) => /^[a-z0-9-]+\.js$/.test(f) && !NON_CHARACTER_FILES.has(f))
+    .map((f) => {
+      const id = f.slice(0, -3);
+      return { id, atlas: existsSync(join(projectRoot, "assets", "fighters", id, "atlas.json")) };
+    });
+}
+
+/** Which optional sibling modules exist, so the client never requests missing files. */
+function manifest() {
+  const has = (...parts) => existsSync(join(projectRoot, ...parts));
+  return {
+    modules: {
+      stage: has("src", "stages", "index.js"),
+      vfx: has("src", "vfx", "index.js"),
+      ui: has("src", "ui", "index.js"),
+      audio: has("src", "audio", "index.js"),
+    },
+    styles: { ui: has("styles", "ui.css") },
+    characters: listCharacters(),
+  };
+}
+
 createServer((request, response) => {
+  if (request.method === "GET" && request.url === "/api/manifest") {
+    sendJson(response, 200, manifest());
+    return;
+  }
+  if (request.method === "GET" && request.url === "/api/characters") {
+    sendJson(response, 200, { characters: listCharacters() });
+    return;
+  }
   if (request.method === "GET" && request.url === "/api/health") {
     const provider = getDecisionProvider();
     sendJson(response, 200, {

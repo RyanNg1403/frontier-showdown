@@ -1,24 +1,20 @@
 import { createGame } from "./engine/game.js";
+import { loadManifest } from "./engine/modules.js";
 
-async function linkStylesheet(href) {
-  try {
-    const res = await fetch(href, { method: "HEAD" });
-    if (!res.ok || !(res.headers.get("content-type") || "").includes("css")) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    document.head.appendChild(link);
-  } catch {
-    // The UI stylesheet is optional.
-  }
+function linkStylesheet(href) {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  document.head.appendChild(link);
 }
 
 async function boot() {
   const canvas = document.getElementById("game");
   const uiRoot = document.getElementById("ui-root");
   try {
-    await linkStylesheet("/styles/ui.css");
-    const game = await createGame({ canvas, uiRoot });
+    const manifest = await loadManifest();
+    if (!manifest || manifest.styles?.ui) linkStylesheet("/styles/ui.css");
+    const game = await createGame({ canvas, uiRoot, manifest });
     window.frontierShowdown = game;
     const params = new URLSearchParams(location.search);
     if (params.has("quick")) {

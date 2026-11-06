@@ -20,10 +20,7 @@ export function guardBlocks(level, crouching) {
   return true;
 }
 
-/** Gains go through the point fighter's lab passive (`meterGainMul`). */
 export function addMeter(side, amount) {
-  const point = side.members?.[side.active];
-  if (amount > 0 && point?.passiveDef?.meterGainMul) amount *= point.passiveDef.meterGainMul(point);
   side.meter = Math.max(0, Math.min(RULES.meterMax, side.meter + amount));
   return side.meter;
 }

@@ -222,12 +222,14 @@ export class CpuController {
 
   /**
    * Moves listed under `key` in the character's `ai` hints, as `{ move, button }`. Entries are
-   * move ids, optionally with a button for specials with variants: "not_a_flamethrower:HP".
+   * move ids, optionally with a button for specials with variants: "not_a_flamethrower:HP", or a
+   * normalized move object (for moves a mechanic starts, such as an air command normal).
    */
   kit(self, key) {
     const raw = self.def.ai?.[key];
     if (!raw) return [];
     return (Array.isArray(raw) ? raw : [raw]).map((entry) => {
+      if (entry && typeof entry === "object") return entry.startup ? { move: entry, button: null } : null;
       const [id, btn] = String(entry).split(":");
       const move = self.def.moves.get(id);
       return move ? { move, button: btn ? BTN[btn] : null } : null;
@@ -366,7 +368,7 @@ export class CpuController {
       this.press(this.chance(0.4) ? 4 : 6, BTN.LP | BTN.LK);
       return;
     }
-    const grab = self.def.specials.find((s) => s.grab && s.grab.air !== "only");
+    const grab = self.def.specials.find((s) => s.grab);
     if (grab && dist < grab.grab.range - 10 && r < (self.def.ai?.grabRate ?? 0.2) && this.grabbable(match.point(1 - self.side))) {
       this.doSpecial(self, team, grab);
       return;

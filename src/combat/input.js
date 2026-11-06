@@ -1,5 +1,4 @@
 import { BTN, RULES } from "./constants.js";
-import { ROTATION_SEQ, rotationIn } from "./mechanics/rotation.js";
 
 const MIRROR = [0, 3, 2, 1, 6, 5, 4, 9, 8, 7];
 
@@ -177,10 +176,8 @@ export function parseMotion(raw) {
     body = body.slice(chargeMatch[0].length);
   }
   const tokens = body.split(",").filter(Boolean);
-  const rotation = tokens.includes("360");
   for (const token of tokens) {
-    if (token === "360") seq.push(...ROTATION_SEQ);
-    else if (NAMED[token]) seq.push(...NAMED[token]);
+    if (NAMED[token]) seq.push(...NAMED[token]);
     else if (/^[1-9]+$/.test(token)) seq.push(...token.split("").map(Number));
     else throw new Error(`Unknown motion token "${token}" in "${raw}"`);
   }
@@ -194,7 +191,7 @@ export function parseMotion(raw) {
     }
     all = parts.length > 1;
   }
-  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all, rotation });
+  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all });
   cache.set(raw, parsed);
   return parsed;
 }
@@ -205,7 +202,8 @@ export function motionPriority(motion) {
 }
 
 const STEP_GAP = 12;
-const FINAL_GAP = 9;
+const FINAL_GAP = 12;
+const DIAGONAL = new Set([1, 3, 7, 9]);
 
 /**
  * Check whether `motion` was performed, ending with an unconsumed button press
@@ -239,33 +237,34 @@ function sequenceBefore(buffer, motion, facing, pressAge) {
     earliest = Math.max(0, last - ok.sinceEnd - 1);
   }
   if (seq.length === 0) return true;
-  if (motion.rotation) return rotationIn(chrono);
-
   for (let start = earliest; start <= last; start += 1) {
-    if (chrono[start] !== seq[0]) continue;
-    let pos = start;
-    let ok = true;
-    for (let k = 1; k < seq.length; k += 1) {
-      const want = seq[k];
-      const needFresh = want === seq[k - 1];
-      let found = -1;
-      let sawOther = false;
-      for (let i = pos + 1; i <= Math.min(last, pos + STEP_GAP); i += 1) {
-        if (chrono[i] !== want) {
-          sawOther = true;
-          continue;
-        }
-        if (needFresh && !sawOther) continue;
-        found = i;
-        break;
-      }
-      if (found < 0) {
-        ok = false;
-        break;
-      }
-      pos = found;
+    if (chrono[start] === seq[0] && matchFrom(chrono, seq, 1, start, last, false)) return true;
+  }
+  return false;
+}
+
+/**
+ * Match seq[k..] after chrono index `pos`. Interior diagonals may be skipped (keyboard
+ * leniency: D,F counts as QCF) as long as the neighbouring directions follow each other
+ * without a neutral in between, so two-taps like "D,N,B" stay distinct from QCB.
+ */
+function matchFrom(chrono, seq, k, pos, last, direct) {
+  if (k === seq.length) return last - pos <= FINAL_GAP;
+  const want = seq[k];
+  const needFresh = want === seq[k - 1];
+  let sawOther = false;
+  for (let i = pos + 1; i <= Math.min(last, pos + STEP_GAP); i += 1) {
+    if (direct && chrono[i] === 5) break;
+    if (chrono[i] !== want) {
+      sawOther = true;
+      continue;
     }
-    if (ok && last - pos <= FINAL_GAP) return true;
+    if (needFresh && !sawOther) continue;
+    if (matchFrom(chrono, seq, k + 1, i, last, false)) return true;
+    break;
+  }
+  if (!direct && DIAGONAL.has(want) && k < seq.length - 1 && seq[k + 1] !== want) {
+    return matchFrom(chrono, seq, k + 1, pos, last, true);
   }
   return false;
 }

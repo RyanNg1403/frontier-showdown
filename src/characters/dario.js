@@ -11,6 +11,8 @@ export default defineCharacter({
   title: "The Responsible Scaler",
   lab: "Anthropic",
   labId: "anthropic",
+  archetype: "defensive",
+  difficulty: 2,
   bio: "Builds barriers, counters impatience and wins long rounds on chip resistance. Puts a Constitutional Barrier between himself and the opponent, zones with Country of Geniuses, and punishes rushes with ASL Safeguard.",
   quotes: {
     intro: "Intelligence may be very powerful, but it isn't magic fairy dust.",
@@ -40,7 +42,7 @@ export default defineCharacter({
       cancelInto: ["special", "super"],
     },
     lk: {
-      name: "Step Kick", startup: 9, active: 3, recovery: 16, damage: 32, hitstun: 16, blockstun: 13,
+      name: "Step Kick", startup: 9, active: 3, recovery: 13, damage: 32, hitstun: 16, blockstun: 13,
       hitbox: { x: 22, y: -100, w: 102, h: 26 }, knockback: { x: 200 }, level: "mid", meterGain: 4,
       cancelInto: ["hk", "special", "super"],
     },
@@ -55,12 +57,12 @@ export default defineCharacter({
       cancelInto: ["c_lp", "c_lk", "special", "super"],
     },
     c_lk: {
-      name: "Red-Team Poke", startup: 8, active: 2, recovery: 15, damage: 22, hitstun: 15, blockstun: 12,
+      name: "Red-Team Poke", startup: 8, active: 2, recovery: 13, damage: 22, hitstun: 15, blockstun: 12,
       hitbox: { x: 20, y: -28, w: 112, h: 24 }, knockback: { x: 160 }, level: "low", meterGain: 3,
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Hex Palm", startup: 10, active: 4, recovery: 28, damage: 105, hitstun: 30, blockstun: 18,
+      name: "Hex Palm", startup: 10, active: 4, recovery: 31, damage: 105, hitstun: 30, blockstun: 18,
       hitbox: { x: 4, y: -228, w: 84, h: 150 }, knockback: { x: 100, y: 1160 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"], vfx: "lab_burst",
     },

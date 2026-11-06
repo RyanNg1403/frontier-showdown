@@ -1,14 +1,15 @@
-import { RULES } from "../constants.js";
+import { registerMechanic } from "../mechanics.js";
 
 /**
- * Grab targeting and timing beyond the plain throw.
+ * Grab extensions (roster doc group A).
  *
- * Move data: `grab: { range, damage, techable, knockback, air, groundRange, reach, hold, lift, liftFrames }`
- * - `air`: "ground" (default, the throw rules), "only" (anti-air grab: airborne targets only,
- *   whiffs on grounded ones) or "also" (both; grounded targets use `groundRange`).
- * - `reach`: how high above the floor an air grab connects (px).
- * - `hold`: frames the victim is held before the release (default: tech window + 2, or 10 when
- *   untechable). `lift` / `liftFrames`: how high the victim is carried and how fast.
+ * "anti-air-grab" (move-level, Elon's Mechazilla Catch). `mechanicData`:
+ *   { air: "only" | "also", range, groundRange, reach, damage, hold, lift, liftFrames, knockback }
+ *   During the active frames it grabs an airborne opponent within `range` and `reach` px of
+ *   the floor ("also": grounded ones within `groundRange` too), carries them up to `lift` px,
+ *   holds them `hold` frames and drops them. Untechable; assists deal 70%.
+ * "grab-hold" (fighter-level): a built-in `grab` move with `mechanicData.hold` keeps the
+ *   victim held that many frames before the release (for cinematic grabs and supers).
  */
 
 const NO_AIR_GRAB = new Set(["juggle", "thrown", "tech", "ko", "finished", "finisher", "breaker", "tag_in", "tag_out", "assist_in", "assist_out", "bench"]);
@@ -16,38 +17,75 @@ const NO_AIR_GRAB = new Set(["juggle", "thrown", "tech", "ko", "finished", "fini
 function airGrabbable(d) {
   if (!d.onField || d.ko || d.hidden || d.invulnFrames > 0 || NO_AIR_GRAB.has(d.state)) return false;
   const inv = d.state === "attack" ? d.move?.invuln : null;
-  if (inv && d.moveFrame >= inv.from && d.moveFrame <= inv.to && (inv.type === "all" || inv.type === "throw")) return false;
-  return true;
+  return !(inv && d.moveFrame >= inv.from && d.moveFrame <= inv.to && (inv.type === "all" || inv.type === "throw"));
 }
 
-/** Can grabber `a` take defender `d` with `grab` this frame? Matches the throw rules for ground grabs. */
-export function canGrab(a, d, grab) {
+/** Can grabber `a` take defender `d` with anti-air grab data `g` this frame? */
+export function canGrab(a, d, g) {
   if (!d || a.airborne) return false;
   const dx = Math.abs(a.x - d.x);
-  const mode = grab.air || "ground";
-  if (d.airborne) {
-    if (mode === "ground") return false;
-    return airGrabbable(d) && dx <= grab.range && -d.y <= (grab.reach ?? 260);
-  }
-  if (mode === "only" || d.invulnTo("throw")) return false;
-  return dx <= (mode === "also" ? grab.groundRange ?? grab.range : grab.range);
+  if (d.airborne) return g.air !== "ground" && airGrabbable(d) && dx <= g.range && -d.y <= (g.reach ?? 260);
+  if (g.air !== "also" || d.invulnTo("throw")) return false;
+  return dx <= (g.groundRange ?? g.range);
 }
 
-/** Release frame, thrower lock length, and carry height for a grab move. */
-export function grabTiming(move) {
-  const g = move.grab;
-  const release = g.hold ?? (g.techable ? RULES.throwTechWindow + 2 : 10);
-  return {
-    release,
-    length: Math.max(30, move.recovery + 10, release + 8),
-    lift: g.lift ?? 30,
-    liftFrames: g.liftFrames ?? 6,
+/** Height of a carried victim: eases from where it was grabbed up to `lift`. */
+export function carryHeight(fromY, lift, liftFrames, frame) {
+  const t = Math.min(1, frame / liftFrames);
+  return fromY + (-lift - fromY) * t;
+}
+
+function seize(f, d, move, env) {
+  const g = move.mechanicData;
+  const match = env.match;
+  const fromY = d.y;
+  f.mech.grabbed = true;
+  d.setState("thrown");
+  d.combo = { hits: 0, damage: 0 };
+  d.grab = {
+    by: f,
+    move,
+    techable: false,
+    release: g.hold ?? 30,
+    damage: Math.round((g.damage ?? 140) * (f.damageMul ?? 1)),
+    knockback: g.knockback || { x: 160, y: 150 },
+    back: false,
   };
+  match.emit("throw", { attacker: f.id, defender: d.id, side: f.side, moveId: move.id });
+  match.vfx("throw", (f.x + d.x) / 2, d.y - 110, { facing: f.facing, side: f.side, tech: false });
+  const lift = g.lift ?? 30;
+  const liftFrames = g.liftFrames ?? 6;
+  match.spawnEntity({
+    side: f.side,
+    update() {
+      if (d.state === "thrown" && d.grab?.by === f) {
+        d.y = carryHeight(fromY, lift, liftFrames, d.stateFrame);
+        return true;
+      }
+      if (d.state === "juggle") d.y = Math.min(d.y, -lift);
+      return false;
+    },
+  });
 }
 
-/** Height of a held victim: eases from where it was grabbed up to the carry height. */
-export function thrownHeight(g, frame) {
-  const t = Math.min(1, frame / (g.liftFrames ?? 6));
-  const from = g.fromY ?? 0;
-  return from + (-(g.lift ?? 30) - from) * t;
-}
+registerMechanic("anti-air-grab", {
+  onStart(f) {
+    f.mech.grabbed = false;
+  },
+  onFrame(f, move, env) {
+    if (f.mech.grabbed || f.moveFrame < move.startup || f.moveFrame >= move.startup + move.active) return;
+    const d = env.opponent;
+    if (d && d.state !== "thrown" && canGrab(f, d, move.mechanicData)) seize(f, d, move, env);
+  },
+});
+
+registerMechanic("grab-hold", {
+  update(f) {
+    const g = f.state === "throwing" ? f.grab : null;
+    const hold = g?.move?.mechanicData?.hold;
+    const victim = g?.victim;
+    if (!hold || victim?.grab?.by !== f) return;
+    if (victim.grab.release < hold) victim.grab.release = hold;
+    g.length = Math.max(g.length, hold + 8);
+  },
+});
