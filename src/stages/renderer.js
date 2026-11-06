@@ -196,7 +196,39 @@ function prepareLayers(stage) {
     const img = stage.images[name];
     if (img && name !== "floor") stage.spans[name] = opaqueSpans(img);
   }
+  // The floor is drawn one 2 px row at a time with its own parallax; a pre-tiled strip wide
+  // enough for the view turns each row into a single draw instead of one per tile.
+  const floor = stage.images.floor;
+  if (floor) {
+    const tiles = Math.ceil(VIEW_W / (floor.width * stage.meta.px)) + 1;
+    const wide = makeCanvas(floor.width * tiles, floor.height);
+    const g = wide.getContext("2d");
+    for (let i = 0; i < tiles; i += 1) g.drawImage(floor, i * floor.width, 0);
+    stage.floorWide = wide;
+  }
+  stage.lit = {};
   stage.baked = true;
+}
+
+/**
+ * Reduced-ambience variant of a layer with its glow tiles baked in at their average
+ * brightness, so lower quality tiers skip the per-tile animated glow (one draw per tile).
+ */
+function litLayer(stage, name) {
+  if (name in stage.lit) return stage.lit[name];
+  const img = stage.images[name];
+  const glowImg = stage.images[`${name}-glow`];
+  const glow = stage.meta.layers[name]?.glow;
+  const fx = stage.ambient.find((f) => f.type === "glow" && f.layer === name);
+  if (!img || !glowImg || !glow || !fx) return (stage.lit[name] = null);
+  const c = makeCanvas(img.width, img.height);
+  const g = c.getContext("2d");
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = "lighter";
+  g.globalAlpha = Math.min(1, 0.12 + fx.amp * (fx.blink ? 0.625 : 0.5)) * (stage.after?.[name] ?? 1);
+  for (const [tx, ty] of glow.tiles) g.drawImage(glowImg, tx, ty, glow.tile, glow.tile, tx, ty, glow.tile, glow.tile);
+  stage.lit[name] = { img: c, spans: opaqueSpans(c) };
+  return stage.lit[name];
 }
 
 /**
@@ -313,12 +345,14 @@ function drawFloor(ctx, stage, cam) {
   const tileW = img.width * px;
   const decal = stage.images.floorDecal;
   const decalMeta = stage.meta.layers.floorDecal;
+  const wide = stage.floorWide;
   for (let r = 0; r < img.height; r += 1) {
     const y = FLOOR_TOP + r * px - Math.round(cam.y);
     const f = f0 + ((f1 - f0) * (FLOOR_TOP + r * px - FLOOR_TOP)) / (GROUND_Y - FLOOR_TOP);
     const off = Math.round(cam.x * f);
     let x = -(((off % tileW) + tileW) % tileW);
-    for (; x < VIEW_W; x += tileW) ctx.drawImage(img, 0, r, img.width, 1, x, y, tileW, px);
+    if (wide) ctx.drawImage(wide, 0, r, wide.width, 1, x, y, wide.width * px, px);
+    else for (; x < VIEW_W; x += tileW) ctx.drawImage(img, 0, r, img.width, 1, x, y, tileW, px);
     // Floor lettering shares the row's parallax so it stays glued to the pavement.
     if (decal && r < decal.height) {
       ctx.drawImage(decal, 0, r, decal.width, 1, decalMeta.x - off, y, decal.width * px, px);
@@ -570,12 +604,13 @@ function drawAmbient(ctx, stage, slot, cam) {
 }
 
 function drawImageLayer(ctx, stage, name, cam, options) {
-  const img = stage.images[name];
+  const lit = stage.baked && options.ambient && ambientScale < 1 ? litLayer(stage, name) : null;
+  const img = lit ? lit.img : stage.images[name];
   if (!img) return;
   const origin = layerOrigin(stage, name, cam);
-  const layerFx = stage.ambient.filter((fx) => defaultSlot(fx) === `layer:${name}`);
+  const layerFx = stage.ambient.filter((fx) => defaultSlot(fx) === `layer:${name}` && !(lit && fx.type === "glow"));
   const crowd = options.ambient && layerFx.find((fx) => fx.type === "crowd");
-  const spans = stage.spans?.[name];
+  const spans = lit ? lit.spans : stage.spans?.[name];
   if (crowd) drawCrowdLayer(ctx, img, origin, crowd, cam.time);
   else if (spans) {
     const { px } = origin;
