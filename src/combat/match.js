@@ -206,11 +206,11 @@ export class Match {
     this.updatePhase();
     if (this.freezeFrames > 0) {
       this.freezeFrames -= 1;
-      this.vfxTick(0);
+      this.vfxTick(DT, true);
       return;
     }
 
-    const anyHitstop = this.fighters.some((f) => f.hitstop > 0);
+    const hitstop = this.fighters.some((f) => f.hitstop > 0);
     for (const f of [...this.fighters]) f.update(this.envFor(f));
     this.updateAssists();
     this.updateRunway();
@@ -222,11 +222,11 @@ export class Match {
     this.checkKOs();
     this.updateTeams();
     this.updateCombos();
-    this.vfxTick(anyHitstop ? 0 : DT);
+    this.vfxTick(DT, hitstop);
   }
 
-  vfxTick(dt) {
-    this.emitFn("tick", { dt });
+  vfxTick(dt, frozen = false) {
+    this.emitFn("tick", { dt, frozen });
   }
 
   updatePhase() {
