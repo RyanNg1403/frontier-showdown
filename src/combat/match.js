@@ -255,7 +255,8 @@ export class Match {
       case "finish": {
         const winner = this.point(this.finishSide);
         const loser = this.point(1 - this.finishSide);
-        if (loser.state === "dazed" && winner.isNeutral && !winner.airborne) {
+        const free = winner.isNeutral || winner.state === "run" || winner.state === "dash_fwd";
+        if (loser.state === "dazed" && free && !winner.airborne) {
           const fin = winner.def.finisher;
           const s = this.sides[this.finishSide];
           if (fin && Math.abs(winner.x - loser.x) <= fin.range && matchMotion(s.input, fin.motion, winner.facing, 8) >= 0) {

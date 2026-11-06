@@ -282,16 +282,17 @@ export function matchDoubleTap(buffer, want, facing, window = 14) {
   if (!newest || newest.frame <= buffer.consumed) return false;
   const prev = buffer.at(1);
   if (relDir(newest.dir, facing) !== want || (prev && relDir(prev.dir, facing) === want)) return false;
-  let sawOther = false;
+  let sawNeutral = false;
   for (let age = 1; age <= window; age += 1) {
     const e = buffer.at(age);
     if (!e) return false;
     const d = relDir(e.dir, facing);
-    if (d !== want) {
-      sawOther = true;
+    if (d === 5) {
+      sawNeutral = true;
       continue;
     }
-    if (sawOther) {
+    if (d !== want) return false;
+    if (sawNeutral) {
       const before = buffer.at(age + 1);
       if (!before || relDir(before.dir, facing) !== want) return true;
     }

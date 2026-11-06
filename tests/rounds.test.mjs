@@ -59,7 +59,7 @@ test("deciding round: finish prompt, dazed loser, then the winner's finisher", (
   assert.equal(loser.state, "dazed");
   place(m, -60, 60);
   hold(m, 2);
-  play(m, 0, [{ dir: 6 }, { dir: 5 }, { dir: 2 }, { dir: 5 }, { dir: 6, buttons: BTN.HP }, { frames: 2 }]);
+  play(m, 0, [{ dir: 6, frames: 3 }, { dir: 2, frames: 3 }, { dir: 6, frames: 2 }, { dir: 6, buttons: BTN.HP }, { frames: 2 }]);
   assert.equal(m.phase, "finisher");
   assert.ok(events(m, "announce").some((a) => a.text === "FINAL COMMIT!"));
   const fin = events(m, "finisher")[0];

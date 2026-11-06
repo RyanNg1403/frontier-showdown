@@ -133,6 +133,10 @@ test("double tap detection for dashes", () => {
   const slow = new InputBuffer();
   feed(slow, [{ dir: 6, frames: 2 }, { dir: 5, frames: 20 }, { dir: 6 }]);
   assert.equal(matchDoubleTap(slow, 6, 1), false);
+
+  const fdf = new InputBuffer();
+  feed(fdf, [{ dir: 6, frames: 3 }, { dir: 2, frames: 3 }, { dir: 6 }]);
+  assert.equal(matchDoubleTap(fdf, 6, 1), false, "F,D,F is a motion, not a dash");
 });
 
 test("charge info tracks hold length per direction group", () => {
