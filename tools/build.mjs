@@ -3,7 +3,7 @@
  * Static build for GitHub Pages (or any static host): `npm run build` writes dist/.
  *
  *  - Copies only what the game loads at runtime (no WAV masters, stage sources, previews,
- *    tests, server code or the legacy game).
+ *    tests or server code).
  *  - Transcodes audio to Ogg Opus plus an MP3 fallback (ffmpeg) and stage/UI art to WebP
  *    (sharp). A file whose WebP is not smaller keeps its original format.
  *  - Writes manifest.json (modules, characters, formats, content hashes, loop lengths) and

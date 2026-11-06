@@ -10,11 +10,7 @@
     "start": "node server.mjs",
     "build": "node tools/build.mjs",
     "preview": "node tools/preview-pages.mjs",
-    "test": "node --test \"tests/*.test.mjs\"",
-    "test:balance": "node test-ai-balance.mjs",
-    "test:signal-tether": "node test-signal-tether.mjs",
-    "test:soul-salvo": "node test-soul-salvo.mjs",
-    "test:runner-skills": "node test-runner-skills.mjs"
+    "test": "node --test \"tests/*.test.mjs\""
   },
   "dependencies": {
     "openai": "^7.30.0"
