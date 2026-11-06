@@ -35,6 +35,9 @@ import { createPauseOverlay } from "./overlays/pause.js";
 import { createMoveListOverlay } from "./overlays/move-list.js";
 import { createSettingsOverlay } from "./overlays/settings.js";
 import { createConfirmOverlay } from "./overlays/confirm.js";
+import { createInstallOverlay } from "./overlays/install.js";
+import { createTouchControls } from "./touch/touch-controls.js";
+import { canFullscreen, enterFullscreen, fitScreen, hasTouch, isIOS, isStandalone } from "./touch/device.js";
 
 export { createHud } from "./hud/hud.js";
 export { drawHud } from "./hud/draw-hud.js";
@@ -47,7 +50,9 @@ const SCREENS = {
   title: createTitleScreen, mode: createModeScreen, select: createSelectScreen, stage: createStageScreen,
   versus: createVersusScreen, fight: createFightScreen, results: createResultsScreen,
 };
-const OVERLAYS = { pause: createPauseOverlay, movelist: createMoveListOverlay, settings: createSettingsOverlay, confirm: createConfirmOverlay };
+const OVERLAYS = { pause: createPauseOverlay, movelist: createMoveListOverlay, settings: createSettingsOverlay, confirm: createConfirmOverlay, install: createInstallOverlay };
+// Below this stage scale (about 1024x576 CSS px) menus switch to larger type and touch-sized targets.
+const COMPACT_SCALE = 0.8;
 
 function listen(game, type, fn) {
   const ev = game?.events;
@@ -88,14 +93,27 @@ export function mountUI(rootEl, game, options = {}) {
   const root = h("div", { class: "fs-ui", role: "application", "aria-label": "Frontier Showdown" }, stage);
   rootEl.append(root);
 
+  const screenEl = rootEl.parentElement?.id === "screen" ? rootEl.parentElement : null;
+  const canvas = screenEl?.querySelector("canvas");
+  const touchDevice = hasTouch();
+  root.classList.toggle("is-lite", touchDevice);
   const fit = () => {
     const r = rootEl.getBoundingClientRect();
     const scale = Math.min(r.width / LOGICAL_W, r.height / LOGICAL_H) || 1;
     stage.style.setProperty("--fs-scale", scale);
+    root.classList.toggle("is-compact", scale < COMPACT_SCALE);
   };
   const ro = new ResizeObserver(fit);
   ro.observe(rootEl);
   fit();
+  const fitBox = () => { if (screenEl) fitScreen(screenEl, canvas); };
+  let fitRaf = 0;
+  const onViewport = () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitBox); };
+  fitBox();
+  window.addEventListener("resize", onViewport);
+  window.visualViewport?.addEventListener("resize", onViewport);
+  screen.orientation?.addEventListener?.("change", onViewport);
+  const rotate = createRotatePrompt();
 
   const screens = {};
   const overlayStack = [];
@@ -120,10 +138,35 @@ export function mountUI(rootEl, game, options = {}) {
     closeAllOverlays() { while (overlayStack.length) closeOverlay(true); },
     get screen() { return currentId; },
     emit(type, payload) { subscribers.get(type)?.forEach((fn) => fn(payload)); },
+    on(type, fn) {
+      if (!subscribers.has(type)) subscribers.set(type, new Set());
+      subscribers.get(type).add(fn);
+      return () => subscribers.get(type).delete(fn);
+    },
     matchConfig,
+    touchDevice,
+    /** Fullscreen plus landscape lock on phones and tablets; call from a tap or key press. */
+    requestFullscreen() {
+      if (!touchDevice || isStandalone() || !canFullscreen() || !settings.get().touch.fullscreen) return;
+      enterFullscreen();
+    },
+    installPrompt: null,
+    get canInstall() { return Boolean(ui.installPrompt) || (isIOS() && !isStandalone()); },
   };
 
   ui.hud = createHud(hudEl, ui);
+  ui.touch = createTouchControls(ui);
+  const syncDevice = (device) => root.classList.toggle("is-touch-ui", device === "touch");
+  syncDevice(input.lastDevice);
+  input.onDevice(syncDevice);
+  const onTouchDown = (e) => { if (e.pointerType === "touch") input.setDevice("touch"); };
+  window.addEventListener("pointerdown", onTouchDown, true);
+  const onInstallPrompt = (e) => {
+    e.preventDefault();
+    ui.installPrompt = e;
+    ui.emit("install", {});
+  };
+  window.addEventListener("beforeinstallprompt", onInstallPrompt);
 
   function getScreen(id) {
     if (!screens[id]) {
@@ -158,6 +201,7 @@ export function mountUI(rootEl, game, options = {}) {
     screensEl.append(next.el);
     next.el.classList.add("is-active");
     root.dataset.screen = id;
+    ui.touch.setFight(id === "fight");
     next.enter?.(params, prevId);
     ui.emit("screen", { id, from: prevId });
     // Accept input once the new screen is in place; the rest of the wipe is cosmetic.
@@ -172,6 +216,7 @@ export function mountUI(rootEl, game, options = {}) {
     requestAnimationFrame(() => ov.el.classList.add("is-open"));
     ov.enter?.(params);
     input.setContext("menu");
+    ui.touch.setOverlay(true);
     return ov;
   }
 
@@ -183,6 +228,7 @@ export function mountUI(rootEl, game, options = {}) {
     if (instant) ov.el.remove();
     else setTimeout(() => ov.el.remove(), 220);
     if (!overlayStack.length) {
+      ui.touch.setOverlay(false);
       current?.overlayClosed?.();
       if (currentId === "fight") input.setContext("fight");
     } else overlayStack.at(-1).resume?.();
@@ -248,14 +294,16 @@ export function mountUI(rootEl, game, options = {}) {
     settings,
     session: ui.session,
     get screen() { return currentId; },
-    on(type, fn) {
-      if (!subscribers.has(type)) subscribers.set(type, new Set());
-      subscribers.get(type).add(fn);
-      return () => subscribers.get(type).delete(fn);
-    },
+    on: ui.on,
+    touch: ui.touch,
     destroy() {
       offs.forEach((off) => off());
       ro.disconnect();
+      window.removeEventListener("resize", onViewport);
+      window.removeEventListener("pointerdown", onTouchDown, true);
+      window.removeEventListener("beforeinstallprompt", onInstallPrompt);
+      ui.touch.destroy();
+      rotate.remove();
       input.destroy();
       ui.hud.destroy();
       root.remove();
@@ -263,4 +311,17 @@ export function mountUI(rootEl, game, options = {}) {
     /** Exposed for the preview page and tests. */
     _ui: ui,
   };
+}
+
+/** Portrait prompt on phones and tablets (CSS decides when it shows). */
+function createRotatePrompt() {
+  const keep = h("button", { class: "fs-rotate__keep", type: "button" }, "Continue in portrait");
+  const el = h("div", { class: "fs-rotate", role: "alertdialog", "aria-label": "Rotate your device" },
+    h("div", { class: "fs-rotate__phone", "aria-hidden": "true" }, h("i")),
+    h("strong", null, "Rotate to landscape"),
+    h("p", null, "Frontier Showdown plays best sideways."),
+    keep);
+  keep.addEventListener("click", () => document.body.classList.add("fs-portrait-ok"));
+  document.body.append(el);
+  return el;
 }

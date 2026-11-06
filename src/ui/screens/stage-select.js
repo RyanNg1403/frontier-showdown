@@ -63,7 +63,7 @@ export function createStageScreen(ui) {
         h("span", { class: "fs-stage-thumb__name" }, st.name)));
       replace(strip, thumbs);
       const start = Math.max(0, list.findIndex((s) => s.id === ui.session.stageId));
-      nav = createNav({ items: [], columns: list.length, index: start, sound: ui.sound, onChange: (i) => renderHero(list[i]), onConfirm: (i) => choose(i) });
+      nav = createNav({ items: [], columns: list.length, index: start, sound: ui.sound, onChange: (i) => renderHero(list[i]), onConfirm: (i) => choose(i), touchPreview: true });
       nav.bind(thumbs);
     },
     input(evt) {

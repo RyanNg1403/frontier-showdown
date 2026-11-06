@@ -8,9 +8,10 @@ export function createPauseOverlay(ui) {
     { id: "resume", label: "Resume", icon: "mode-1v1" },
     { id: "movelist", label: "Move List", icon: "move-list" },
     { id: "settings", label: "Settings", icon: "settings" },
+    ui.touchDevice ? { id: "touch", label: "Touch Layout", icon: "controls" } : null,
     { id: "select", label: "Character Select", icon: "character-select" },
     { id: "quit", label: "Quit to Title", icon: "quit" },
-  ];
+  ].filter(Boolean);
   const buttons = items.map((it) => h("button", { class: "fs-menu-btn", type: "button" }, icon(it.icon), h("span", null, it.label)));
   const state = ui.game.state;
   const matchInfo = state?.sides?.length
@@ -48,6 +49,9 @@ export function createPauseOverlay(ui) {
     } else if (id === "settings") {
       ui.sound("confirm");
       ui.openOverlay("settings");
+    } else if (id === "touch") {
+      ui.sound("confirm");
+      ui.touch?.openEditor();
     } else {
       ui.sound("confirm");
       ui.openOverlay("confirm", {

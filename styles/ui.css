@@ -1015,3 +1015,378 @@
   .fs-ui *, .fs-ui *::before, .fs-ui *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
   .fs-embers, .fs-results__rays { display: none; }
 }
+
+/* Phones and tablets ------------------------------------------------------------------------- */
+/* Page-level: safe areas, no double-tap zoom or rubber-banding, dynamic viewport height. */
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; overscroll-behavior: none; }
+body { box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); -webkit-tap-highlight-color: transparent; }
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+@media (orientation: portrait) and (pointer: coarse) { body { place-items: start center; padding-top: calc(env(safe-area-inset-top) + 7vh); } }
+
+.fs-ui__stage { --fs-tap: max(56px, calc(44px / var(--fs-scale, 1))); }
+
+/* Tappable prompt chips (touch replaces key glyphs with buttons). */
+.fs-ui .fs-hints.is-touch { top: 12px; left: 16px; right: 16px; bottom: auto; transform: none; justify-content: flex-end; gap: 12px; pointer-events: none; z-index: 6; }
+.fs-overlay { isolation: isolate; }
+.fs-ui.is-compact .fs-pause .fs-hints.is-touch { display: none; }
+.fs-panel .fs-hints.is-touch { position: static; justify-content: center; margin-top: 12px; }
+.fs-tap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: calc(var(--fs-tap) * 1.5);
+  height: var(--fs-tap);
+  padding: 4px 26px 0;
+  font-family: var(--fs-display);
+  font-size: calc(var(--fs-tap) * 0.42);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fs-ink);
+  background: linear-gradient(180deg, rgba(34, 40, 52, 0.94), rgba(10, 12, 18, 0.94));
+  border: 2px solid rgba(242, 193, 78, 0.55);
+  border-radius: calc(var(--fs-tap) / 2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.fs-tap:active { background: linear-gradient(180deg, var(--fs-gold-hi), var(--fs-gold-lo)); color: #120e05; }
+.fs-tap.is-back { margin-right: auto; order: -1; }
+.fs-tap.is-back::before { content: "‹"; font-size: 1.4em; line-height: 0; margin: -4px 4px 0 -6px; }
+.fs-tap.is-confirm { border-color: var(--fs-gold); color: var(--fs-gold-hi); }
+.fs-panel .fs-tap.is-back { margin-right: 0; }
+
+/* Touch ripples are the only feedback a tap gets on menus. */
+.fs-ui.is-touch-ui :is(.fs-menu-btn, .fs-chip-btn, .fs-format, .fs-matchup, .fs-tile, .fs-stage-thumb, .fs-opt, .fs-tab):active { filter: brightness(1.25); }
+
+/* Title extras. */
+.fs-title__install { pointer-events: auto; }
+.fs-title__footer { gap: 16px; }
+.fs-title__footer > span:first-child { flex: 1; min-width: 0; }
+
+/* Install overlay. */
+.fs-install__steps { margin: 10px 0 0 1.4em; padding: 0; text-align: left; display: grid; gap: 4px; color: var(--fs-ink); }
+.fs-confirm__actions.is-single { grid-template-columns: 1fr; }
+
+/* On-screen fight controls (outside the scaled stage, in CSS px). */
+.fs-touch {
+  --fs-touch-opacity: 0.7;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: "Teko", "Impact", "Arial Narrow", sans-serif;
+  color: #f3ede2;
+}
+.fs-touch[hidden], .fs-touch [hidden] { display: none !important; }
+.fs-touch__set { position: absolute; inset: 0; opacity: var(--fs-touch-opacity); pointer-events: none; }
+.fs-touch__stick, .fs-touch__pause { position: absolute; left: 0; top: 0; will-change: transform; }
+.fs-touch__btn { position: absolute; transition: transform 0.05s; }
+.fs-touch__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  background: radial-gradient(circle, rgba(8, 10, 16, 0.18) 0 50%, rgba(8, 10, 16, 0.5) 51% 100%);
+}
+.fs-touch__ticks {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -1deg, rgba(255, 255, 255, 0.4) 0 2deg, transparent 2deg 45deg);
+  -webkit-mask: radial-gradient(circle, transparent 74%, #000 75%);
+  mask: radial-gradient(circle, transparent 74%, #000 75%);
+}
+.fs-touch__dir {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 67.5deg, rgba(242, 193, 78, 0.85) 0 45deg, transparent 45deg);
+  -webkit-mask: radial-gradient(circle, transparent 54%, #000 55%);
+  mask: radial-gradient(circle, transparent 54%, #000 55%);
+  opacity: 0;
+}
+.fs-touch__dir.is-on { opacity: 1; }
+.fs-touch__knob {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 245, 214, 0.95), rgba(242, 193, 78, 0.9) 45%, rgba(150, 95, 25, 0.95));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.fs-touch__stick:not(.is-held) { opacity: 0.6; }
+.fs-touch__btn {
+  --c: #f3ede2;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  color: var(--c);
+  background: radial-gradient(circle at 50% 30%, rgba(58, 64, 80, 0.88), rgba(12, 14, 20, 0.88));
+  border: 2px solid var(--c);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  container-type: size;
+}
+.fs-touch__label { font-size: 42cqmin; font-weight: 600; line-height: 1; letter-spacing: 0.04em; text-transform: uppercase; padding-top: 6%; }
+.fs-touch__btn.is-block .fs-touch__label, .fs-touch__btn.is-throw .fs-touch__label { font-size: 30cqmin; }
+.fs-touch__move { max-width: 86%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 17cqmin/1 "Barlow Semi Condensed", system-ui, sans-serif; text-transform: uppercase; opacity: 0.9; }
+.fs-touch__btn.is-punch { --c: #ffd27a; }
+.fs-touch__btn.is-kick { --c: #8ff0ff; }
+.fs-touch__btn.is-block, .fs-touch__btn.is-throw { --c: #d7c6ff; }
+.fs-touch__btn.is-tag { --c: #4fe3ff; }
+.fs-touch__btn.is-special { --c: #ff9a6a; }
+.fs-touch__btn.is-down { background: var(--c); color: #0b0d12; transform: scale(0.92); box-shadow: 0 0 18px var(--c); transition: none; }
+.fs-touch__pause {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(8, 10, 16, 0.55);
+  opacity: max(0.45, var(--fs-touch-opacity));
+}
+.fs-touch__pause i { width: 14%; height: 38%; border-radius: 2px; background: #f3ede2; }
+.fs-touch.is-editing { background: rgba(4, 5, 8, 0.55); }
+.fs-touch.is-editing .fs-touch__set { opacity: max(0.7, var(--fs-touch-opacity)); }
+.fs-touch.is-editing .fs-touch__stick, .fs-touch.is-editing .fs-touch__btn { outline: 2px dashed rgba(242, 193, 78, 0.6); outline-offset: 4px; }
+.fs-touch.is-editing .fs-touch__stick { opacity: 1; }
+.fs-touch__toolbar {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: min(96vw, 760px);
+  padding: 8px;
+  font: 600 15px/1 "Barlow Semi Condensed", system-ui, sans-serif;
+  background: rgba(10, 12, 18, 0.92);
+  border: 1px solid rgba(242, 193, 78, 0.45);
+  border-radius: 12px;
+}
+.fs-touch__tool-note { width: 100%; text-align: center; color: #c3bcb0; }
+.fs-touch__tool-group { display: inline-flex; align-items: center; gap: 6px; }
+.fs-touch__tool-group b { text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px; color: #f2c14e; }
+.fs-touch__tool-group output { min-width: 3.2em; text-align: center; }
+.fs-touch__tool { min-width: 44px; height: 44px; padding: 0 14px; font: inherit; color: #f3ede2; background: #1d2330; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 22px; }
+.fs-touch__tool.is-primary { background: #f2c14e; color: #120e05; border-color: #f2c14e; }
+
+/* Rotate prompt (portrait phones and tablets). */
+.fs-rotate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  text-align: center;
+  color: #f3ede2;
+  background: radial-gradient(ellipse at 50% 40%, #1d1a10, #07060d 70%);
+  font: 500 17px/1.4 "Barlow Semi Condensed", system-ui, sans-serif;
+}
+.fs-rotate strong { font: 600 40px/1 "Teko", "Impact", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #ffe7a1; padding-top: 6px; }
+.fs-rotate p { margin: 0; color: #c3bcb0; }
+.fs-rotate__phone { width: 64px; height: 108px; margin-bottom: 18px; border: 4px solid #f2c14e; border-radius: 12px; position: relative; animation: fs-rotate-phone 2.4s ease-in-out infinite; }
+.fs-rotate__phone i { position: absolute; left: 50%; bottom: 6px; width: 18px; height: 4px; margin-left: -9px; border-radius: 2px; background: #f2c14e; }
+@keyframes fs-rotate-phone { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+.fs-rotate__keep { margin-top: 16px; min-height: 48px; padding: 0 22px; font: 600 17px/1 "Barlow Semi Condensed", system-ui, sans-serif; color: #f3ede2; background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 24px; }
+@media (orientation: portrait) and (pointer: coarse) {
+  body:not(.fs-portrait-ok) .fs-rotate { display: flex; }
+}
+
+/* Stage strip scrolls once the list outgrows the stage (12 arenas plus Random). */
+.fs-stage-strip { overflow-x: auto; overflow-y: hidden; justify-content: safe center; padding: 10px 36px 4px; scrollbar-width: none; overscroll-behavior-x: contain; scroll-padding: 0 36px; }
+.fs-stage-strip::-webkit-scrollbar { display: none; }
+.fs-stage-thumb { flex: none; }
+.fs-stage-thumb__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* Compact: the stage is scaled below 0.8 (phones, small windows). Bigger type, touch-sized targets. */
+
+.fs-ui.is-compact .fs-screen__title { font-size: 50px; }
+.fs-ui.is-compact .fs-screen__sub { font-size: 20px; }
+.fs-ui.is-compact .fs-hints:not(.is-touch) { font-size: 20px; }
+.fs-ui.is-compact .fs-chip-btn { height: var(--fs-tap); padding: 4px 28px 0 18px; font-size: 32px; border-radius: calc(var(--fs-tap) / 2); }
+.fs-ui.is-compact .fs-chip-btn .fs-icon { width: 36px; height: 36px; }
+.fs-ui.is-compact .fs-menu-btn { height: var(--fs-tap); font-size: 40px; }
+.fs-ui.is-compact .fs-input__dir, .fs-ui.is-compact .fs-input__btn, .fs-ui.is-compact .fs-input__text { height: 32px; min-width: 32px; font-size: 19px; }
+.fs-ui.is-compact .fs-input__btn { font-size: 23px; padding: 2px 9px 0; border-radius: 16px; }
+
+/* Title */
+.fs-ui.is-compact .fs-title__start { font-size: 56px; padding: 18px 70px 10px; }
+.fs-ui.is-compact .fs-title__tagline { font-size: 30px; }
+.fs-ui.is-compact .fs-title__footer { bottom: 18px; font-size: 20px; line-height: 1.2; }
+.fs-ui.is-compact .fs-title__footer .fs-hints.is-touch { position: static; }
+
+/* Mode select */
+.fs-ui.is-compact .fs-mode__body { top: 104px; bottom: 20px; left: 110px; right: 110px; }
+.fs-ui.is-compact .fs-mode__label { font-size: 24px; margin: 0 0 6px; }
+.fs-ui.is-compact .fs-format { height: 100px; }
+.fs-ui.is-compact .fs-format strong { font-size: 44px; }
+.fs-ui.is-compact .fs-format small { font-size: 20px; }
+.fs-ui.is-compact .fs-matchup { height: 210px; }
+.fs-ui.is-compact .fs-matchup__icon { top: 14px; width: 104px; height: 104px; }
+.fs-ui.is-compact .fs-matchup__title { font-size: 46px; }
+.fs-ui.is-compact .fs-matchup__sub { font-size: 20px; }
+.fs-ui.is-compact .fs-mode__detail { min-height: 0; margin-top: 12px; padding: 8px 18px; }
+.fs-ui.is-compact .fs-mode__detail strong { font-size: 30px; }
+.fs-ui.is-compact .fs-mode__detail p { font-size: 24px; line-height: 1.2; }
+.fs-ui.is-compact .fs-mode__detail .fs-mode__note { font-size: 20px; }
+.fs-ui.is-compact .fs-mode__footer { margin-top: 12px; }
+
+/* Character select: a larger grid, slimmer side panels, the move preview moves to the Moves chip. */
+.fs-ui.is-compact .fs-select .fs-screen__header { display: none; }
+.fs-ui.is-compact .fs-sel-panel { top: 104px; width: 330px; height: auto; }
+.fs-ui.is-compact .fs-sel-panel.is-p1 { left: 14px; }
+.fs-ui.is-compact .fs-sel-panel.is-p2 { right: 14px; }
+.fs-ui.is-compact .fs-sel-panel__who { font-size: 34px; }
+.fs-ui.is-compact .fs-sel-panel__status { font-size: 17px; }
+.fs-ui.is-compact .fs-sel-panel__top { gap: 10px; }
+.fs-ui.is-compact .fs-sel-card { width: 200px; height: 270px; }
+.fs-ui.is-compact .fs-sel-card__bg, .fs-ui.is-compact .fs-sel-card__portrait { inset: 17px 16px 16px; }
+.fs-ui.is-compact .fs-sel-card__img { width: 244px; }
+.fs-ui.is-compact .fs-sel-card__unknown { font-size: 140px; }
+.fs-ui.is-compact .fs-sel-card__stamp { font-size: 34px; bottom: 32px; }
+.fs-ui.is-compact .fs-sel-panel__aside { width: 120px; height: 270px; padding-top: 8px; }
+.fs-ui.is-compact .fs-sel-badge__lab { font-size: 26px; }
+.fs-ui.is-compact .fs-sel-badge__style, .fs-ui.is-compact .fs-sel-badge__stars { display: none; }
+.fs-ui.is-compact .fs-team-slots { width: 120px; }
+.fs-ui.is-compact .fs-team-slots__label { font-size: 17px; }
+.fs-ui.is-compact .fs-team-slot { height: 64px; }
+.fs-ui.is-compact .fs-team-slot__img, .fs-ui.is-compact .fs-team-slot__num { width: 56px; height: 56px; }
+.fs-ui.is-compact .fs-team-slot__name { font-size: 22px; }
+.fs-ui.is-compact .fs-sel-name__name { font-size: 54px; }
+.fs-ui.is-compact .fs-sel-name__title { font-size: 21px; }
+.fs-ui.is-compact .fs-sel-panel__stats { display: none; }
+.fs-ui.is-compact .fs-select__center { top: 112px; left: 362px; width: 556px; bottom: 12px; }
+.fs-ui.is-compact .fs-grid { gap: 8px; }
+.fs-ui.is-compact .fs-tile { aspect-ratio: 1 / 1.03; }
+.fs-ui.is-compact .fs-tile__name { font-size: 27px; }
+.fs-ui.is-compact .fs-tile__sigil { width: 28px; height: 28px; }
+.fs-ui.is-compact .fs-tile__cursor b { font-size: 20px; line-height: 22px; }
+.fs-ui.is-compact .fs-select .fs-preview { display: none; }
+.fs-ui.is-compact .fs-select .fs-hints:not(.is-touch) { display: none; }
+
+/* Stage select */
+.fs-ui.is-compact .fs-stage-hero { top: 112px; left: 150px; width: 980px; height: 392px; }
+.fs-ui.is-compact .fs-stage-hero h2 { font-size: 74px; }
+.fs-ui.is-compact .fs-stage-hero p { font-size: 23px; line-height: 1.25; max-width: 820px; }
+.fs-ui.is-compact .fs-stage-hero__lab { font-size: 19px; }
+.fs-ui.is-compact .fs-stage-hero__count { font-size: 30px; }
+.fs-ui.is-compact .fs-stage-strip { bottom: 14px; gap: 14px; }
+.fs-ui.is-compact .fs-stage-thumb { width: 196px; }
+.fs-ui.is-compact .fs-stage-thumb__img { width: 196px; height: 110px; }
+.fs-ui.is-compact .fs-stage-thumb__name { font-size: 20px; }
+.fs-ui.is-compact .fs-stagesel .fs-hints:not(.is-touch) { display: none; }
+
+/* Versus */
+.fs-ui.is-compact .fs-vs__skip { font-size: 20px; }
+.fs-ui.is-compact .fs-vs__footer { font-size: 30px; }
+.fs-ui.is-compact .fs-vs__names { bottom: 96px; }
+.fs-ui.is-compact .fs-vs__name small { font-size: 20px; }
+
+/* Overlays fill the stage; the touch chips sit in the panel's top-right corner. */
+.fs-ui.is-compact .fs-panel__title { font-size: 46px; margin-bottom: 6px; }
+.fs-ui.is-compact .fs-panel .fs-hints.is-touch { position: absolute; top: -12px; right: -8px; left: auto; margin: 0; }
+.fs-ui.is-compact .fs-panel .fs-hints:not(.is-touch) { display: none; }
+.fs-ui.is-compact .fs-tab { min-height: calc(var(--fs-tap) * 0.8); font-size: 30px; padding: 8px 18px 4px; }
+.fs-ui.is-compact .fs-tab__icon { width: 30px; height: 30px; }
+.fs-ui.is-compact .fs-tab__img { width: 40px; height: 40px; }
+
+.fs-ui.is-compact .fs-pause__panel { width: 1000px; }
+.fs-ui.is-compact .fs-pause__menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; padding: 0; }
+.fs-ui.is-compact .fs-pause__fighter strong { font-size: 38px; }
+.fs-ui.is-compact .fs-pause__fighter small, .fs-ui.is-compact .fs-pause__fighter span { font-size: 18px; }
+.fs-ui.is-compact .fs-pause__round { font-size: 28px; }
+.fs-ui.is-compact .fs-pause__img { width: 72px; height: 72px; }
+
+.fs-ui.is-compact .fs-confirm__panel { width: 760px; }
+.fs-ui.is-compact .fs-confirm__panel .fs-panel__title { font-size: 50px; }
+.fs-ui.is-compact .fs-confirm__body { font-size: 26px; line-height: 1.3; }
+.fs-ui.is-compact .fs-menu-btn.is-compact { height: var(--fs-tap); font-size: 36px; }
+
+.fs-ui.is-compact .fs-movelist__panel { width: 1250px; height: 708px; padding: 2px 14px 12px; }
+.fs-ui.is-compact .fs-movelist__body { grid-template-columns: 190px 1fr; gap: 14px; }
+.fs-ui.is-compact .fs-movelist__portrait { width: 180px; }
+.fs-ui.is-compact .fs-movelist__id strong { font-size: 40px; }
+.fs-ui.is-compact .fs-movelist__id > span { font-size: 18px; }
+.fs-ui.is-compact .fs-movelist__bio { display: none; }
+.fs-ui.is-compact .fs-mtable thead th { font-size: 17px; }
+.fs-ui.is-compact .fs-mrow th, .fs-ui.is-compact .fs-mrow td { padding: 9px 10px; }
+.fs-ui.is-compact .fs-mrow__name { font-size: 27px; }
+.fs-ui.is-compact .fs-mrow__num { font-size: 23px; }
+.fs-ui.is-compact .fs-prop { font-size: 16px; }
+.fs-ui.is-compact .fs-mrow__section th { font-size: 30px; }
+.fs-ui.is-compact .fs-movelist__scroll, .fs-ui.is-compact .fs-options { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+
+.fs-ui.is-compact .fs-settings__panel { width: 1250px; height: 708px; padding: 2px 14px 12px; }
+.fs-ui.is-compact .fs-opt { min-height: var(--fs-tap); padding: 4px 18px; }
+.fs-ui.is-compact .fs-opt__label { font-size: 30px; }
+.fs-ui.is-compact .fs-opt__value { min-width: 150px; font-size: 32px; }
+.fs-ui.is-compact .fs-opt__slider .fs-opt__value { min-width: 80px; }
+.fs-ui.is-compact .fs-opt__arrow { display: inline-grid; place-items: center; width: var(--fs-tap); height: var(--fs-tap); padding: 0; font-size: 26px; }
+.fs-ui.is-compact .fs-opt__track i { width: 26px; height: 34px; }
+.fs-ui.is-compact .fs-opt__dots { display: none; }
+.fs-ui.is-compact .fs-opt__toggle { font-size: 30px; }
+.fs-ui.is-compact .fs-opt__toggle i { width: 76px; height: 38px; border-radius: 19px; }
+.fs-ui.is-compact .fs-opt__toggle i::after { width: 30px; height: 30px; }
+.fs-ui.is-compact .fs-opt__toggle.is-on i::after { transform: translateX(38px); }
+.fs-ui.is-compact .fs-opt__bind { min-width: 130px; height: 50px; font-size: 30px; }
+.fs-ui.is-compact .fs-opt__go { font-size: 44px; }
+.fs-ui.is-compact .fs-settings__note { min-height: 0; margin-top: 8px; font-size: 22px; line-height: 1.25; }
+
+/* Results */
+.fs-ui.is-compact .fs-results__panel { top: 20px; right: 36px; width: 620px; }
+.fs-ui.is-compact .fs-results__who { font-size: 32px; }
+.fs-ui.is-compact .fs-results__sub { font-size: 21px; }
+.fs-ui.is-compact .fs-results__table th, .fs-ui.is-compact .fs-results__table td { padding: 3px 12px; }
+.fs-ui.is-compact .fs-results__table thead th { font-size: 26px; }
+.fs-ui.is-compact .fs-results__table tbody th { font-size: 20px; }
+.fs-ui.is-compact .fs-results__table td { font-size: 24px; }
+.fs-ui.is-compact .fs-results__time { font-size: 18px; margin: 4px 0 8px; }
+.fs-ui.is-compact .fs-results__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fs-ui.is-compact .fs-results__actions .fs-menu-btn { height: var(--fs-tap); padding: 0 14px; justify-content: center; font-size: 28px; line-height: 1; clip-path: none; border-radius: 8px; }
+.fs-ui.is-compact .fs-results__actions .fs-menu-btn .fs-icon { display: none; }
+.fs-ui.is-compact .fs-results__actions .fs-menu-btn.is-focused { transform: none; }
+.fs-ui.is-compact .fs-results__crest { font-size: 30px; }
+.fs-ui.is-compact .fs-results .fs-hints.is-touch { display: none; }
+
+/* Fight HUD while touch controls are up: meters move under the health bars, clear of the thumbs. */
+.fs-ui.is-touch-play .fs-hud__bottom { top: 116px; bottom: auto; align-items: flex-start; }
+.fs-ui.is-touch-play .fs-hud[data-mode="2v2"] .fs-hud__bottom { top: 166px; }
+.fs-ui.is-touch-play .fs-meter__seg { width: 96px; }
+.fs-ui.is-touch-play .fs-callout { top: 200px; }
+.fs-ui.is-touch-play .fs-combo { top: 250px; }
+.fs-ui.is-touch-play .fs-hud[data-mode="2v2"] .fs-callout { top: 250px; }
+.fs-ui.is-touch-play .fs-hud[data-mode="2v2"] .fs-combo { top: 300px; }
+.fs-ui.is-compact .fs-hud-name__text { font-size: 34px; }
+.fs-ui.is-compact .fs-hud-portrait__tag { font-size: 21px; line-height: 22px; }
+.fs-ui.is-compact .fs-hud-partner__name { font-size: 22px; }
+.fs-ui.is-compact .fs-hud-partner__chip { font-size: 21px; }
+.fs-ui.is-compact .fs-meter__label { font-size: 16px; }
+.fs-ui.is-compact .fs-runway__label { font-size: 14px; }
+.fs-ui.is-compact .fs-hud-timer__round { font-size: 15px; }
+
+/* Lite: phones and tablets skip effects that repaint every frame or force big offscreen layers. */
+.fs-ui.is-lite .fs-embers, .fs-ui.is-lite .fs-title__fog, .fs-ui.is-lite .fs-results__rays { display: none; }
+.fs-ui.is-lite .fs-title__bg { animation: none; transform: scale(1.04); }
+.fs-ui.is-lite .fs-title__logo { animation: fs-logo-in 1.2s var(--fs-ease-out) both; }
+.fs-ui.is-lite .fs-bg::before { filter: brightness(0.3) saturate(0.85); }
+.fs-ui.is-lite .fs-overlay__scrim { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(3, 4, 7, 0.86); }
+.fs-ui.is-lite .fs-menu-btn.is-focused::after, .fs-ui.is-lite .fs-meter__seg.is-full::after { animation: none; display: none; }
+.fs-ui.is-lite .fs-hp.is-low .fs-hp__fill { animation: none; }
+.fs-ui.is-lite .fs-tile__cursor.is-on, .fs-ui.is-lite .fs-sel-panel.is-choosing .fs-sel-panel__status, .fs-ui.is-lite .fs-team-slot.is-next { animation: none; }
+.fs-ui.is-lite .fs-screen__title, .fs-ui.is-lite .fs-sel-card__frame, .fs-ui.is-lite .fs-stage-hero__frame { filter: none; }
