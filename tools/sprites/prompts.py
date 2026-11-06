@@ -19,42 +19,42 @@ ROOT = Path(__file__).resolve().parents[2]
 FIGHTERS = ROOT / "assets" / "fighters"
 
 STYLE = (
-    "detailed 16-bit pixel art in the style of 1990s arcade fighting games (Mortal Kombat, Street Fighter III), "
-    "realistic adult proportions about 7 heads tall, crisp 1-pixel dark outline, 3-4 tone cel shading lit from "
-    "the top left, hand-placed pixels, limited palette"
+    "semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and "
+    "reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top "
+    "left, realistic cloth folds, no cartoon features, no cel shading"
 )
 BACKDROP = "Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders."
 
 
-def model_prompt(spec: dict) -> str:
-    return (
-        f"Pixel art fighting game character model sheet, {STYLE}. The character: {spec['look']}. "
-        "Show 4 full-body poses side by side, all in three-quarter side view facing RIGHT, same scale, feet on one "
-        "common baseline: 1) fighting stance with fists raised, knees slightly bent, 2) standing neutral, "
-        "3) mid walk stride, 4) side punch extended. " + BACKDROP
+def likeness_prompts(spec: dict) -> list[dict]:
+    """Photo-driven likeness: the photo is the edit input, the face is never described in words."""
+    bust = (
+        "Edit the FIRST image (a photo) into semi-realistic digitized pixel art like a Mortal Kombat II character "
+        "portrait. Keep the identity exactly: the same face shape, eyes, brows, nose, mouth, expression, glasses (if "
+        "any), hairline and hair as in the photo. Do not beautify, do not restyle the hair, do not change age or "
+        "proportions. Two head-and-shoulders views side by side at the same scale: left, front view as in the photo; "
+        f"right, the same person turned to a three-quarter view facing right. Wearing: {spec['outfit']}. " + BACKDROP
     )
-
-
-def parts_prompts(spec: dict) -> list[dict]:
-    look = spec["look"]
-    body = (
-        f"Pixel art CUTOUT ANIMATION PARTS SHEET for a 2D skeletal rig of the character in the reference image "
-        f"({look}; same {STYLE}; same scale; three-quarter side view facing RIGHT). Every body part drawn SEPARATELY "
-        "with clear magenta space between parts, nothing touching, each part complete with rounded joint ends: top "
-        "row left to right: 1) HEAD with neck and hair, facing right, 2) TORSO only from collar to hem at the hips, "
-        "NO arms, NO head, 3) UPPER ARM in its sleeve hanging straight down, 4) FOREARM in its sleeve with cuff and a "
-        "closed fist, hanging straight down. Bottom row: 5) one full trouser leg, vertical, 6) another trouser leg, "
-        "7) a third trouser leg, 8) hips and trousers. All limbs vertical and straight. " + BACKDROP
+    model = (
+        f"Full-body semi-realistic digitized pixel-art fighting game model sheet ({STYLE}) of the person in the "
+        f"FIRST image, wearing {spec['outfit']}. Four poses side by side, three-quarter side view facing RIGHT, same "
+        "scale, common baseline: 1) fighting stance, 2) standing neutral, 3) mid walk stride, 4) straight punch. "
+        + BACKDROP
     )
-    legs = (
-        f"Pixel art cutout-rig LEG AND SHOE PARTS for the character in the reference image ({look}; same {STYLE} "
-        "and palette). Six separate pieces in one row, evenly spaced with wide magenta gaps, nothing touching: "
-        "1) trouser leg from hip to ankle, vertical, 2) the same trouser leg again, 3) the character's SHOE in exact "
-        "side profile pointing RIGHT, sole flat, 4) the same shoe again, 5) trouser leg, 6) trouser leg. " + BACKDROP
+    blend = (
+        "Edit the FIRST image. The four heads were pasted onto the bodies; blend each head into its body so every "
+        "figure becomes one seamless sprite: draw a natural neck into the collar, remove leftover old chin and neck "
+        "pieces, match lighting and pixel style. DO NOT CHANGE THE FACES, GLASSES OR HAIR (they match the person in "
+        "the SECOND image). Do not change the bodies, clothes, poses, scale, positions or layout. " + BACKDROP
     )
     return [
-        {"file": "source/parts-body.jpg", "refs": ["source/model.jpg"], "prompt": body},
-        {"file": "source/parts-legs.jpg", "refs": ["source/model.jpg", "source/parts-body.jpg"], "prompt": legs},
+        {"file": "source/likeness.jpg", "refs": ["<reference photo from the roster doc>"], "prompt": bust,
+         "aspect": "16:9", "step": "1. bust from the photo"},
+        {"file": "source/model-draft.jpg", "refs": ["source/likeness.jpg"], "prompt": model, "aspect": "16:9",
+         "step": "2. body sheet (its heads get replaced)"},
+        {"file": "source/model.jpg", "refs": ["<likeness.py composite output>", "source/likeness.jpg"],
+         "prompt": blend, "aspect": "16:9",
+         "step": "3. python3 tools/sprites/likeness.py composite <id> source/model-draft.jpg composite.png, then blend"},
     ]
 
 
@@ -62,8 +62,9 @@ def sheet_prompt(spec: dict, sheet: dict) -> str:
     rows = sheet["rows"]
     accent = spec.get("accent", {}).get("name", "energy")
     parts = [
-        f"Pixel art fighting game sprite sheet: exactly the same character, outfit, proportions and scale as the "
-        f"reference model sheet ({spec['look']}), drawn in {STYLE}. Three-quarter side view, the character always "
+        f"Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the "
+        f"FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in {STYLE}. Outfit: "
+        f"{spec['outfit']}. Three-quarter side view, the character always "
         f"faces RIGHT. {len(rows)} rows; each row is one animation read left to right, frames evenly spaced with "
         "clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in "
         "each row (airborne poses drawn above it)."
@@ -83,11 +84,22 @@ def sheet_prompt(spec: dict, sheet: dict) -> str:
 
 def build(char_id: str) -> list[dict]:
     spec = json.loads((FIGHTERS / char_id / "spec.json").read_text())
-    entries = [{"file": "source/model.jpg", "refs": [], "prompt": model_prompt(spec), "aspect": "16:9"}]
-    entries += [dict(e, aspect="16:9") for e in parts_prompts(spec)]
+    entries = likeness_prompts(spec)
     for name, sheet in spec["sheets"].items():
-        entries.append({"file": sheet["file"], "refs": ["source/model.jpg"], "prompt": sheet_prompt(spec, sheet),
-                        "aspect": "16:9", "sheet": name})
+        entries.append({"file": sheet["file"], "refs": ["source/model.jpg", "source/likeness.jpg"],
+                        "prompt": sheet_prompt(spec, sheet), "aspect": "16:9", "sheet": name})
+    try:
+        import locomotion
+        for gait, anim in (("walk", "walk_fwd"), ("run", "run")):
+            if spec["animations"].get(anim, {}).get("type") != "repaint":
+                continue
+            for i in range(spec["animations"][anim].get("frames", 10)):
+                entries.append({"file": f"source/{gait}/{i:02d}.jpg",
+                                "refs": [f"<guide: locomotion.write_guides(..., '{gait}') -> {gait}-{i:02d}.png>",
+                                         "source/model.jpg"],
+                                "prompt": locomotion.frame_prompt(spec, gait, i), "aspect": "1:1"})
+    except Exception as exc:  # locomotion needs scipy/numpy; prompts still work without it
+        entries.append({"note": f"locomotion prompts unavailable: {exc}"})
     return entries
 
 

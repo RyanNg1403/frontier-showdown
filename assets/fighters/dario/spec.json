@@ -1,0 +1,778 @@
+{
+  "id": "dario",
+  "name": "Dario",
+  "height": 198,
+  "look": "Dario, age 43, average height, soft medium build with slightly rounded shoulders; round-to-oval face with full cheeks, dark-brown eyes, friendly open-mouthed explaining expression, light olive skin, clean-shaven with a faint shadow; thick dark-navy acetate glasses with soft rounded-rectangle frames; dense tight dark-brown curls of medium length (about 5-6 cm), most volume on top, never an afro",
+  "outfit": "mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes",
+  "accent": {
+    "name": "terracotta and cream light",
+    "colors": [
+      "#f29a68",
+      "#f6e7cf",
+      "#e2b85c",
+      "#b5603a"
+    ]
+  },
+  "guide": {
+    "top": "#5b7fc4",
+    "bottom": "#3a3430",
+    "shoes": "#3a2a20"
+  },
+  "photos": [
+    "https://commons.wikimedia.org/wiki/File:Dario_Amodei_at_TechCrunch_Disrupt_2023_01_(cropped).jpg"
+  ],
+  "palette": {
+    "colors": 48
+  },
+  "sheets": {
+    "basics": {
+      "file": "source/basics.jpg",
+      "rows": [
+        {
+          "label": "stance, crouch and guard",
+          "poses": [
+            "fighting stance: upright and earnest, one open palm forward at chest height, the other fist low by the hip, knees slightly bent",
+            "dropping into a crouch, knees half bent",
+            "full crouch, low on bent knees, hands up guarding",
+            "standing block: forearms raised in front of the face, chin tucked",
+            "crouching block: low crouch with forearms crossed in front of the face"
+          ]
+        },
+        {
+          "label": "jump",
+          "poses": [
+            "jump take-off: deep knee bend, arms swinging down",
+            "rising jump: body stretched upward, legs trailing",
+            "jump apex: knees tucked to the chest",
+            "falling: legs extending down to land",
+            "landing: knees absorbing the impact, low"
+          ]
+        }
+      ]
+    },
+    "punches": {
+      "file": "source/punches.jpg",
+      "rows": [
+        {
+          "label": "light punch: palm check",
+          "poses": [
+            "fighting stance",
+            "open lead palm pushing forward",
+            "palm strike fully extended at chest height",
+            "palm returning"
+          ]
+        },
+        {
+          "label": "heavy punch: straight punch",
+          "poses": [
+            "fighting stance",
+            "rear fist pulled back, hips coiled",
+            "straight punch fully extended at head height, shoulders rotated",
+            "follow-through, weight forward",
+            "recovering to stance"
+          ]
+        }
+      ]
+    },
+    "kicks": {
+      "file": "source/kicks.jpg",
+      "rows": [
+        {
+          "label": "light kick: short step-kick",
+          "poses": [
+            "fighting stance",
+            "small step and knee lift",
+            "short front step-kick extended at shin height",
+            "foot returning"
+          ]
+        },
+        {
+          "label": "heavy kick: measured roundhouse",
+          "poses": [
+            "fighting stance",
+            "rear knee raised and turned over, balanced",
+            "roundhouse kick extended at chest height, careful and measured",
+            "leg sweeping through",
+            "returning to stance"
+          ]
+        }
+      ]
+    },
+    "low": {
+      "file": "source/low.jpg",
+      "rows": [
+        {
+          "label": "crouching light: finger jab",
+          "poses": [
+            "deep crouch, palm forward",
+            "in the deep crouch, quick finger jab forward low",
+            "deep crouch, hand back"
+          ]
+        },
+        {
+          "label": "crouching heavy: rising palm",
+          "poses": [
+            "deep crouch, palm low",
+            "rising from the crouch with an upward palm strike, a small terracotta hexagon glow on the palm",
+            "standing with the palm thrust straight up above the head, hexagon glow",
+            "dropping back into a crouch"
+          ]
+        }
+      ],
+      "note": "Every frame in BOTH rows is a LOW CROUCHING pose except where a frame says it rises."
+    },
+    "air-throw": {
+      "file": "source/air-throw.jpg",
+      "rows": [
+        {
+          "label": "jumping attack: two-handed downward palm",
+          "poses": [
+            "airborne, knees tucked, both hands raised",
+            "both palms driving downward and forward",
+            "two-handed downward palm strike fully extended below",
+            "pulling the hands back in the air"
+          ]
+        },
+        {
+          "label": "throw: race to the top",
+          "poses": [
+            "fighting stance",
+            "both hands reaching forward to grab at chest height",
+            "gripping an invisible opponent and lifting, stepping up as if onto a ladder rung",
+            "reaching up high as if climbing a ladder, one knee raised",
+            "dropping the opponent, dusting off the hands"
+          ]
+        }
+      ]
+    },
+    "specials-a": {
+      "file": "source/specials-a.jpg",
+      "rows": [
+        {
+          "label": "special 1: Constitutional Barrier (raise a wall)",
+          "poses": [
+            "fighting stance",
+            "leaning in, both palms rising in front of the chest, faint cream glow",
+            "both palms pushed forward and up, raising an invisible wall, bright cream and soft gold glow on the palms",
+            "holding both palms forward, glow fading",
+            "lowering the hands to stance"
+          ]
+        },
+        {
+          "label": "special 2: Country of Geniuses (projectile)",
+          "poses": [
+            "fighting stance",
+            "leaning in thoughtfully, one hand opening at the side",
+            "sweeping the open hand forward, releasing small terracotta sparkles from the fingertips",
+            "arm extended forward, sparkles fading",
+            "returning to stance"
+          ]
+        }
+      ]
+    },
+    "specials-b": {
+      "file": "source/specials-b.jpg",
+      "rows": [
+        {
+          "label": "special 3: ASL Safeguard (counter stance)",
+          "poses": [
+            "fighting stance",
+            "raising the lead forearm as a shield, an amber hexagon glow in front of the forearm",
+            "holding the shield guard, braced, amber hexagon glow",
+            "quick palm strike forward from behind the shield",
+            "returning to stance"
+          ]
+        },
+        {
+          "label": "back dash",
+          "poses": [
+            "fighting stance",
+            "hopping backward: body leaning back, feet leaving the ground",
+            "airborne backward hop, legs together slightly bent",
+            "landing on the balls of the feet, knees bent"
+          ]
+        }
+      ]
+    },
+    "super": {
+      "file": "source/super.jpg",
+      "rows": [
+        {
+          "label": "super move part 1",
+          "poses": [
+            "fighting stance",
+            "leaning in, weighing the moment, terracotta glow on both hands",
+            "both arms pulling wide as if opening a big double door",
+            "both arms flung forward releasing a terracotta glow"
+          ]
+        },
+        {
+          "label": "super move part 2",
+          "poses": [
+            "sweeping one arm to the side, presenting",
+            "pointing upward with one finger, explaining",
+            "two-handed push forward with a terracotta glow",
+            "calm stance, friendly smile"
+          ]
+        }
+      ]
+    },
+    "hits": {
+      "file": "source/hits.jpg",
+      "rows": [
+        {
+          "label": "hit high",
+          "poses": [
+            "fighting stance",
+            "struck in the face: head snapped back, torso leaning back, arms flung loose, eyes shut",
+            "staggering back half a step, guard dropping"
+          ]
+        },
+        {
+          "label": "hit low",
+          "poses": [
+            "fighting stance",
+            "struck in the stomach: doubled over forward, arms around the waist",
+            "hunched, recovering"
+          ]
+        }
+      ]
+    },
+    "down": {
+      "file": "source/down.jpg",
+      "rows": [
+        {
+          "label": "knockdown",
+          "poses": [
+            "thrown backward off the feet, body arched back in the air",
+            "falling backward through the air, legs up",
+            "landing on the back on the ground",
+            "lying flat on the back on the ground, head to the left, feet to the right, dazed but fine"
+          ]
+        },
+        {
+          "label": "get up",
+          "poses": [
+            "lying flat on the back on the ground, head to the left, feet to the right",
+            "sitting up, propped on one hand",
+            "kneeling on one knee, pushing up",
+            "rising to the feet",
+            "back in the fighting stance"
+          ]
+        }
+      ]
+    },
+    "finish": {
+      "file": "source/finish.jpg",
+      "rows": [
+        {
+          "label": "KO (dazed, not hurt)",
+          "poses": [
+            "dazed and swaying, glasses slightly askew, arms limp",
+            "knees buckling",
+            "sitting down heavily on the ground, dizzy",
+            "lying on the back on the ground, dazed, head to the left"
+          ]
+        },
+        {
+          "label": "victory",
+          "poses": [
+            "fighting stance",
+            "straightening up, adjusting the glasses",
+            "thoughtfully twirling a curl of hair with one finger, calm smile",
+            "open palms forward in a friendly explaining gesture, smiling"
+          ]
+        }
+      ]
+    },
+    "entrance": {
+      "file": "source/entrance.jpg",
+      "rows": [
+        {
+          "label": "intro",
+          "poses": [
+            "standing upright, adjusting the glasses with one finger",
+            "open palm forward, explaining earnestly",
+            "hands together in front of the chest, thoughtful",
+            "leaning in slightly, nodding",
+            "settling into the fighting stance"
+          ]
+        },
+        {
+          "label": "tag in",
+          "poses": [
+            "leaping in from behind, airborne, leaning forward",
+            "landing in a low crouch, one hand on the ground",
+            "rising from the crouch",
+            "in the fighting stance, ready"
+          ]
+        }
+      ]
+    },
+    "finisher": {
+      "file": "source/finisher.jpg",
+      "rows": [
+        {
+          "label": "finisher: Not to Claude",
+          "poses": [
+            "fighting stance",
+            "turning half toward the camera, gesturing up at a big screen above with an open palm",
+            "pointing up at the screen with a friendly grin",
+            "hand on the chest, laughing politely",
+            "thumbs up, warm smile"
+          ]
+        }
+      ]
+    }
+  },
+  "animations": {
+    "idle": {
+      "type": "breathe",
+      "from": "basics:0:0",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    "walk_fwd": {
+      "type": "repaint",
+      "gait": "walk",
+      "frames": 10
+    },
+    "walk_back": {
+      "type": "reverse",
+      "of": "walk_fwd"
+    },
+    "run": {
+      "type": "repaint",
+      "gait": "run",
+      "frames": 10
+    },
+    "dash_back": {
+      "type": "frames",
+      "frames": [
+        "specials-b:1:0",
+        "specials-b:1:1",
+        "specials-b:1:2",
+        "specials-b:1:3"
+      ],
+      "fps": 14,
+      "loop": false,
+      "align": "torso"
+    },
+    "jump_start": {
+      "type": "frames",
+      "frames": [
+        "basics:1:0"
+      ],
+      "fps": 12,
+      "loop": false
+    },
+    "jump_air": {
+      "type": "frames",
+      "frames": [
+        "basics:1:1",
+        "basics:1:2",
+        "basics:1:3"
+      ],
+      "fps": 8,
+      "loop": false,
+      "align": "torso"
+    },
+    "jump_land": {
+      "type": "frames",
+      "frames": [
+        "basics:1:4",
+        "basics:0:0"
+      ],
+      "fps": 12,
+      "loop": false,
+      "anchor_frame": -1
+    },
+    "crouch": {
+      "type": "frames",
+      "frames": [
+        "basics:0:1",
+        "basics:0:2"
+      ],
+      "fps": 14,
+      "loop": false
+    },
+    "block": {
+      "type": "frames",
+      "frames": [
+        "basics:0:3"
+      ],
+      "fps": 10,
+      "loop": false
+    },
+    "crouch_block": {
+      "type": "frames",
+      "frames": [
+        "basics:0:4"
+      ],
+      "fps": 10,
+      "loop": false
+    },
+    "light_punch": {
+      "type": "frames",
+      "frames": [
+        "punches:0:0",
+        "punches:0:1",
+        "punches:0:2",
+        "punches:0:3"
+      ],
+      "fps": 15,
+      "loop": false,
+      "hit": 2
+    },
+    "heavy_punch": {
+      "type": "frames",
+      "frames": [
+        "punches:1:0",
+        "punches:1:1",
+        "punches:1:2",
+        "punches:1:3",
+        "punches:1:4"
+      ],
+      "fps": 12,
+      "loop": false,
+      "hit": 2
+    },
+    "light_kick": {
+      "type": "frames",
+      "frames": [
+        "kicks:0:0",
+        "kicks:0:1",
+        "kicks:0:2",
+        "kicks:0:3"
+      ],
+      "fps": 14,
+      "loop": false,
+      "hit": 2
+    },
+    "heavy_kick": {
+      "type": "frames",
+      "frames": [
+        "kicks:1:0",
+        "kicks:1:1",
+        "kicks:1:2",
+        "kicks:1:3",
+        "kicks:1:4"
+      ],
+      "fps": 12,
+      "loop": false,
+      "hit": 2
+    },
+    "crouch_light": {
+      "type": "frames",
+      "frames": [
+        "low:0:0",
+        "low:0:1",
+        "low:0:2"
+      ],
+      "fps": 15,
+      "loop": false,
+      "hit": 1
+    },
+    "crouch_heavy": {
+      "type": "frames",
+      "frames": [
+        "low:1:0",
+        "low:1:1",
+        "low:1:2",
+        "low:1:3"
+      ],
+      "fps": 12,
+      "loop": false,
+      "hit": 2
+    },
+    "air_attack": {
+      "type": "frames",
+      "frames": [
+        "air-throw:0:0",
+        "air-throw:0:1",
+        "air-throw:0:2",
+        "air-throw:0:3"
+      ],
+      "fps": 12,
+      "loop": false,
+      "hit": 1,
+      "align": "torso"
+    },
+    "throw": {
+      "type": "frames",
+      "frames": [
+        "air-throw:1:0",
+        "air-throw:1:1",
+        "air-throw:1:2",
+        "air-throw:1:3",
+        "air-throw:1:4"
+      ],
+      "fps": 10,
+      "loop": false,
+      "hit": 3
+    },
+    "special_1": {
+      "type": "frames",
+      "frames": [
+        "specials-a:0:0",
+        "specials-a:0:1",
+        "specials-a:0:2",
+        "specials-a:0:3",
+        "specials-a:0:4"
+      ],
+      "fps": 12,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "special"
+        }
+      ]
+    },
+    "special_2": {
+      "type": "frames",
+      "frames": [
+        "specials-a:1:0",
+        "specials-a:1:1",
+        "specials-a:1:2",
+        "specials-a:1:3",
+        "specials-a:1:4"
+      ],
+      "fps": 12,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "special"
+        }
+      ]
+    },
+    "special_3": {
+      "type": "frames",
+      "frames": [
+        "specials-b:0:0",
+        "specials-b:0:1",
+        "specials-b:0:2",
+        "specials-b:0:3",
+        "specials-b:0:4"
+      ],
+      "fps": 12,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "special"
+        }
+      ]
+    },
+    "super": {
+      "type": "frames",
+      "frames": [
+        "super:0:0",
+        "super:0:1",
+        "super:0:2",
+        "super:0:3",
+        "super:1:0",
+        "super:1:1",
+        "super:1:2",
+        "super:1:3"
+      ],
+      "fps": 12,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 1,
+          "type": "super"
+        },
+        {
+          "frame": 2,
+          "type": "hit"
+        },
+        {
+          "frame": 3,
+          "type": "hit"
+        },
+        {
+          "frame": 4,
+          "type": "hit"
+        },
+        {
+          "frame": 5,
+          "type": "hit"
+        },
+        {
+          "frame": 6,
+          "type": "hit"
+        }
+      ]
+    },
+    "hit_high": {
+      "type": "frames",
+      "frames": [
+        "hits:0:1",
+        "hits:0:2"
+      ],
+      "fps": 10,
+      "loop": false
+    },
+    "hit_low": {
+      "type": "frames",
+      "frames": [
+        "hits:1:1",
+        "hits:1:2"
+      ],
+      "fps": 10,
+      "loop": false
+    },
+    "knockdown": {
+      "type": "frames",
+      "frames": [
+        "down:0:0",
+        "down:0:1",
+        "down:0:2",
+        "down:0:3"
+      ],
+      "fps": 10,
+      "loop": false,
+      "align": "torso"
+    },
+    "getup": {
+      "type": "frames",
+      "frames": [
+        "down:1:0",
+        "down:1:1",
+        "down:1:2",
+        "down:1:3",
+        "down:1:4"
+      ],
+      "fps": 10,
+      "loop": false,
+      "anchor_frame": -1
+    },
+    "ko": {
+      "type": "frames",
+      "frames": [
+        "finish:0:0",
+        "finish:0:1",
+        "finish:0:2",
+        "finish:0:3"
+      ],
+      "fps": 8,
+      "loop": false
+    },
+    "victory": {
+      "type": "frames",
+      "frames": [
+        "finish:1:0",
+        "finish:1:1",
+        "finish:1:2",
+        "finish:1:3"
+      ],
+      "fps": 8,
+      "loop": false
+    },
+    "intro": {
+      "type": "frames",
+      "frames": [
+        "entrance:0:0",
+        "entrance:0:1",
+        "entrance:0:2",
+        "entrance:0:3",
+        "entrance:0:4"
+      ],
+      "fps": 8,
+      "loop": false,
+      "anchor_frame": -1
+    },
+    "tag_in": {
+      "type": "frames",
+      "frames": [
+        "entrance:1:0",
+        "entrance:1:1",
+        "entrance:1:2",
+        "entrance:1:3"
+      ],
+      "fps": 12,
+      "loop": false,
+      "align": "torso",
+      "anchor_frame": -1
+    },
+    "finisher": {
+      "type": "frames",
+      "frames": [
+        "finisher:0:0",
+        "finisher:0:1",
+        "finisher:0:2",
+        "finisher:0:3",
+        "finisher:0:4"
+      ],
+      "fps": 8,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 1,
+          "type": "finisher"
+        }
+      ]
+    }
+  },
+  "scale_refs": {
+    "basics": [
+      "basics:0:0",
+      "basics:0:3"
+    ],
+    "punches": [
+      "punches:0:0",
+      "punches:1:0"
+    ],
+    "kicks": [
+      "kicks:0:0",
+      "kicks:1:0"
+    ],
+    "low": {
+      "refs": [
+        "low:0:0",
+        "low:0:2",
+        "low:1:0"
+      ],
+      "upright": false
+    },
+    "air-throw": [
+      "air-throw:1:0"
+    ],
+    "specials-a": [
+      "specials-a:0:0",
+      "specials-a:1:0"
+    ],
+    "specials-b": [
+      "specials-b:0:0",
+      "specials-b:1:0"
+    ],
+    "super": [
+      "super:0:0"
+    ],
+    "hits": [
+      "hits:0:0",
+      "hits:1:0"
+    ],
+    "down": [
+      "down:1:4"
+    ],
+    "finish": [
+      "finish:1:0"
+    ],
+    "entrance": [
+      "entrance:0:4",
+      "entrance:1:3"
+    ],
+    "finisher": [
+      "finisher:0:0"
+    ]
+  }
+}

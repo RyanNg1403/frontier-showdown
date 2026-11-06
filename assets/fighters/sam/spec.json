@@ -22,21 +22,21 @@
         {
           "label": "stance, crouch and guard",
           "poses": [
-            "fighting stance: side-on, knees bent, rear fist by the chin, lead fist forward at shoulder height",
+            "fighting stance: relaxed and understated, side-on, weight on the balls of the feet, loose fists at chest height",
             "dropping into a crouch, knees half bent",
-            "full crouch, low on bent knees, fists up guarding the face",
-            "standing block: forearms raised in front of the face, chin tucked, braced",
+            "full crouch, low on bent knees, hands up guarding",
+            "standing block: forearms raised in front of the face, chin tucked",
             "crouching block: low crouch with forearms crossed in front of the face"
           ]
         },
         {
           "label": "jump",
           "poses": [
-            "jump take-off: deep knee bend, arms swinging down, about to spring",
-            "rising jump: body stretched upward, legs trailing, arms up",
-            "jump apex: knees tucked to the chest, fists guarding",
-            "falling: legs extending down to land, arms out for balance",
-            "landing: knees absorbing the impact, low, fists up"
+            "jump take-off: deep knee bend, arms swinging down",
+            "rising jump: body stretched upward, legs trailing",
+            "jump apex: knees tucked to the chest",
+            "falling: legs extending down to land",
+            "landing: knees absorbing the impact, low"
           ]
         }
       ]
@@ -45,22 +45,22 @@
       "file": "source/punches.jpg",
       "rows": [
         {
-          "label": "light punch (jab)",
+          "label": "light punch: quick jab",
           "poses": [
             "fighting stance",
-            "lead fist snapping forward, elbow half extended",
-            "jab fully extended straight forward at head height, shoulder rolled in",
-            "fist retracting back toward guard"
+            "lead fist snapping forward",
+            "quick jab fully extended at head height",
+            "fist retracting to guard"
           ]
         },
         {
-          "label": "heavy punch (straight cross)",
+          "label": "heavy punch: overhand right",
           "poses": [
             "fighting stance",
-            "wind-up: rear fist pulled back, hips coiled",
-            "rear straight cross fully extended forward at head height, hips and shoulders rotated, rear heel lifted",
-            "follow-through: arm still extended, weight forward",
-            "recovering back toward guard"
+            "rear fist cocked high behind the ear",
+            "looping overhand right coming over the top",
+            "overhand right fully extended forward and down at head height, weight forward",
+            "recovering to guard"
           ]
         }
       ]
@@ -69,22 +69,22 @@
       "file": "source/kicks.jpg",
       "rows": [
         {
-          "label": "light kick (front kick)",
+          "label": "light kick: sneaker toe-poke",
           "poses": [
             "fighting stance",
-            "front knee chambered up to the waist",
-            "fast front snap kick extended forward at waist height, toes pointing forward",
-            "leg retracting, knee chambered"
+            "front knee lifting",
+            "quick toe-poke kick, sneaker toe extended forward at knee height",
+            "foot returning"
           ]
         },
         {
-          "label": "heavy kick (roundhouse)",
+          "label": "heavy kick: turning kick",
           "poses": [
             "fighting stance",
-            "pivot on the front foot, rear knee raised and turned over",
-            "high roundhouse kick fully extended forward at head height, body leaning back for balance",
-            "kicking leg sweeping through, still high",
-            "leg coming down, returning to stance"
+            "pivoting on the front foot, rear knee raised and turned over",
+            "turning kick fully extended forward at chest height",
+            "leg sweeping through",
+            "returning to stance"
           ]
         }
       ]
@@ -93,45 +93,45 @@
       "file": "source/low.jpg",
       "rows": [
         {
-          "label": "crouching light (crouch jab)",
+          "label": "crouching light: low knuckle tap",
           "poses": [
-            "deep crouch, knees fully bent, fists up guarding",
-            "still in the deep crouch, lead fist punching straight forward at waist height",
-            "deep crouch, fist pulling back to guard"
+            "deep crouch, fists up",
+            "in the deep crouch, lead fist tapping forward low near the ground",
+            "deep crouch, fist back"
           ]
         },
         {
-          "label": "crouching heavy (low sweep)",
+          "label": "crouching heavy: rising uppercut launcher",
           "poses": [
-            "full crouch, fists up",
-            "dropping lower, one hand touching the ground, spinning",
-            "low leg sweep: one leg fully extended forward along the ground, body very low, hand on the floor",
-            "sweep finishing, rising back to a crouch"
+            "deep crouch, rear fist cocked low",
+            "exploding upward from the crouch, rear fist rising",
+            "standing tall with the uppercut fully extended straight up above the head",
+            "dropping back into a crouch"
           ]
         }
       ],
-      "note": "Every frame in BOTH rows is a LOW CROUCHING pose: knees deeply bent, hips low, head at about two thirds of standing height; never standing upright."
+      "note": "Every frame in BOTH rows is a LOW CROUCHING pose except where a frame says it rises."
     },
     "air-throw": {
       "file": "source/air-throw.jpg",
       "rows": [
         {
-          "label": "jumping kick",
+          "label": "jumping kick: diagonal sneaker stomp",
           "poses": [
-            "airborne with knees tucked",
-            "flying kick: front leg extended diagonally forward and down, rear leg tucked, arms guarding",
-            "flying kick held, fully extended",
-            "leg retracting back into a tuck in the air"
+            "airborne, knees tucked",
+            "front leg driving diagonally down and forward, sole of the sneaker leading",
+            "stomp fully extended diagonally down-forward",
+            "leg retracting into a tuck in the air"
           ]
         },
         {
-          "label": "throw",
+          "label": "throw: grab and shove",
           "poses": [
             "fighting stance",
-            "lunging forward, both hands reaching forward at chest height to grab",
-            "both hands gripping an invisible opponent's collar, pulling close, knee rising",
-            "turning the hips and heaving both arms over the shoulder in a throw",
-            "finishing the throw, arms swung down, then upright"
+            "both hands reaching forward to grab at chest height",
+            "both hands gripping an invisible opponent's collar, pulling close, startled face",
+            "both palms shoving hard forward, arms extended",
+            "recovering to stance, straightening the sweater"
           ]
         }
       ]
@@ -140,23 +140,23 @@
       "file": "source/specials-a.jpg",
       "rows": [
         {
-          "label": "special 1: compute blast (projectile)",
+          "label": "special 1: Prompt Burst (projectile)",
           "poses": [
             "fighting stance",
-            "both hands cupped together at the hip gathering a small glowing cyan energy ball",
-            "both palms thrust forward at chest height, a bright cyan energy burst leaving the hands",
-            "arms still extended forward, fading cyan sparks on the palms",
-            "pulling the hands back to guard"
+            "drawing the right hand back to the hip, a small mint teal glow forming in the palm",
+            "palm thrust forward at chest height, a bright mint teal glow bursting from the palm",
+            "arm still extended, the glow fading",
+            "pulling back to guard"
           ]
         },
         {
-          "label": "special 2: scaling rush (dashing elbow)",
+          "label": "special 2: Event Horizon (rising uppercut)",
           "poses": [
             "fighting stance",
-            "low lean forward, about to dash, cyan glow on the lead elbow",
-            "dashing forward horizontally, lead elbow driving forward at chest height, rear leg trailing",
-            "elbow strike at full extension, body low and forward",
-            "braking and recovering to stance"
+            "crouching low, coiled, fist cocked at the hip with mint teal glow",
+            "leaping up off the ground with a rising uppercut, fist high, a mint teal glow ring around the fist",
+            "apex: body stretched, fist straight up, feet off the ground",
+            "landing in a crouch"
           ]
         }
       ]
@@ -165,22 +165,22 @@
       "file": "source/specials-b.jpg",
       "rows": [
         {
-          "label": "special 3: launch uppercut (rising)",
+          "label": "special 3: Stargate Rush (advancing knee)",
           "poses": [
             "fighting stance",
-            "crouching low, rear fist cocked at the hip with cyan glow",
-            "leaping upward with a rising uppercut, fist high above the head, body stretched, feet off the ground",
-            "apex of the rising uppercut, fist straight up, knees bent in the air",
-            "landing in a crouch"
+            "sweeping the lead hand in a circle in front of him, mint teal glow at the fingertips",
+            "stepping forward through the circle, low lunge",
+            "leaping flying knee strike forward, knee high, arms back",
+            "landing, recovering to stance"
           ]
         },
         {
           "label": "back dash",
           "poses": [
             "fighting stance",
-            "hopping backward: body leaning back, feet leaving the ground, fists guarding",
+            "hopping backward: body leaning back, feet leaving the ground",
             "airborne backward hop, legs together slightly bent",
-            "landing on the balls of the feet, knees bent, fists guarding"
+            "landing on the balls of the feet, knees bent"
           ]
         }
       ]
@@ -192,18 +192,18 @@
           "label": "super move part 1",
           "poses": [
             "fighting stance",
-            "powering up: fists clenched at the sides, chest out, cyan aura around the hands",
-            "rushing jab, lead fist extended, glowing cyan",
-            "rushing cross, rear fist extended, glowing cyan"
+            "powering up: fists clenched at the sides, mint teal glow on both fists, focused",
+            "dashing forward with a jab, fist glowing mint teal",
+            "dashing cross, rear fist glowing mint teal"
           ]
         },
         {
           "label": "super move part 2",
           "poses": [
-            "spinning back kick at chest height",
-            "both palms thrust forward releasing a large bright cyan energy beam",
-            "beam sustained, palms forward, body braced, hair blown back",
-            "relaxing back into the fighting stance"
+            "spinning elbow strike",
+            "rising knee strike, airborne",
+            "both hands clasped overhead slamming down hard in front",
+            "relaxed confident stance, small smile"
           ]
         }
       ]
@@ -215,8 +215,8 @@
           "label": "hit high",
           "poses": [
             "fighting stance",
-            "struck in the face: head snapped back, torso leaning back, arms flung loose",
-            "staggering back half a step, wincing, guard dropping"
+            "struck in the face: head snapped back, torso leaning back, arms flung loose, eyes shut",
+            "staggering back half a step, guard dropping"
           ]
         },
         {
@@ -224,7 +224,7 @@
           "poses": [
             "fighting stance",
             "struck in the stomach: doubled over forward, arms around the waist",
-            "staggering, hunched, recovering"
+            "hunched, recovering"
           ]
         }
       ]
@@ -235,10 +235,10 @@
         {
           "label": "knockdown",
           "poses": [
-            "struck hard: thrown backward off the feet, body arched back in the air",
-            "falling backward through the air, legs up, back toward the ground",
-            "hitting the ground on the back, bouncing slightly",
-            "lying flat on the back on the ground, head to the left, feet to the right"
+            "thrown backward off the feet, body arched back in the air",
+            "falling backward through the air, legs up",
+            "landing on the back on the ground",
+            "lying flat on the back on the ground, head to the left, feet to the right, dazed but fine"
           ]
         },
         {
@@ -257,21 +257,21 @@
       "file": "source/finish.jpg",
       "rows": [
         {
-          "label": "KO (defeated)",
+          "label": "KO (dazed, not hurt)",
           "poses": [
-            "dazed and swaying, arms limp",
-            "knees buckling, head dropping",
-            "on both knees, slumped forward",
-            "collapsed lying on the stomach on the ground, head to the right"
+            "dazed and swaying, arms limp, eyes unfocused",
+            "knees buckling",
+            "sitting down heavily on the ground, dizzy",
+            "lying on the back on the ground, dazed, head to the left"
           ]
         },
         {
           "label": "victory",
           "poses": [
             "fighting stance",
-            "relaxing, straightening up, dusting off the sweatshirt",
-            "confident smile, adjusting the sweatshirt sleeves",
-            "victory pose: one fist raised high in the air, other hand on the hip, smiling"
+            "straightening up, relaxed",
+            "putting a visitor badge on a lanyard over his head, small closed-mouth smile",
+            "standing with the visitor badge lanyard on, one hand raised in a small wave, small smile"
           ]
         }
       ]
@@ -282,20 +282,35 @@
         {
           "label": "intro",
           "poses": [
-            "standing relaxed, hands in pockets, calm smile",
-            "taking the hands out of the pockets, rolling the shoulders",
-            "cracking the knuckles in front of the chest",
-            "pointing a finger forward at the opponent with a confident look",
+            "standing relaxed, glancing down at a phone in one hand",
+            "slipping the phone into the trouser pocket",
+            "rolling the shoulders, calm",
+            "small confident nod",
             "settling into the fighting stance"
           ]
         },
         {
           "label": "tag in",
           "poses": [
-            "leaping in from behind, airborne, body leaning forward, knees tucked",
+            "leaping in from behind, airborne, leaning forward",
             "landing in a low three-point crouch, one hand on the ground",
             "rising from the crouch",
-            "back in the fighting stance, ready"
+            "in the fighting stance, ready"
+          ]
+        }
+      ]
+    },
+    "finisher": {
+      "file": "source/finisher.jpg",
+      "rows": [
+        {
+          "label": "finisher: Gentle Singularity",
+          "poses": [
+            "fighting stance",
+            "both hands raised palms up, gently lifting, a soft mint teal glow between the hands",
+            "hands slowly circling around each other, mint teal glow swirling",
+            "one hand raised high, calm smile, glow above the hand",
+            "arms relaxed, small satisfied closed-mouth smile"
           ]
         }
       ]
@@ -310,7 +325,7 @@
       "loop": true
     },
     "walk_fwd": {
-      "type": "cutout",
+      "type": "repaint",
       "gait": "walk",
       "frames": 10
     },
@@ -319,7 +334,7 @@
       "of": "walk_fwd"
     },
     "run": {
-      "type": "cutout",
+      "type": "repaint",
       "gait": "run",
       "frames": 10
     },
@@ -329,8 +344,7 @@
         "specials-b:1:0",
         "specials-b:1:1",
         "specials-b:1:2",
-        "specials-b:1:3",
-        "basics:0:0"
+        "specials-b:1:3"
       ],
       "fps": 14,
       "loop": false,
@@ -362,7 +376,8 @@
         "basics:0:0"
       ],
       "fps": 12,
-      "loop": false
+      "loop": false,
+      "anchor_frame": -1
     },
     "crouch": {
       "type": "frames",
@@ -486,7 +501,7 @@
       ],
       "fps": 10,
       "loop": false,
-      "hit": 2
+      "hit": 3
     },
     "special_1": {
       "type": "frames",
@@ -499,10 +514,11 @@
       ],
       "fps": 12,
       "loop": false,
+      "glow": true,
       "events": [
         {
           "frame": 2,
-          "type": "projectile"
+          "type": "special"
         }
       ]
     },
@@ -517,8 +533,13 @@
       ],
       "fps": 12,
       "loop": false,
-      "hit": 3,
-      "align": "torso"
+      "glow": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "special"
+        }
+      ]
     },
     "special_3": {
       "type": "frames",
@@ -531,7 +552,13 @@
       ],
       "fps": 12,
       "loop": false,
-      "hit": 2
+      "glow": true,
+      "events": [
+        {
+          "frame": 2,
+          "type": "special"
+        }
+      ]
     },
     "super": {
       "type": "frames",
@@ -547,7 +574,12 @@
       ],
       "fps": 12,
       "loop": false,
+      "glow": true,
       "events": [
+        {
+          "frame": 1,
+          "type": "super"
+        },
         {
           "frame": 2,
           "type": "hit"
@@ -562,7 +594,11 @@
         },
         {
           "frame": 5,
-          "type": "projectile"
+          "type": "hit"
+        },
+        {
+          "frame": 6,
+          "type": "hit"
         }
       ]
     },
@@ -606,7 +642,8 @@
         "down:1:4"
       ],
       "fps": 10,
-      "loop": false
+      "loop": false,
+      "anchor_frame": -1
     },
     "ko": {
       "type": "frames",
@@ -640,7 +677,8 @@
         "entrance:0:4"
       ],
       "fps": 8,
-      "loop": false
+      "loop": false,
+      "anchor_frame": -1
     },
     "tag_in": {
       "type": "frames",
@@ -652,37 +690,81 @@
       ],
       "fps": 12,
       "loop": false,
-      "align": "torso"
+      "align": "torso",
+      "anchor_frame": -1
+    },
+    "finisher": {
+      "type": "frames",
+      "frames": [
+        "finisher:0:0",
+        "finisher:0:1",
+        "finisher:0:2",
+        "finisher:0:3",
+        "finisher:0:4"
+      ],
+      "fps": 8,
+      "loop": false,
+      "glow": true,
+      "events": [
+        {
+          "frame": 1,
+          "type": "finisher"
+        }
+      ]
     }
   },
   "scale_refs": {
-    "basics": "stance",
-    "punches": "stance",
-    "kicks": "stance",
+    "basics": [
+      "basics:0:0",
+      "basics:0:3"
+    ],
+    "punches": [
+      "punches:0:0",
+      "punches:1:0"
+    ],
+    "kicks": [
+      "kicks:0:0",
+      "kicks:1:0"
+    ],
     "low": {
-      "frame": "low:0:0",
-      "match": "basics:0:2"
+      "refs": [
+        "low:0:0",
+        "low:0:2",
+        "low:1:0"
+      ],
+      "upright": false
     },
-    "air-throw": {
-      "frame": "air-throw:1:0",
-      "match": "stance"
-    },
-    "specials-a": "stance",
-    "specials-b": "stance",
-    "super": "stance",
-    "hits": "stance",
-    "down": {
-      "frame": "down:1:4",
-      "match": "stance"
-    },
-    "finish": {
-      "frame": "finish:1:0",
-      "match": "stance"
-    },
-    "entrance": {
-      "frame": "entrance:0:4",
-      "match": "stance"
-    }
+    "air-throw": [
+      "air-throw:1:0"
+    ],
+    "specials-a": [
+      "specials-a:0:0",
+      "specials-a:1:0"
+    ],
+    "specials-b": [
+      "specials-b:0:0",
+      "specials-b:1:0"
+    ],
+    "super": [
+      "super:0:0"
+    ],
+    "hits": [
+      "hits:0:0",
+      "hits:1:0"
+    ],
+    "down": [
+      "down:1:4"
+    ],
+    "finish": [
+      "finish:1:0"
+    ],
+    "entrance": [
+      "entrance:0:4",
+      "entrance:1:3"
+    ],
+    "finisher": [
+      "finisher:0:0"
+    ]
   },
   "photos": [
     "https://commons.wikimedia.org/wiki/File:Meeting_with_Masayoshi_Son_and_Sam_Altman_(February_3,_2025)_(3x4_cropped_on_Altman).jpg",

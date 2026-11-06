@@ -171,7 +171,7 @@ def frame_prompt(spec: dict, gait_name: str, index: int) -> str:
         f"FIRST image, at the same angles, the same size and the same place in the frame. {feet} Only repaint "
         "the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees "
         "and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the "
-        "far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text."
+        "far-side limbs darker, no logo or emblem on the clothes. Keep the flat magenta background, no floor, no shadow, no text."
     )
 
 

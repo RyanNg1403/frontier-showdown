@@ -1,0 +1,340 @@
+[
+  {
+    "file": "source/likeness.jpg",
+    "refs": [
+      "<reference photo from the roster doc>"
+    ],
+    "prompt": "Edit the FIRST image (a photo) into semi-realistic digitized pixel art like a Mortal Kombat II character portrait. Keep the identity exactly: the same face shape, eyes, brows, nose, mouth, expression, glasses (if any), hairline and hair as in the photo. Do not beautify, do not restyle the hair, do not change age or proportions. Two head-and-shoulders views side by side at the same scale: left, front view as in the photo; right, the same person turned to a three-quarter view facing right. Wearing: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "step": "1. bust from the photo"
+  },
+  {
+    "file": "source/model-draft.jpg",
+    "refs": [
+      "source/likeness.jpg"
+    ],
+    "prompt": "Full-body semi-realistic digitized pixel-art fighting game model sheet (semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading) of the person in the FIRST image, wearing mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Four poses side by side, three-quarter side view facing RIGHT, same scale, common baseline: 1) fighting stance, 2) standing neutral, 3) mid walk stride, 4) straight punch. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "step": "2. body sheet (its heads get replaced)"
+  },
+  {
+    "file": "source/model.jpg",
+    "refs": [
+      "<likeness.py composite output>",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Edit the FIRST image. The four heads were pasted onto the bodies; blend each head into its body so every figure becomes one seamless sprite: draw a natural neck into the collar, remove leftover old chin and neck pieces, match lighting and pixel style. DO NOT CHANGE THE FACES, GLASSES OR HAIR (they match the person in the SECOND image). Do not change the bodies, clothes, poses, scale, positions or layout. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "step": "3. python3 tools/sprites/likeness.py composite <id> source/model-draft.jpg composite.png, then blend"
+  },
+  {
+    "file": "source/basics.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, stance, crouch and guard (5 frames): 1) fighting stance: upright and earnest, one open palm forward at chest height, the other fist low by the hip, knees slightly bent. 2) dropping into a crouch, knees half bent. 3) full crouch, low on bent knees, hands up guarding. 4) standing block: forearms raised in front of the face, chin tucked. 5) crouching block: low crouch with forearms crossed in front of the face. ROW 2, jump (5 frames): 1) jump take-off: deep knee bend, arms swinging down. 2) rising jump: body stretched upward, legs trailing. 3) jump apex: knees tucked to the chest. 4) falling: legs extending down to land. 5) landing: knees absorbing the impact, low. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "basics"
+  },
+  {
+    "file": "source/punches.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, light punch: palm check (4 frames): 1) fighting stance. 2) open lead palm pushing forward. 3) palm strike fully extended at chest height. 4) palm returning. ROW 2, heavy punch: straight punch (5 frames): 1) fighting stance. 2) rear fist pulled back, hips coiled. 3) straight punch fully extended at head height, shoulders rotated. 4) follow-through, weight forward. 5) recovering to stance. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "punches"
+  },
+  {
+    "file": "source/kicks.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, light kick: short step-kick (4 frames): 1) fighting stance. 2) small step and knee lift. 3) short front step-kick extended at shin height. 4) foot returning. ROW 2, heavy kick: measured roundhouse (5 frames): 1) fighting stance. 2) rear knee raised and turned over, balanced. 3) roundhouse kick extended at chest height, careful and measured. 4) leg sweeping through. 5) returning to stance. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "kicks"
+  },
+  {
+    "file": "source/low.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, crouching light: finger jab (3 frames): 1) deep crouch, palm forward. 2) in the deep crouch, quick finger jab forward low. 3) deep crouch, hand back. ROW 2, crouching heavy: rising palm (4 frames): 1) deep crouch, palm low. 2) rising from the crouch with an upward palm strike, a small terracotta hexagon glow on the palm. 3) standing with the palm thrust straight up above the head, hexagon glow. 4) dropping back into a crouch. Draw the terracotta and cream light only in the frames that mention it; no other effects, no motion lines. Every frame in BOTH rows is a LOW CROUCHING pose except where a frame says it rises. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "low"
+  },
+  {
+    "file": "source/air-throw.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, jumping attack: two-handed downward palm (4 frames): 1) airborne, knees tucked, both hands raised. 2) both palms driving downward and forward. 3) two-handed downward palm strike fully extended below. 4) pulling the hands back in the air. ROW 2, throw: race to the top (5 frames): 1) fighting stance. 2) both hands reaching forward to grab at chest height. 3) gripping an invisible opponent and lifting, stepping up as if onto a ladder rung. 4) reaching up high as if climbing a ladder, one knee raised. 5) dropping the opponent, dusting off the hands. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "air-throw"
+  },
+  {
+    "file": "source/specials-a.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, special 1: Constitutional Barrier (raise a wall) (5 frames): 1) fighting stance. 2) leaning in, both palms rising in front of the chest, faint cream glow. 3) both palms pushed forward and up, raising an invisible wall, bright cream and soft gold glow on the palms. 4) holding both palms forward, glow fading. 5) lowering the hands to stance. ROW 2, special 2: Country of Geniuses (projectile) (5 frames): 1) fighting stance. 2) leaning in thoughtfully, one hand opening at the side. 3) sweeping the open hand forward, releasing small terracotta sparkles from the fingertips. 4) arm extended forward, sparkles fading. 5) returning to stance. Draw the terracotta and cream light only in the frames that mention it; no other effects, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "specials-a"
+  },
+  {
+    "file": "source/specials-b.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, special 3: ASL Safeguard (counter stance) (5 frames): 1) fighting stance. 2) raising the lead forearm as a shield, an amber hexagon glow in front of the forearm. 3) holding the shield guard, braced, amber hexagon glow. 4) quick palm strike forward from behind the shield. 5) returning to stance. ROW 2, back dash (4 frames): 1) fighting stance. 2) hopping backward: body leaning back, feet leaving the ground. 3) airborne backward hop, legs together slightly bent. 4) landing on the balls of the feet, knees bent. Draw the terracotta and cream light only in the frames that mention it; no other effects, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "specials-b"
+  },
+  {
+    "file": "source/super.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, super move part 1 (4 frames): 1) fighting stance. 2) leaning in, weighing the moment, terracotta glow on both hands. 3) both arms pulling wide as if opening a big double door. 4) both arms flung forward releasing a terracotta glow. ROW 2, super move part 2 (4 frames): 1) sweeping one arm to the side, presenting. 2) pointing upward with one finger, explaining. 3) two-handed push forward with a terracotta glow. 4) calm stance, friendly smile. Draw the terracotta and cream light only in the frames that mention it; no other effects, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "super"
+  },
+  {
+    "file": "source/hits.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, hit high (3 frames): 1) fighting stance. 2) struck in the face: head snapped back, torso leaning back, arms flung loose, eyes shut. 3) staggering back half a step, guard dropping. ROW 2, hit low (3 frames): 1) fighting stance. 2) struck in the stomach: doubled over forward, arms around the waist. 3) hunched, recovering. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "hits"
+  },
+  {
+    "file": "source/down.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, knockdown (4 frames): 1) thrown backward off the feet, body arched back in the air. 2) falling backward through the air, legs up. 3) landing on the back on the ground. 4) lying flat on the back on the ground, head to the left, feet to the right, dazed but fine. ROW 2, get up (5 frames): 1) lying flat on the back on the ground, head to the left, feet to the right. 2) sitting up, propped on one hand. 3) kneeling on one knee, pushing up. 4) rising to the feet. 5) back in the fighting stance. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "down"
+  },
+  {
+    "file": "source/finish.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, KO (dazed, not hurt) (4 frames): 1) dazed and swaying, glasses slightly askew, arms limp. 2) knees buckling. 3) sitting down heavily on the ground, dizzy. 4) lying on the back on the ground, dazed, head to the left. ROW 2, victory (4 frames): 1) fighting stance. 2) straightening up, adjusting the glasses. 3) thoughtfully twirling a curl of hair with one finger, calm smile. 4) open palms forward in a friendly explaining gesture, smiling. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "finish"
+  },
+  {
+    "file": "source/entrance.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 2 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, intro (5 frames): 1) standing upright, adjusting the glasses with one finger. 2) open palm forward, explaining earnestly. 3) hands together in front of the chest, thoughtful. 4) leaning in slightly, nodding. 5) settling into the fighting stance. ROW 2, tag in (4 frames): 1) leaping in from behind, airborne, leaning forward. 2) landing in a low crouch, one hand on the ground. 3) rising from the crouch. 4) in the fighting stance, ready. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "entrance"
+  },
+  {
+    "file": "source/finisher.jpg",
+    "refs": [
+      "source/model.jpg",
+      "source/likeness.jpg"
+    ],
+    "prompt": "Fighting game sprite sheet: exactly the same person, face, hair, outfit, proportions and scale as the FIRST image (model sheet; the SECOND image is the likeness close-up), drawn in semi-realistic digitized-actor pixel art like Mortal Kombat II (a real person photographed in costume and reduced to pixels), realistic adult proportions about 7.5 heads tall, photographic shading lit from the top left, realistic cloth folds, no cartoon features, no cel shading. Outfit: mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes. Three-quarter side view, the character always faces RIGHT. 1 rows; each row is one animation read left to right, frames evenly spaced with clear gaps so no frames touch, identical character size in every frame, feet on a common baseline in each row (airborne poses drawn above it). ROW 1, finisher: Not to Claude (5 frames): 1) fighting stance. 2) turning half toward the camera, gesturing up at a big screen above with an open palm. 3) pointing up at the screen with a friendly grin. 4) hand on the chest, laughing politely. 5) thumbs up, warm smile. Plain physical moves: absolutely no glow, no energy, no aura, no sparks, no motion lines. Flat solid magenta background (#FF00FF), no floor, no shadow, no text, no numbers, no borders.",
+    "aspect": "16:9",
+    "sheet": "finisher"
+  },
+  {
+    "file": "source/walk/00.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-00.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/01.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-01.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/02.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-02.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/03.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-03.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/04.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-04.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/05.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-05.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/06.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-06.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/07.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-07.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/08.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-08.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/walk/09.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'walk') -> walk-09.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/00.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-00.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/01.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-01.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/02.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-02.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/03.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-03.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/04.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-04.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. Both feet are in the air. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/05.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-05.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/06.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-06.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/07.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-07.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/08.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-08.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. The same foot touches the bottom. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  },
+  {
+    "file": "source/run/09.jpg",
+    "refs": [
+      "<guide: locomotion.write_guides(..., 'run') -> run-09.png>",
+      "source/model.jpg"
+    ],
+    "prompt": "Edit the FIRST image. It is a rough paper cut-out of a man; turn it into a finished, seamless semi-realistic digitized pixel-art sprite (like Mortal Kombat II) of the man shown in the SECOND image, keeping the same face, hair and clothes as the SECOND image (mid-blue open-collar button-down shirt with sleeves pushed up, dark chinos, dark leather shoes). DO NOT MOVE ANYTHING: the head, torso, both arms, both hands, both legs and both feet must stay exactly where they are in the FIRST image, at the same angles, the same size and the same place in the frame. Both feet are in the air. Only repaint the surfaces: join the cut-out pieces into one natural body, add realistic cloth folds where the knees and elbows bend, correct foreshortening of the shoes, photographic shading lit from the top left, the far-side limbs darker. Keep the flat magenta background, no floor, no shadow, no text.",
+    "aspect": "1:1"
+  }
+]
