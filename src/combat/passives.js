@@ -1,3 +1,5 @@
+import { LAB_PASSIVES } from "./mechanics/lab-passives.js";
+
 /**
  * Lab-affiliation passives (roster doc section 2.9). A fighter gets the passive whose id
  * matches `lab:<labId>` in its sharedSkills. Hooks are optional; missing ones are no-ops.
@@ -22,6 +24,7 @@ const PASSIVES = {
     chipTakenMul: () => 0.7,
     alignmentWindow: () => 4,
   },
+  ...LAB_PASSIVES,
 };
 
 export function passiveFor(def) {

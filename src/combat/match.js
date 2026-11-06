@@ -4,6 +4,7 @@ import { InputBuffer, NEUTRAL_INPUT, isBack, matchMotion } from "./input.js";
 import { anyOverlap, intersectionCenter, overlaps, resolvePush, toWorld } from "./boxes.js";
 import { addMeter, applyDamage, guardBlocks, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
 import { createRng } from "./rng.js";
+import { createMechanics } from "./mechanics/index.js";
 
 const START_X = 230;
 
@@ -71,6 +72,7 @@ export class Match {
     this.nextProjectileId = 1;
     this.lastInputs = [NEUTRAL_INPUT, NEUTRAL_INPUT];
     this.envs = new Map();
+    this.mech = createMechanics(this);
   }
 
   /** Begin round 1. Called automatically by the first `step()` if needed. */
@@ -127,6 +129,7 @@ export class Match {
     this.round += 1;
     this.projectiles = [];
     this.barriers = [];
+    this.mech.reset();
     this.timerFrames = this.roundSeconds * 60;
     this.roundWinner = null;
     this.finishSide = null;
@@ -211,6 +214,7 @@ export class Match {
     }
 
     const hitstop = this.fighters.some((f) => f.hitstop > 0);
+    this.mech.preStep();
     for (const f of [...this.fighters]) f.update(this.envFor(f));
     this.updateAssists();
     this.updateRunway();
@@ -219,6 +223,7 @@ export class Match {
     this.resolvePushboxes();
     this.resolveThrows();
     this.resolveHits();
+    this.mech.update();
     this.checkKOs();
     this.updateTeams();
     this.updateCombos();
@@ -390,6 +395,7 @@ export class Match {
       this.projectiles.push(proj);
       out.push(proj);
     }
+    this.mech.onSpawnProjectile(owner, move, out);
     return out;
   }
 
@@ -407,6 +413,7 @@ export class Match {
       p.x += p.vx * DT;
       p.y += p.vy * DT;
       p.age += 1;
+      if (this.mech.projectileTick(p)) continue;
       const grounded = p.def.gravity && p.y > -8;
       if (grounded || p.age > p.def.lifetime || p.x < this.bounds.left - 200 || p.x > this.bounds.right + 200) {
         p.dead = true;
@@ -729,7 +736,7 @@ export class Match {
       special: move.category === "special",
     };
     const dir = d.x === a.x ? a.facing : Math.sign(d.x - a.x);
-    this.applyContact(a, d, props, at, { dir });
+    this.applyContact(a, d, props, at, { dir, move, idx });
   }
 
   /** Damage multiplier from passives and team state for an attacker. */
@@ -740,7 +747,7 @@ export class Match {
   }
 
   /** Shared hit/block logic for strikes and projectiles. */
-  applyContact(a, d, props, at, { projectile = null, dir }) {
+  applyContact(a, d, props, at, { projectile = null, dir, move = null, idx = 0 }) {
     const as = this.sides[a.side];
     const ds = this.sides[d.side];
     const dEnv = this.envFor(d);
@@ -757,6 +764,8 @@ export class Match {
       this.vfx(`hit_${props.kind === "light" ? "light" : "heavy"}`, at.x, at.y, { facing: dir, side: a.side, damage: 0, palette: a.def.palette });
       return;
     }
+
+    if (this.mech.beforeContact(a, d, props, at, { projectile, dir, move, idx })) return;
 
     const airAttack = !projectile && a.airborne;
     const level = airAttack && props.level !== "low" ? "overhead" : props.level;
@@ -868,6 +877,7 @@ export class Match {
     const type = isSuper ? "hit_super" : props.category === "special" || props.kind === "projectile" ? "hit_special" : props.kind === "light" ? "hit_light" : "hit_heavy";
     this.vfx(type, at.x, at.y, { facing: dir, side: a.side, damage: dealt, counter, punish, level, combo: d.combo.hits, palette: a.def.palette });
     if (counter || punish) this.vfx("counter", at.x, at.y - 30, { facing: dir, side: a.side, punish });
+    this.mech.onHit(a, d, props, { projectile, move, idx, counter, punish });
   }
 
   parry(a, d, at) {
@@ -1298,6 +1308,7 @@ export class Match {
         assist: f.assistMode,
         moveId: f.state === "attack" ? f.move?.id ?? null : null,
       })),
+      mechanics: this.mech.snapshot(),
       barriers: this.barriers.map((w) => ({ id: w.id, side: w.side, owner: w.ownerId, x: w.x, w: w.w, h: w.h, life: w.life, maxLife: w.maxLife })),
       winner: this.winner,
     };

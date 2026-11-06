@@ -3,6 +3,7 @@ import { isBack, isDown, isFwd, isUp, matchDoubleTap, matchMotion } from "./inpu
 import { DEFAULT_HURTBOXES, DEFAULT_PUSHBOX, toWorld } from "./boxes.js";
 import { LOCOMOTION, attackFrameIndex, cycleFrameIndex, resolveAnim } from "./anim.js";
 import { passiveFor } from "./passives.js";
+import { NO_MODS } from "./mechanics/mods.js";
 
 const NEUTRAL = new Set(["idle", "walk_fwd", "walk_back", "crouch", "block", "crouch_block"]);
 const STUNNED = new Set(["hitstun", "juggle"]);
@@ -120,6 +121,7 @@ export class Fighter {
     this.damageMul = 1;
     this.regenPause = 0;
     this.passive = {};
+    this.mods = NO_MODS;
   }
 
   // ------------------------------------------------------------------ queries
@@ -231,7 +233,7 @@ export class Fighter {
   hitboxes() {
     if (this.activeHitIndex() < 0) return [];
     const frameBoxes = this.atlasFrameBoxes("hitboxes");
-    const local = frameBoxes || [this.move.hitbox];
+    const local = frameBoxes || [this.move.mech?.hitboxes?.[this.activeHitIndex()] || this.move.hitbox];
     return local.map((b) => toWorld(b, this.x, this.y, this.facing));
   }
 
@@ -262,6 +264,10 @@ export class Fighter {
 
   /** Locomotion speed: the atlas `strideSpeed` when present, so feet never slide. */
   locomotionSpeed(animName) {
+    return this.baseLocomotionSpeed(animName) * this.mods.speedMul;
+  }
+
+  baseLocomotionSpeed(animName) {
     const stride = this.atlas?.animations?.[animName]?.strideSpeed;
     if (Number.isFinite(stride) && stride > 0) return stride;
     const s = this.def.stats;
@@ -553,9 +559,23 @@ export class Fighter {
   }
 
   findCancel(env) {
+    const filter = this.cancelTargets();
+    if (!filter || !filter.length) return null;
+    return this.pickMove(env, { filter, throws: false });
+  }
+
+  /** Move ids (or groups) the current move may cancel into right now; widened by stance mods. */
+  cancelTargets() {
     const m = this.move;
-    if (!m || !m.cancelInto.length) return null;
-    return this.pickMove(env, { filter: m.cancelInto, throws: false });
+    if (!m) return null;
+    const mods = this.mods;
+    if (m.category !== "normal" || !(mods.chainNormals || mods.whiffCancel)) return this.connected ? m.cancelInto : null;
+    if (this.connected) {
+      if (!mods.chainNormals) return m.cancelInto;
+      const others = Object.keys(this.def.normals).filter((k) => k !== m.id);
+      return [...new Set([...m.cancelInto, ...others, "special", "super"])];
+    }
+    return mods.whiffCancel && this.moveFrame >= m.startup ? ["special"] : null;
   }
 
   /** Rollback breaker: Forward+BLK in hitstun from the 2nd hit; 2 bars and a full Runway. */
@@ -574,7 +594,8 @@ export class Fighter {
     if (!(this.isNeutral || this.state === "blockstun")) return null;
     const away = fromX >= this.x ? 1 : -1;
     const d = b.dir(away);
-    const guarding = this.state === "blockstun" || b.held(BTN.BLOCK) || (env.backBlocks && isBack(d));
+    const alignWindow = this.passiveDef?.alignmentWindow?.(this) ?? RULES.alignmentWindow;
+    const guarding = this.state === "blockstun" || (this.mods.noBlock ? b.pressedWithin(BTN.BLOCK, alignWindow + 1) : b.held(BTN.BLOCK) || (env.backBlocks && isBack(d)));
     if (!guarding) return null;
     return isDown(d) ? "low" : "high";
   }
@@ -624,13 +645,13 @@ export class Fighter {
       return;
     }
     if (this.tryAct(env)) return;
-    if (matchDoubleTap(b, 6, this.facing)) {
+    if (!this.mods.noDash && matchDoubleTap(b, 6, this.facing)) {
       b.consume();
       this.setState("dash_fwd");
       env.vfx("dust_dash", this.x, 0, { facing: this.facing, side: this.side });
       return;
     }
-    if (matchDoubleTap(b, 4, this.facing)) {
+    if (!this.mods.noDash && matchDoubleTap(b, 4, this.facing)) {
       b.consume();
       this.setState("dash_back");
       this.strikeInvulnFrames = 5;
@@ -645,7 +666,7 @@ export class Fighter {
       return;
     }
     const down = isDown(d);
-    if (b.held(BTN.BLOCK)) {
+    if (b.held(BTN.BLOCK) && !this.mods.noBlock) {
       this.vx = 0;
       this.setNeutral(down ? "crouch_block" : "block");
       return;
@@ -683,7 +704,7 @@ export class Fighter {
     if (this.stateFrame >= 8 && env.canAct && this.tryAct(env)) return;
     if (this.stateFrame >= total) {
       const d = env.input ? env.input.dir(this.facing) : 5;
-      if (isFwd(d) && !isDown(d) && env.team.runway > 0) {
+      if (isFwd(d) && !isDown(d) && env.team.runway > 0 && !this.mods.noDash) {
         this.setState("run");
       } else {
         this.toNeutral(env);
@@ -707,7 +728,7 @@ export class Fighter {
     }
     if (this.tryAct(env)) return;
     const d = b.dir(this.facing);
-    if (b.held(BTN.BLOCK)) {
+    if (b.held(BTN.BLOCK) && !this.mods.noBlock) {
       this.vx = 0;
       this.setState("block");
       return;
@@ -718,7 +739,7 @@ export class Fighter {
       this.setState("jump_start");
       return;
     }
-    if (isFwd(d) && !isDown(d) && env.team.runway > 0) {
+    if (isFwd(d) && !isDown(d) && env.team.runway > 0 && !this.mods.noDash) {
       this.vx = this.facing * this.locomotionSpeed("run");
       this.spendRunway(env, RULES.runDrain * DT);
       if (this.stateFrame % 16 === 1) env.vfx("dust_run", this.x - this.facing * 20, 0, { facing: this.facing, side: this.side });
@@ -766,8 +787,9 @@ export class Fighter {
       this.startMove(next, env, { cancel: true });
       return;
     }
-    if (m.scaled && !m.isScaled && this.moveFrame <= RULES.scaleUpWindow && env.input?.pressedNow(BTN.BLOCK) && env.team.meter >= RULES.scaleUpCost && !this.assistMode) {
-      env.team.meter -= RULES.scaleUpCost;
+    const scaleUpCost = this.passiveDef?.scaleUpCost?.(this) ?? RULES.scaleUpCost;
+    if (m.scaled && !m.isScaled && this.moveFrame <= RULES.scaleUpWindow && env.input?.pressedNow(BTN.BLOCK) && env.team.meter >= scaleUpCost && !this.assistMode) {
+      env.team.meter -= scaleUpCost;
       this.move = m = m.scaled;
       env.emit("scaleUp", { fighter: this.id, side: this.side, moveId: m.id });
       env.vfx("scale_up", this.x, this.y - 110, { characterId: this.id, palette: this.def.palette });
@@ -786,7 +808,7 @@ export class Fighter {
         return;
       }
       const window = m.startup + m.active + Math.min(12, m.recovery);
-      if (this.connected && this.moveFrame <= window && m.cancelInto.length) {
+      if ((this.connected || this.mods.whiffCancel) && this.moveFrame <= window) {
         const next = this.findCancel(env);
         if (next) {
           this.startMove(next, env, { cancel: true });
