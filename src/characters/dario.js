@@ -107,7 +107,7 @@ export default defineCharacter({
       id: "asl_safeguard", name: "ASL Safeguard", input: "QCB+P",
       description: "Counter stance. Struck by a high or mid, Dario locks the attacker in an amber hex, then palm-strikes. Each success raises the round's ASL level for +10% counter damage. Lows and throws beat it.",
       startup: 4, active: 18, recovery: 26, damage: 0, meterGain: 0, vfx: "lab_aura", limb: "arm",
-      parry: { from: 4, to: 21, levels: ["high", "mid"], lock: 40, counter: { name: "Safeguard Palm", damage: 110, startup: 8 } },
+      parry: { from: 4, to: 21, levels: ["high", "mid"], lock: 40, counter: { name: "Safeguard Palm", anim: "safeguard_palm", damage: 110, startup: 8 } },
       scaleUp: false,
     },
   ],

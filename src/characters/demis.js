@@ -61,7 +61,7 @@ export default defineCharacter({
       cancelInto: ["special", "super"],
     },
     f_hk: {
-      name: "Knight's Move", startup: 20, active: 3, recovery: 20, damage: 62, hitstun: 22, blockstun: 17,
+      name: "Knight's Move", anim: "knights_move", startup: 20, active: 3, recovery: 20, damage: 62, hitstun: 22, blockstun: 17,
       hitbox: { x: 16, y: -146, w: 98, h: 146 }, knockback: { x: 240 }, level: "overhead", meterGain: 5,
       velocity: [{ from: 4, to: 18, vx: 170 }], cancelInto: ["special", "super"],
       description: "An L-shaped hop kick. Overhead.",
