@@ -16,7 +16,17 @@ import { applyPlacements, packAtlas } from "./atlas-pack.js";
 const entries = new Map();
 /** Released atlases kept briefly (menu browsing), oldest first; trimmed when a match starts. */
 const cold = new Map();
-const COLD_MAX = (globalThis.navigator?.deviceMemory ?? 8) <= 4 ? 1 : 2;
+// iOS WebKit backs ImageBitmaps and canvases with GPU surfaces that count against a per-page
+// canvas memory cap and can be purged under memory pressure; past the cap, or after a purge,
+// they draw nothing while the rest of the scene still renders. Image elements keep their
+// encoded bytes and redecode on demand, so on iOS (every browser there is WebKit) atlases are
+// drawn from images, and repacked pages are re-encoded once as PNG images.
+const IOS = (() => {
+  const nav = globalThis.navigator;
+  if (!nav) return false;
+  return /iP(hone|ad|od)/.test(nav.userAgent || "") || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+})();
+const COLD_MAX = IOS || (globalThis.navigator?.deviceMemory ?? 8) <= 4 ? 1 : 2;
 let worker = null;
 let workerBroken = false;
 let jobs = 0;
@@ -70,19 +80,34 @@ function makeCanvas(w, h) {
   return c;
 }
 
+async function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  return img;
+}
+
 async function decodeOnMainThread(url) {
+  if (IOS || typeof createImageBitmap !== "function") return loadImage(url);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} ${url}`);
-  const blob = await res.blob();
-  if (typeof createImageBitmap === "function") return createImageBitmap(blob);
-  const img = new Image();
+  return createImageBitmap(await res.blob());
+}
+
+/** A packed page as an image element; its object URL lives until the atlas is closed. */
+async function pageImage(canvas) {
+  const blob = canvas.convertToBlob
+    ? await canvas.convertToBlob({ type: "image/png" })
+    : await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png"));
+  canvas.width = canvas.height = 1;
   const objectUrl = URL.createObjectURL(blob);
   try {
-    img.src = objectUrl;
-    await img.decode();
+    const img = await loadImage(objectUrl);
+    img.objectUrl = objectUrl;
     return img;
-  } finally {
+  } catch (error) {
     URL.revokeObjectURL(objectUrl);
+    throw error;
   }
 }
 
@@ -90,7 +115,7 @@ async function packOnMainThread(url, json, scale) {
   const source = await decodeOnMainThread(url);
   try {
     const out = await packAtlas(source, json, makeCanvas, () => new Promise((r) => setTimeout(r, 0)), scale);
-    const bitmaps = typeof createImageBitmap === "function" ? await Promise.all(out.pages.map((c) => createImageBitmap(c))) : out.pages;
+    const bitmaps = IOS ? await Promise.all(out.pages.map(pageImage)) : typeof createImageBitmap === "function" ? await Promise.all(out.pages.map((c) => createImageBitmap(c))) : out.pages;
     if (bitmaps !== out.pages) for (const c of out.pages) c.width = c.height = 1;
     return { bitmaps, placements: Object.fromEntries(out.placements), stats: out.stats };
   } finally {
@@ -137,7 +162,7 @@ async function loadPacked(id, scale) {
   let packed = null;
   for (const file of imageCandidates(json)) {
     const url = assetUrl(base + file);
-    packed = await packInWorker(url, json, scale);
+    packed = IOS ? { unsupported: true } : await packInWorker(url, json, scale);
     if (packed.unsupported) packed = await packOnMainThread(url, json, scale).catch((error) => ({ error: String(error?.message || error) }));
     if (!packed.error) break;
   }
@@ -152,7 +177,10 @@ function closeAtlas(atlas) {
   atlas.image = null;
   for (const page of atlas.pages || []) {
     if (typeof page.close === "function") page.close();
-    else if (typeof HTMLImageElement !== "undefined" && page instanceof HTMLImageElement) page.src = "";
+    else if (typeof HTMLImageElement !== "undefined" && page instanceof HTMLImageElement) {
+      page.src = "";
+      if (page.objectUrl) URL.revokeObjectURL(page.objectUrl);
+    }
     else if ("width" in page) page.width = page.height = 0;
   }
   atlas.pages = [];
