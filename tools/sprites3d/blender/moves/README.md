@@ -39,7 +39,7 @@ fall back to the three-quarter head.
 
 The engine names (`src/characters/schema.js`) are `light_punch`, `heavy_punch`, `light_kick`, `heavy_kick`,
 `crouch_light`, `crouch_heavy`, `air_attack`, `throw`, `special_1` to `special_3`, `super`, `finisher`, `intro`
-and `victory`, plus `air_dive` for Elon's Walrus (`j_d_hp`).
+and `victory`, plus `air_dive` for Elon's Walrus.
 
 | extra animation | fighter | move | engine today |
 | --- | --- | --- | --- |
@@ -53,11 +53,11 @@ The extras take effect once the character data names them with `anim:`.
 
 ## Timing
 
-Timing comes from 60 Hz frame data via `timing(startup, active, recovery)`:
+All five character files are on main; `src/characters/*.js` there is the source of truth for timing.
+`timing(startup, active, recovery)` converts the 60 Hz frame data into frame counts.
 
-- Sam and Dario: `src/characters/*.js` on main, after engine PR #11.
-- Mark and Elon: `cursor/mark-elon-fighters-215d`; they are not on main yet.
-- Demis: `cursor/group-b-fighters-afea`; he is not on main yet.
+On main, Elon's Walrus is the special `the_walrus` (D+HP, air only) with `anim: "air_attack"`, so the engine
+plays the jumping punch for it. Set `anim: "air_dive"` there to use the belly-flop authored here.
 
 ## Props
 

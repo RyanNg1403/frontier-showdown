@@ -42,7 +42,7 @@ def moves(k):
     m["air_attack"] = lib.air_punch(S, (8, 6, 8), extra={"rh": (0.8, -0.5, 0.05), "spitch": 26.0})
     m["air_kick"] = lib.air_kick(S, (7, 7, 8))
 
-    # The Walrus (j.D+HP, anim air_dive): a belly-flop dive that ground-bounces.
+    # The Walrus (air D+HP, special `the_walrus` on main): a belly-flop dive that ground-bounces.
     flat = put(lib.air(S), ppitch=72.0, spitch=82.0, npitch=40.0, hpitch=20.0, pz=-0.62, px=0.1,
                lf=(-0.55, 0.12, 0.42), rf=(-0.6, 0.18, 0.36), lfp=60.0, rfp=60.0, lko=0.1, rko=0.1,
                lh=(0.35, -0.2, 0.75), rh=(0.3, -0.25, 0.8),
@@ -52,7 +52,7 @@ def moves(k):
                                      (1, flat, "lin", ["hit", "vfx:walrus_dive"]),
                                      (2, put(flat, lh=(0.4, -0.15, 0.85), rh=(0.35, -0.2, 0.9)), "io"),
                                      (1, put(flat, pz=-0.7, spitch=86.0), "snap", "vfx:ground_bounce"),
-                                     (2, put(flat, pz=-0.6), "io")], note="The Walrus (j.D+HP); engine anim name")
+                                     (2, put(flat, pz=-0.6), "io")], note="The Walrus; set anim: 'air_dive' on the_walrus in the data to use it")
 
     # F+HK Cybertruck Charge (the data maps it to heavy_punch; this is a dedicated shoulder charge).
     kk, a, r = timing(16, 4, 22)

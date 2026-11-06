@@ -1,7 +1,6 @@
 """Demis Hassabis, "The Grandmaster" (roster doc 3.5).
 
-Timing: `src/characters/demis.js` on the Group B branch (`cursor/group-b-fighters-afea`); demis is not on main
-yet. Retime by editing the FD table below.
+Timing: `src/characters/demis.js` on main. Retime by editing the FD table below.
 
 A chess player at the board: still, upright, one hand behind the back, the other holding a Go stone
 between two fingers. Never rushes; every step looks pre-computed.
