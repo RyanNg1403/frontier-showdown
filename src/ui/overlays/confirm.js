@@ -28,6 +28,7 @@ export function createConfirmOverlay(ui, { title, body, yes = "Yes", no = "Cance
 
   return {
     el,
+    enter() { buttons[nav.index].focus({ preventScroll: true }); },
     input(evt) {
       if (evt.action === "left" || evt.action === "right") nav.move(evt.action);
       else if (evt.action === "confirm") run(nav.index);

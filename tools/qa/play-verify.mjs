@@ -521,6 +521,21 @@ async function toSelect(page, sc, touch) {
   }
 }
 
+/** Touch: from the mode screen, turn on Settings > Touch > Simple specials (the SP button). */
+async function enableSimpleSpecials(page) {
+  await press(page, true, '.fs-chip-btn[data-id="settings"]');
+  await page.waitForSelector(".fs-settings", { timeout: 5000 });
+  await press(page, true, ".fs-settings .fs-tab", { text: "Touch" });
+  await sleep(300);
+  const on = () => page.evaluate(() => [...document.querySelectorAll(".fs-settings .fs-opt")].find((r) => r.querySelector(".fs-opt__label")?.textContent === "Simple specials")?.querySelector('[role="switch"]')?.getAttribute("aria-checked") === "true");
+  if (!(await on())) await press(page, true, ".fs-settings .fs-opt", { text: "Simple specials" });
+  const enabled = await on();
+  await page.screenshot({ path: shotPath("mobile-settings-touch") });
+  await press(page, true, ".fs-settings .fs-hint.is-back");
+  await sleep(400);
+  return enabled;
+}
+
 async function pickFighters(page, sc, touch, rosterIds) {
   for (const id of [...sc.p1, ...sc.p2]) {
     const idx = rosterIds.indexOf(id);
@@ -587,6 +602,11 @@ async function runScenario(browser, sc, defs, order, { first = false, rematch = 
     if (prompt && (await page.evaluate(() => document.querySelector(".fs-overlay")?.textContent.includes("Resume")))) await press(page, !!touch, ".fs-overlay button", { text: "Discard" });
     const tag = sc.id;
     if (first) await page.screenshot({ path: shotPath(`${tag}-01-title`) });
+    if (touch) {
+      await press(page, true, ".fs-title__start");
+      await waitScreen(page, "Mode select");
+      rec.simpleSpecials = await enableSimpleSpecials(page);
+    }
     await toSelect(page, sc, !!touch);
     rec.screens.push("title", "mode", "select");
     if (first) await page.screenshot({ path: shotPath(`${tag}-02-select`) });
