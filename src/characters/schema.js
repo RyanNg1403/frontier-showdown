@@ -16,6 +16,7 @@ const NORMAL_ANIMS = {
   c_hk: "crouch_heavy",
   j_p: "air_attack",
   j_k: "air_attack",
+  f_lp: "light_punch",
   f_hp: "heavy_punch",
   f_hk: "heavy_kick",
   b_hp: "heavy_punch",
@@ -24,7 +25,7 @@ const NORMAL_ANIMS = {
 
 /** Standard normals every character has. Command normals (`f_hp`, `b_hk`, ...) are optional. */
 export const NORMAL_KEYS = Object.freeze(["lp", "hp", "lk", "hk", "c_lp", "c_hp", "c_lk", "c_hk", "j_p", "j_k"]);
-export const COMMAND_NORMAL_KEYS = Object.freeze(["f_hp", "f_hk", "b_hp", "b_hk"]);
+export const COMMAND_NORMAL_KEYS = Object.freeze(["f_lp", "f_hp", "f_hk", "b_hp", "b_hk"]);
 const BUTTONS = ["LP", "HP", "LK", "HK"];
 
 const DEFAULT_PALETTE = {
@@ -135,6 +136,7 @@ export function normalizeMove(id, raw, category = "special", extra = {}) {
     meterCost: category === "super" ? (m.meterCost ?? RULES.superCost) : 0,
     freeze: category === "super" ? (m.freeze ?? 30) : 0,
     landingRecovery: m.landingRecovery ?? (id.startsWith("j_") ? 3 : 8),
+    mech: m.mech || null,
     variants: null,
     scaled: null,
     isScaled: Boolean(extra.isScaled),
@@ -171,6 +173,7 @@ export function normalizeProjectile(p, startup = 1) {
     spread: Object.freeze(vys),
     gravity: p.gravity ?? 0,
     scale: p.scale ?? 1,
+    mech: p.mech || null,
   });
 }
 
@@ -219,6 +222,8 @@ function merge(base, over) {
   if (base.projectile && over.projectile) out.projectile = { ...base.projectile, ...over.projectile };
   if (base.barrier && over.barrier) out.barrier = { ...base.barrier, ...over.barrier };
   if (base.teleport && over.teleport) out.teleport = { ...base.teleport, ...over.teleport };
+  if (base.mech && over.mech) out.mech = { ...base.mech, ...over.mech };
+  if (base.projectile?.mech && over.projectile?.mech) out.projectile.mech = { ...base.projectile.mech, ...over.projectile.mech };
   return out;
 }
 

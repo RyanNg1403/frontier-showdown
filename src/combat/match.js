@@ -4,7 +4,8 @@ import { InputBuffer, NEUTRAL_INPUT, isBack, matchMotion } from "./input.js";
 import { anyOverlap, intersectionCenter, overlaps, resolvePush, toWorld } from "./boxes.js";
 import { addMeter, applyDamage, guardBlocks, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
 import { createRng } from "./rng.js";
-import { fighterMechanics, moveMechanic } from "./mechanics.js";
+import { createMechanics } from "./mechanics/index.js";
+import { fighterMechanics, moveMechanic, systems } from "./mechanics.js";
 
 const START_X = 230;
 
@@ -74,6 +75,7 @@ export class Match {
     this.nextProjectileId = 1;
     this.lastInputs = [NEUTRAL_INPUT, NEUTRAL_INPUT];
     this.envs = new Map();
+    this.mech = createMechanics(this);
   }
 
   /** Begin round 1. Called automatically by the first `step()` if needed. */
@@ -130,6 +132,7 @@ export class Match {
     this.round += 1;
     this.projectiles = [];
     this.barriers = [];
+    this.mech.reset();
     this.entities = [];
     this.timerFrames = this.roundSeconds * 60;
     this.roundWinner = null;
@@ -231,6 +234,7 @@ export class Match {
     }
 
     const hitstop = this.fighters.some((f) => f.hitstop > 0);
+    this.mech.preStep();
     for (const f of this.fighters) f.floorY = this.floorAt(f);
     for (const f of [...this.fighters]) f.update(this.envFor(f));
     this.updateAssists();
@@ -241,6 +245,7 @@ export class Match {
     this.resolvePushboxes();
     this.resolveThrows();
     this.resolveHits();
+    this.mech.update();
     this.checkKOs();
     this.updateTeams();
     this.updateCombos();
@@ -414,6 +419,7 @@ export class Match {
       this.projectiles.push(proj);
       out.push(proj);
     }
+    this.mech.onSpawnProjectile(owner, move, out);
     return out;
   }
 
@@ -431,6 +437,7 @@ export class Match {
       p.x += p.vx * DT;
       p.y += p.vy * DT;
       p.age += 1;
+      if (this.mech.projectileTick(p)) continue;
       const grounded = p.def.gravity && p.y > -8;
       if (grounded || p.age > p.def.lifetime || p.x < this.bounds.left - 200 || p.x > this.bounds.right + 200) {
         p.dead = true;
@@ -569,6 +576,11 @@ export class Match {
   /** Solid rects from entities: `solid: {x, y, w, h, platform?: true, wall?: false}` or a function returning rect(s). */
   solids() {
     const out = [];
+    for (const sys of systems()) {
+      const s = sys.solids?.(this.mech.ctx);
+      if (Array.isArray(s)) out.push(...s);
+      else if (s) out.push(s);
+    }
     for (const e of this.entities) {
       if (e.dead || !e.solid) continue;
       const s = typeof e.solid === "function" ? e.solid(this) : e.solid;
@@ -800,7 +812,7 @@ export class Match {
       special: move.category === "special",
     };
     const dir = d.x === a.x ? a.facing : Math.sign(d.x - a.x);
-    this.applyContact(a, d, props, at, { dir });
+    this.applyContact(a, d, props, at, { dir, move, idx });
   }
 
   /** Damage multiplier from passives and team state for an attacker. */
@@ -824,7 +836,7 @@ export class Match {
   }
 
   /** Shared hit/block logic for strikes and projectiles. */
-  applyContact(a, d, props, at, { projectile = null, dir }) {
+  applyContact(a, d, props, at, { projectile = null, dir, move = null, idx = 0 }) {
     const as = this.sides[a.side];
     const ds = this.sides[d.side];
     const dEnv = this.envFor(d);
@@ -843,14 +855,11 @@ export class Match {
     }
 
     const airAttack = !projectile && a.airborne;
-    const level = airAttack && props.level !== "low" ? "overhead" : props.level;
-
-    const hurtCtx = { match: this, attacker: a, defender: d, props, projectile, level, at, dir };
-    const dMove = d.state === "attack" ? d.move : null;
-    if (moveMechanic(dMove)?.beforeHurt?.(d, hurtCtx) || d.mechanicHooks.some((h) => h.beforeHurt?.(d, hurtCtx))) {
+    if (this.mech.beforeContact(a, d, props, at, { projectile, dir, move, idx, level: airAttack && props.level !== "low" ? "overhead" : props.level })) {
       this.emit("absorb", { ...payloadBase, fighter: d.id });
       return;
     }
+    const level = airAttack && props.level !== "low" ? "overhead" : props.level;
 
     if (!projectile && d.inParry && d.move.parry.levels.includes(level) && a.canFight) {
       this.parry(a, d, at);
@@ -966,6 +975,7 @@ export class Match {
     const type = isSuper ? "hit_super" : props.category === "special" || props.kind === "projectile" ? "hit_special" : props.kind === "light" ? "hit_light" : "hit_heavy";
     this.vfx(type, at.x, at.y, { facing: dir, side: a.side, damage: dealt, counter, punish, level, combo: d.combo.hits, palette: a.def.palette });
     if (counter || punish) this.vfx("counter", at.x, at.y - 30, { facing: dir, side: a.side, punish });
+    this.mech.onHit(a, d, props, { projectile, move, idx, counter, punish });
   }
 
   parry(a, d, at) {
@@ -1464,6 +1474,7 @@ export class Match {
         assist: f.assistMode,
         moveId: f.state === "attack" ? f.move?.id ?? null : null,
       })),
+      mechanics: this.mech.snapshot(),
       entities: this.entities.length,
       slowmo: this.slowmo ? { rate: this.slowmo.rate } : null,
       barriers: this.barriers.map((w) => ({ id: w.id, side: w.side, owner: w.ownerId, x: w.x, w: w.w, h: w.h, life: w.life, maxLife: w.maxLife })),

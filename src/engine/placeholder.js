@@ -222,9 +222,16 @@ function drawHair(ctx, pal, x, y) {
       ctx.fill();
       return;
     case "bangs":
-      ctx.arc(x - 2, y - 3, 15.8, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.arc(x - 2, y - 3, 15.5, Math.PI * 0.95, Math.PI * 2.05);
       ctx.fill();
-      ctx.fillRect(x - 4, y - 12, 18, 6);
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y - 15);
+      ctx.lineTo(x + 15, y - 9);
+      ctx.lineTo(x + 14, y - 4);
+      ctx.lineTo(x + 6, y - 6);
+      ctx.lineTo(x - 4, y - 5);
+      ctx.closePath();
+      ctx.fill();
       return;
     case "shoulder":
       ctx.arc(x - 2, y - 3, 16.5, Math.PI * 0.9, Math.PI * 2.05);
@@ -344,9 +351,13 @@ export function drawPlaceholder(ctx, f) {
   if (pal.beard) {
     ctx.fillStyle = pal.beard;
     ctx.beginPath();
-    ctx.arc(headX + 2, headY + 3, 14, Math.PI * 0.05, Math.PI * 0.95);
-    ctx.lineTo(headX - 6, headY + 4);
+    ctx.arc(headX + 1, headY + 1, 15, Math.PI * 0.02, Math.PI * 0.85);
+    ctx.lineTo(headX + 4, headY + 5);
     ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = pal.skin;
+    ctx.beginPath();
+    ctx.ellipse(headX + 8, headY + 5, 4.5, 2.2, 0, 0, TAU);
     ctx.fill();
   }
   if (pal.cap) {
@@ -360,9 +371,9 @@ export function drawPlaceholder(ctx, f) {
   if (pal.glasses) {
     ctx.strokeStyle = pal.glasses;
     const style = pal.glassesStyle || "square";
-    ctx.lineWidth = style === "rimless" ? 1.2 : 2.5;
+    ctx.lineWidth = style === "thick" ? 4 : style === "rimless" ? 1.2 : style === "round" ? 1.8 : 2.5;
     ctx.beginPath();
-    if (style === "round") ctx.arc(headX + 8, headY - 0.5, 4.5, 0, TAU);
+    if (style === "round") ctx.arc(headX + 8, headY - 1, 5, 0, TAU);
     else ctx.rect(headX + 3, headY - 4, 10, 7);
     ctx.stroke();
     ctx.beginPath();

@@ -3,12 +3,27 @@ import { asset, portraitImg } from "../core/assets.js";
 
 const atlasCache = new Map();
 
-/** Skip the fetch when the roster says there is no atlas yet (`hasAtlas` from game.listCharacters). */
+let manifestAtlases = null;
+
+/** Ids with an atlas according to the server's /api/manifest, or null when there is no manifest. */
+function atlasIds() {
+  if (!manifestAtlases) {
+    manifestAtlases = fetch(asset("api/manifest"), { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((m) => (Array.isArray(m?.characters) ? new Set(m.characters.filter((c) => c.atlas).map((c) => c.id)) : null))
+      .catch(() => null);
+  }
+  return manifestAtlases;
+}
+
+/** Fetch an atlas only when the roster (`hasAtlas`) and the manifest say it exists. */
 function loadAtlas(id, hasAtlas) {
   if (hasAtlas === false) return Promise.resolve(null);
   if (!atlasCache.has(id)) {
     atlasCache.set(id, (async () => {
       try {
+        const known = await atlasIds();
+        if (known && !known.has(id)) return null;
         const res = await fetch(asset(`assets/fighters/${id}/atlas.json`));
         if (!res.ok) return null;
         const json = await res.json();

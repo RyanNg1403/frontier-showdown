@@ -11,6 +11,7 @@ import { assetApi, loadAtlas } from "./assets.js";
 import { loadManifest, loadModules } from "./modules.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
+import { drawMechanics, drawMechProjectile } from "./mechanics-render.js";
 import { adaptVfx } from "./vfx-adapter.js";
 import { SCREEN_MUSIC, applyUiSettings, decorateEvent, decorateSnapshot, normalizeMatchConfig, uiRoster, uiStages } from "./ui-adapter.js";
 import { adaptStageDef, listModuleStages, stageCamera } from "./stage-adapter.js";
@@ -308,7 +309,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     if (match.shakeFrames > lastShake && helpers?.shake && uiOptions.screenShake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
     lastShake = match.shakeFrames;
     if (vfx.syncProjectiles) {
-      vfxCall(() => vfx.syncProjectiles(match.projectiles.map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
+      vfxCall(() => vfx.syncProjectiles(match.projectiles.filter((p) => !p.def.mech?.look).map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
     }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
     const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
@@ -369,13 +370,15 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       for (const f of order) drawShadow(ctx, f);
       const t = performance.now();
       for (const w of match.barriers) drawBarrier(ctx, w, t);
+      drawMechanics(ctx, match, t, "back");
       for (const f of order) drawFighter(ctx, f);
+      drawMechanics(ctx, match, t, "front");
       ctx.restore();
       const now = performance.now();
       for (const p of match.projectiles) {
         const view = { id: p.id, x: p.x, y: p.y, vx: p.vx, facing: p.facing, vfx: p.vfx, ownerId: p.ownerId, side: p.side, age: p.age, palette: p.palette };
-        let drawn = false;
-        if (vfx.drawProjectile) {
+        let drawn = drawMechProjectile(ctx, camera, p, now);
+        if (!drawn && vfx.drawProjectile) {
           ctx.save();
           drawn = vfxCall(() => vfx.drawProjectile(ctx, camera, view)) === true;
           ctx.restore();
