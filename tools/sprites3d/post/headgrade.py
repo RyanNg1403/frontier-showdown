@@ -43,6 +43,18 @@ def _rgb(h, s, v):
     return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
 
 
+def ramp(spec):
+    """Fixed hair palette: the target colour at several values (same hue and saturation), plus two greys
+    for the temples when `grey_temples` is set. Hair pixels are snapped to it after the grade."""
+    t = spec["hair"].lstrip("#")
+    h, s, v = colorsys.rgb_to_hsv(*(int(t[i:i + 2], 16) / 255.0 for i in (0, 2, 4)))
+    cols = [colorsys.hsv_to_rgb(h, min(1.0, s * (1.12 - 0.12 * k)), min(1.0, v * k))
+            for k in spec.get("ramp", (0.5, 0.7, 0.86, 1.0, 1.16))]
+    if spec.get("grey_temples"):
+        cols += [colorsys.hsv_to_rgb(h, s * 0.35, min(1.0, v * 1.1))]
+    return np.array([[round(c * 255) for c in rgb] for rgb in cols], np.int32)
+
+
 def hair_mask(rgba, metrics):
     alpha = rgba[..., 3] > 127
     _, s, v = _hsv(rgba[..., :3])
@@ -54,6 +66,7 @@ def hair_mask(rgba, metrics):
     hair = np.isin(lab, seeds)
     hair[int(crown + 0.75 * hh):] = False
     near = ndimage.binary_dilation(hair, iterations=max(2, hh // 80))
+    near[int(crown + 0.3 * hh):] = False  # bright strands on top only, never forehead creases
     hair |= near & alpha & (v < 0.86) & (s < 0.62)
     hair[int(crown + 0.75 * hh):] = False
     hair = ndimage.binary_fill_holes(ndimage.binary_closing(hair, iterations=2)) & alpha

@@ -128,9 +128,10 @@ no seam. Fei-Fei's neck cut deliberately sits at the bottom of her hair, so the 
 
 **Hair grade.** `head.grade` in a fighter config recolours the hair on every view (`post/headgrade.py`). The hair
 is segmented from the crown, remapped to `hair` with its strand contrast compressed and highlights capped, so light
-strands can't read blond at 1x. `grey_temples` greys the hair just above the ear. The hair is then quantized
-separately from the face (`colors` entries), so hair and skin never share palette colours. Sam uses
-`{"hair": "#6b4f3a", "contrast": 0.75, "highlight_cap": 1.3, "saturation": 1.1, "grey_temples": 0.5, "colors": 6}`.
+strands can't read blond at 1x. `grey_temples` greys the hair just above the ear. The hair then snaps to a
+fixed palette built from the target (same hue and saturation at `ramp` values, 0.5x to 1.16x, plus two
+a temple grey), apart from the face's palette, so hair and skin never share colours. Sam uses
+`{"hair": "#6b4f3a", "contrast": 0.75, "highlight_cap": 1.2, "grey_temples": 0.4}`.
 
 ## Props
 

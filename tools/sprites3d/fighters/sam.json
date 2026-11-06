@@ -106,9 +106,8 @@
     "grade": {
       "hair": "#6b4f3a",
       "contrast": 0.75,
-      "highlight_cap": 1.3,
-      "saturation": 1.1,
-      "grey_temples": 0.5,
+      "highlight_cap": 1.2,
+      "grey_temples": 0.4,
       "colors": 6
     }
   },

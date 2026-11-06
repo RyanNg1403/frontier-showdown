@@ -87,13 +87,19 @@ def quantize_rgba(img, colors):
     return np.dstack([np.asarray(q.convert("RGB")), np.where(alpha, 255, 0).astype(np.uint8)])
 
 
-def quantize_regions(img, region, n_region, n_total):
-    """Quantize `region` (e.g. the hair) and the rest separately, so they never share palette entries."""
+def quantize_regions(img, region, n_region, n_total, region_palette=None):
+    """Quantize `region` (e.g. the hair) and the rest separately, so they never share palette entries. With
+    `region_palette` the region snaps to those fixed colours instead."""
     arr = np.asarray(img).copy()
     alpha = arr[..., 3] > 127
     out = np.zeros_like(arr)
     for mask, n in ((region & alpha, n_region), (~region & alpha, max(2, n_total - n_region))):
         if not mask.any():
+            continue
+        if n == n_region and region_palette is not None:
+            px = arr[mask][:, :3].astype(np.int32)
+            d = ((px[:, None, :] - region_palette[None, :, :]) ** 2).sum(-1)
+            out[mask, :3] = region_palette[d.argmin(1)].astype(np.uint8)
             continue
         part = arr.copy()
         part[~mask, :3] = np.median(arr[mask][:, :3], axis=0).astype(np.uint8)
@@ -127,6 +133,7 @@ class HeadView:
         self.zone = Image.fromarray(zone[..., 0] if zone.ndim == 3 else zone)
         self.hair = Image.fromarray(hair.astype(np.uint8) * 255)
         self.hair_colors = hcfg.get("grade", {}).get("colors", 6) if hair.any() else 0
+        self.hair_palette = headgrade.ramp(hcfg["grade"]) if hair.any() else None
         target = cfg["height_px"] / hcfg.get("heads_tall", 7.2) * view_cfg.get("scale", hcfg.get("scale", 1.0))
         self.scale = target / max(1, m["chin"] - m["crown"])
         self.colors = hcfg.get("colors", 18)
@@ -171,7 +178,7 @@ class HeadView:
             small = mid.resize((size, size), Image.BOX)
             if self.hair_colors:
                 hm = np.asarray(hair.resize((size, size), Image.BOX)) > 127
-                rgba = quantize_regions(small, hm, self.hair_colors, self.colors)
+                rgba = quantize_regions(small, hm, self.hair_colors, self.colors, self.hair_palette)
             else:
                 rgba = quantize_rgba(small, self.colors)
             z = np.asarray(zone.resize((size, size), Image.NEAREST)) > 0
@@ -282,8 +289,11 @@ def outer_outline(img):
     return out
 
 
-def snap_palette(frames, max_colors):
-    """One shared palette of at most `max_colors` colours (median cut over all opaque pixels, no dither)."""
+def snap_palette(frames, max_colors, reserved=None):
+    """One shared palette of at most `max_colors` colours (median cut over all opaque pixels, no dither).
+    `reserved` colours (e.g. a graded hair ramp) are always kept as they are."""
+    reserved = np.zeros((0, 3), np.int32) if reserved is None else np.asarray(reserved, np.int32)
+    max_colors -= len(reserved)
     stack = np.concatenate([f.reshape(-1, 4) for f in frames])
     opaque = stack[stack[:, 3] > 0][:, :3]
     side = int(math.ceil(math.sqrt(len(opaque))))
@@ -293,6 +303,7 @@ def snap_palette(frames, max_colors):
     q = Image.fromarray(mosaic.reshape(side, side, 3)).quantize(
         colors=max_colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     palette = np.array(q.getpalette()[:max_colors * 3], np.int32).reshape(-1, 3)[np.unique(np.asarray(q))]
+    palette = np.concatenate([palette, reserved]) if len(reserved) else palette
     out = []
     for f in frames:
         g = f.copy()
@@ -509,7 +520,9 @@ def main():
                             "events": footsteps(dc) if r.get("locomotion") else [],
                             "strideSpeed": speed * scale if speed else None, "source": r.get("source", "shared")})
 
-    snapped, palette = snap_palette([f for e in entries for f in e["frames"]], cfg.get("palette_colors", 64))
+    reserved = [v.hair_palette for v in heads.values() if getattr(v, "hair_palette", None) is not None]
+    reserved = np.unique(np.concatenate(reserved), axis=0) if reserved else None
+    snapped, palette = snap_palette([f for e in entries for f in e["frames"]], cfg.get("palette_colors", 64), reserved)
     k = 0
     for e in entries:
         n = len(e["frames"])
