@@ -9,4 +9,4 @@
 // camera.x is the world x of the view's left edge, clamped to stage.camera.minX..maxX.
 // Fighters' feet sit on stage.groundY (640). Draw with an untransformed context.
 export { STAGES, STAGE_IDS, STAGE_GEOMETRY, getStageMeta } from "./stages.js";
-export { loadStage, drawStage, clampCameraX, getActiveStage, setActiveStage } from "./renderer.js";
+export { loadStage, drawStage, releaseStage, setStageQuality, clampCameraX, getActiveStage, setActiveStage } from "./renderer.js";

@@ -1,11 +1,10 @@
 import { labInfo } from "../data/labs.js";
-
-const ROOT = new URL("../../../", import.meta.url);
+import { assetUrl } from "../../platform/assets.js";
 
 export function asset(path) {
   if (!path) return "";
   if (/^(https?:|data:|blob:|\/)/.test(path)) return path;
-  return new URL(path, ROOT).href;
+  return assetUrl(path);
 }
 
 export const uiAsset = (path) => asset(`assets/ui/${path}`);

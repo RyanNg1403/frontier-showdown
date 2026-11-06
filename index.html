@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0b18" />
     <meta name="description" content="Frontier Showdown: a 1v1 and 2v2 tag fighting game starring affectionate parodies of AI lab leaders." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Frontier Showdown</title>
     <style>
       html, body { margin: 0; height: 100%; background: #07060d; overflow: hidden; }
@@ -20,14 +20,33 @@
       #game { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: block; }
       #ui-root { position: absolute; inset: 0; pointer-events: none; }
       #boot-error { position: absolute; inset: 0; display: none; place-items: center; color: #fff; font: 16px system-ui, sans-serif; text-align: center; padding: 24px; }
+      #fs-loader {
+        position: absolute; inset: 0; z-index: 20; display: grid; place-content: center; gap: 2.2vmin; justify-items: center;
+        background: radial-gradient(ellipse at 50% 40%, #1d1838 0%, #0d0b18 60%, #07060d 100%);
+        color: #f3ede2; font: 600 clamp(12px, 2.2vmin, 18px) system-ui, sans-serif; letter-spacing: 0.08em;
+        transition: opacity 0.25s ease;
+      }
+      #fs-loader[hidden] { display: none; }
+      #fs-loader.is-overlay { background: rgba(7, 6, 13, 0.82); }
+      #fs-loader.is-fading { opacity: 0; pointer-events: none; }
+      #fs-loader .fs-loader__title { font: 800 clamp(22px, 6vmin, 56px) system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; background: linear-gradient(#fff6c8, #ffb02e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      #fs-loader .fs-loader__bar { width: min(60vw, 520px); height: 1.2vmin; min-height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+      #fs-loader .fs-loader__fill { height: 100%; width: 100%; transform-origin: left; transform: scaleX(0.04); background: linear-gradient(90deg, #ffb02e, #fff1a8); transition: transform 0.2s ease; }
+      #fs-loader .fs-loader__label { opacity: 0.75; min-height: 1.4em; }
+      @media (prefers-reduced-motion: reduce) { #fs-loader, #fs-loader .fs-loader__fill { transition: none; } }
     </style>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </head>
   <body>
-    <div id="screen">
+    <main id="screen">
       <canvas id="game" width="1280" height="720" aria-label="Frontier Showdown game canvas"></canvas>
       <div id="ui-root"></div>
+      <div id="fs-loader" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4">
+        <div class="fs-loader__title">Frontier Showdown</div>
+        <div class="fs-loader__bar"><div class="fs-loader__fill"></div></div>
+        <div class="fs-loader__label" aria-live="polite">Loading</div>
+      </div>
       <div id="boot-error" role="alert"></div>
-    </div>
+    </main>
   </body>
 </html>

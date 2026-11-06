@@ -364,12 +364,14 @@ export function createSelectScreen(ui) {
       chip.textContent = `${ui.session.mode === "2v2" ? "2v2 Tag Team" : "1v1 Duel"} · ${MATCHUP_LABEL[ui.session.matchup] || ""}`;
       const controls = ui.session.matchup === "cpuvcpu" ? ["cpu", "cpu"] : ui.session.matchup === "local" ? ["human", "human"] : ["human", "cpu"];
       const prev = !params.fresh && ui.session.sides.length === 2 ? ui.session.sides : null;
+      const remembered = ui.session.lastPicks?.[ui.session.mode];
       sides = controls.map((control, i) => {
         const picks = prev ? [...prev[i].picks] : [];
+        const last = roster.findIndex((f) => f.id === remembered?.[i]?.[0]);
         return {
           control, player: control === "human" ? i : null, picks,
           done: picks.length >= teamSize,
-          cursor: picks.length ? roster.findIndex((f) => f.id === picks.at(-1)) : i === 0 ? 0 : Math.min(roster.length - 1, cols - 1),
+          cursor: picks.length ? roster.findIndex((f) => f.id === picks.at(-1)) : last >= 0 ? last : i === 0 ? 0 : Math.min(roster.length - 1, cols - 1),
         };
       });
       if (prev) {

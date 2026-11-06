@@ -41,10 +41,14 @@ export function stepParticles(parts, dt) {
   }
 }
 
+/** Shared quality knobs; `particles` scales burst sizes on low-end devices (see vfx.setQuality). */
+export const vfxQuality = { particles: 1 };
+
 export function burstParticles(rand, count, o) {
   const out = [];
   const spread = o.spread ?? TAU;
-  for (let i = 0; i < count; i += 1) {
+  const n = vfxQuality.particles < 1 ? Math.max(1, Math.round(count * vfxQuality.particles)) : count;
+  for (let i = 0; i < n; i += 1) {
     const ang = (o.angle ?? 0) + (rand() - 0.5) * spread;
     const speed = o.speed[0] + rand() * (o.speed[1] - o.speed[0]);
     out.push(particle({

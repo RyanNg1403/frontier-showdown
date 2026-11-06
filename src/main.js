@@ -1,11 +1,51 @@
 import { createGame } from "./engine/game.js";
-import { loadManifest } from "./engine/modules.js";
+import { SITE_ROOT, assetUrl, loadManifest } from "./platform/assets.js";
+import { createLoadingScreen } from "./platform/loading.js";
+import { createQuality } from "./platform/quality.js";
+import { createStorage } from "./platform/storage.js";
+import { createProgress } from "./platform/progress.js";
+import { registerServiceWorker } from "./platform/sw-register.js";
 
 function linkStylesheet(href) {
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = href;
-  document.head.appendChild(link);
+  return new Promise((resolve) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.onload = link.onerror = resolve;
+    document.head.appendChild(link);
+  });
+}
+
+async function offerResume(game, progress) {
+  const cp = await progress.pendingResume();
+  const ui = game.ui;
+  if (!cp || !ui?.openOverlay) return;
+  let resumed = false;
+  const [title, detail] = progress.describe(cp).split("\n");
+  const overlay = ui.openOverlay("confirm", {
+    title: "Resume your match?",
+    body: `${title}. ${detail}.`,
+    yes: "Resume",
+    no: "Discard",
+    onYes() {
+      resumed = true;
+      ui.closeOverlay(true);
+      const session = ui.session;
+      session.mode = cp.config.mode;
+      session.stageId = cp.config.stage;
+      session.sides = cp.config.sides.map((s) => ({ control: s.control, player: s.player ?? null, picks: [...s.team] }));
+      ui._ui?.resetStats?.();
+      ui.show("fight", { instant: true });
+      progress.resume(cp).catch((error) => console.error("[resume] failed", error));
+    },
+  });
+  const leave = overlay?.leave;
+  if (overlay) {
+    overlay.leave = () => {
+      leave?.();
+      if (!resumed) progress.discardResume();
+    };
+  }
 }
 
 /** `?quick&mode=&p1=&p2=&p1c=&p2c=&d=&stage=`: start a match and go straight to the fight screen. */
@@ -35,15 +75,32 @@ async function quickStart(game, params) {
 async function boot() {
   const canvas = document.getElementById("game");
   const uiRoot = document.getElementById("ui-root");
+  const loading = createLoadingScreen();
   try {
+    loading.set(0.1, "Loading game data");
     const manifest = await loadManifest();
-    if (!manifest || manifest.styles?.ui) linkStylesheet("/styles/ui.css");
-    const game = await createGame({ canvas, uiRoot, manifest });
+    const css = !manifest || manifest.styles?.ui ? linkStylesheet(assetUrl("styles/ui.css")) : Promise.resolve();
+    const quality = createQuality();
+    const storage = createStorage();
+    const game = await createGame({ canvas, uiRoot, manifest, quality, onProgress: (p, label) => loading.set(0.1 + p * 0.85, label) });
+    await css;
     window.frontierShowdown = game;
+    game.version = manifest?.version || "dev";
+    loading.attach(game);
+    const progress = createProgress(game, storage);
+    game.progress = progress;
+    progress.restoreMenus(game.ui);
+    const loaderGone = loading.hide();
+    if (manifest?.build) registerServiceWorker(new URL("sw.js", SITE_ROOT), SITE_ROOT.pathname);
     const params = new URLSearchParams(location.search);
     if (params.has("quick")) await quickStart(game, params);
+    else {
+      await loaderGone;
+      await offerResume(game, progress);
+    }
   } catch (error) {
     console.error(error);
+    loading.hide();
     const el = document.getElementById("boot-error");
     el.style.display = "grid";
     el.textContent = `Frontier Showdown failed to start: ${error.message}`;

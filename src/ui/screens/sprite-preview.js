@@ -1,42 +1,11 @@
 import { h } from "../core/dom.js";
-import { asset, portraitImg } from "../core/assets.js";
+import { portraitImg } from "../core/assets.js";
+import { acquireAtlas, releaseAtlas } from "../../engine/atlas-store.js";
 
-const atlasCache = new Map();
-
-let manifestAtlases = null;
-
-/** Ids with an atlas according to the server's /api/manifest, or null when there is no manifest. */
-function atlasIds() {
-  if (!manifestAtlases) {
-    manifestAtlases = fetch(asset("api/manifest"), { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((m) => (Array.isArray(m?.characters) ? new Set(m.characters.filter((c) => c.atlas).map((c) => c.id)) : null))
-      .catch(() => null);
-  }
-  return manifestAtlases;
-}
-
-/** Fetch an atlas only when the roster (`hasAtlas`) and the manifest say it exists. */
+/** Shared, reference-counted packed atlas (the same copy a running match uses). */
 function loadAtlas(id, hasAtlas) {
   if (hasAtlas === false) return Promise.resolve(null);
-  if (!atlasCache.has(id)) {
-    atlasCache.set(id, (async () => {
-      try {
-        const known = await atlasIds();
-        if (known && !known.has(id)) return null;
-        const res = await fetch(asset(`assets/fighters/${id}/atlas.json`));
-        if (!res.ok) return null;
-        const json = await res.json();
-        const img = new Image();
-        img.src = asset(`assets/fighters/${id}/${json.image || "atlas.png"}`);
-        await img.decode();
-        return { json, img };
-      } catch {
-        return null;
-      }
-    })());
-  }
-  return atlasCache.get(id);
+  return acquireAtlas(id).then((atlas) => (atlas ? { json: atlas, id } : (releaseAtlas(id), null)));
 }
 
 /**
@@ -75,18 +44,33 @@ export function createSpritePreview() {
     const f = a.frames[Math.min(frame, a.frames.length - 1)];
     ctx.clearRect(0, 0, 256, 256);
     ctx.imageSmoothingEnabled = false;
+    if (atlas.json.released) return;
     const an = f.anchor || atlas.json.anchor || { x: 128, y: 244 };
-    ctx.drawImage(atlas.img, f.x, f.y, f.w, f.h, 128 - an.x, 244 - an.y, f.w, f.h);
+    const d = f.draw;
+    if (d) {
+      if (!d.empty) ctx.drawImage(d.img, d.x, d.y, d.w, d.h, 128 - an.x + d.dx, 244 - an.y + d.dy, d.dw ?? d.w, d.dh ?? d.h);
+    } else if (atlas.json.image) {
+      ctx.drawImage(atlas.json.image, f.x, f.y, f.w, f.h, 128 - an.x, 244 - an.y, f.w, f.h);
+    }
+  }
+
+  function drop() {
+    if (atlas) releaseAtlas(atlas.id);
+    atlas = null;
   }
 
   return {
     mount(fighter) {
       const my = ++token;
       cancelAnimationFrame(raf);
-      atlas = null;
+      drop();
       const wrap = h("div", { class: "fs-sprite-wrap" }, portraitImg(fighter, "fs-sprite-fallback", { alt: "" }));
       loadAtlas(fighter.id, fighter.hasAtlas).then((loaded) => {
-        if (!loaded || my !== token) return;
+        if (!loaded) return;
+        if (my !== token) {
+          releaseAtlas(loaded.id);
+          return;
+        }
         atlas = loaded;
         anim = "idle";
         returnTo = "idle";
@@ -105,6 +89,7 @@ export function createSpritePreview() {
     stop() {
       token++;
       cancelAnimationFrame(raf);
+      drop();
     },
   };
 }

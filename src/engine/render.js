@@ -6,16 +6,18 @@ export function drawFighter(ctx, f) {
   if (!f.onField || f.state === "bench" || f.hidden) return;
   const shake = f.shake > 0 ? ((f.shake % 2) * 2 - 1) * 3 : 0;
   const atlas = f.atlas;
-  const frame = atlas ? f.atlasFrame : null;
+  const frame = atlas && !atlas.released ? f.atlasFrame : null;
+  const packed = frame?.draw;
   ctx.save();
   if (f.assistMode) ctx.globalAlpha = 0.92;
   if (f.state === "tag_out" || f.state === "assist_out") ctx.globalAlpha = Math.max(0.2, 1 - f.stateFrame / 24);
   if (f.invulnFrames > 0 && f.invulnFrames % 4 < 2) ctx.globalAlpha *= 0.6;
-  if (frame && atlas.image) {
+  if (frame && (packed || atlas.image)) {
     const anchor = frame.anchor || atlas.anchor;
     ctx.translate(Math.round(f.x + shake), Math.round(f.y));
     ctx.scale(f.facing, 1);
-    ctx.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, -anchor.x, -anchor.y, frame.w, frame.h);
+    if (!packed) ctx.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, -anchor.x, -anchor.y, frame.w, frame.h);
+    else if (!packed.empty) ctx.drawImage(packed.img, packed.x, packed.y, packed.w, packed.h, packed.dx - anchor.x, packed.dy - anchor.y, packed.dw, packed.dh);
   } else {
     if (shake) ctx.translate(shake, 0);
     drawPlaceholder(ctx, f);
