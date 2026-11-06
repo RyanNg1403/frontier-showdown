@@ -1,0 +1,224 @@
+{
+ "id": "mustafa",
+ "normals": {
+  "lp": {
+   "name": "Precise Jab",
+   "anim": "light_punch",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 22,
+    "y": -166,
+    "w": 86,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hp": {
+   "name": "Hex Palm Push",
+   "anim": "heavy_punch",
+   "startup": 12,
+   "active": 3,
+   "recovery": 20,
+   "hitbox": {
+    "x": 24,
+    "y": -172,
+    "w": 110,
+    "h": 40
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "lk": {
+   "name": "Short Low Kick",
+   "anim": "light_kick",
+   "startup": 8,
+   "active": 3,
+   "recovery": 15,
+   "hitbox": {
+    "x": 20,
+    "y": -34,
+    "w": 100,
+    "h": 30
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "hk": {
+   "name": "Crescent Kick",
+   "anim": "heavy_kick",
+   "startup": 14,
+   "active": 4,
+   "recovery": 22,
+   "hitbox": {
+    "x": 28,
+    "y": -168,
+    "w": 124,
+    "h": 50
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lp": {
+   "name": "Measured Tap",
+   "anim": "crouch_light",
+   "startup": 7,
+   "active": 2,
+   "recovery": 12,
+   "hitbox": {
+    "x": 18,
+    "y": -100,
+    "w": 84,
+    "h": 22
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_lk": {
+   "name": "Ankle Check",
+   "anim": "crouch_light",
+   "startup": 8,
+   "active": 2,
+   "recovery": 14,
+   "hitbox": {
+    "x": 20,
+    "y": -28,
+    "w": 108,
+    "h": 24
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hp": {
+   "name": "Rising Hex",
+   "anim": "crouch_heavy",
+   "startup": 10,
+   "active": 4,
+   "recovery": 28,
+   "hitbox": {
+    "x": 4,
+    "y": -236,
+    "w": 86,
+    "h": 156
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "c_hk": {
+   "name": "Wave Sweep",
+   "anim": "crouch_heavy",
+   "startup": 13,
+   "active": 3,
+   "recovery": 28,
+   "hitbox": {
+    "x": 18,
+    "y": -26,
+    "w": 144,
+    "h": 26
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_p": {
+   "name": "Downward Palm",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 6,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -116,
+    "w": 90,
+    "h": 56
+   },
+   "projectile": false,
+   "parry": false
+  },
+  "j_k": {
+   "name": "Presenter Kick",
+   "anim": "air_attack",
+   "startup": 8,
+   "active": 7,
+   "recovery": 8,
+   "hitbox": {
+    "x": 8,
+    "y": -96,
+    "w": 106,
+    "h": 48
+   },
+   "projectile": false,
+   "parry": false
+  }
+ },
+ "specials": [
+  {
+   "id": "containment_field",
+   "name": "Containment Field",
+   "anim": "special_1",
+   "startup": 18,
+   "active": 1,
+   "recovery": 20,
+   "projectile": false,
+   "parry": false
+  },
+  {
+   "id": "coming_wave",
+   "name": "The Coming Wave",
+   "anim": "special_2",
+   "startup": 18,
+   "active": 2,
+   "recovery": 28,
+   "hitbox": {
+    "x": 66,
+    "y": -34,
+    "w": 20,
+    "h": 20
+   },
+   "projectile": true,
+   "parry": false
+  },
+  {
+   "id": "copilot",
+   "name": "Copilot",
+   "anim": "special_3",
+   "startup": 10,
+   "active": 1,
+   "recovery": 18,
+   "projectile": false,
+   "parry": false
+  }
+ ],
+ "experts": {},
+ "super": {
+  "id": "modern_turing_test",
+  "name": "Modern Turing Test",
+  "anim": "super",
+  "startup": 8,
+  "active": 32,
+  "recovery": 50,
+  "hits": 8,
+  "hitbox": {
+   "x": 6,
+   "y": -200,
+   "w": 150,
+   "h": 196
+  },
+  "projectile": false,
+  "parry": false
+ },
+ "throw": {
+  "name": "Modern Turing Test"
+ },
+ "finisher": {
+  "id": "contained",
+  "name": "Contained",
+  "anim": "finisher"
+ },
+ "source": {
+  "ref": "origin/main",
+  "commit": "e106653",
+  "file": "src/characters/mustafa.js"
+ }
+}
