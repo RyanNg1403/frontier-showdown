@@ -11,6 +11,8 @@ export default defineCharacter({
   title: "The Iterative Deployer",
   lab: "OpenAI",
   labId: "openai",
+  archetype: "all-rounder",
+  difficulty: 1,
   bio: "The learn-the-game character. Plays neutral with Prompt Burst, anti-airs with Event Horizon and closes distance through a Stargate when the fireball gets respected.",
   quotes: {
     intro: "we are past the event horizon; the takeoff has started.",

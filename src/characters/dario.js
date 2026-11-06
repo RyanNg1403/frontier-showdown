@@ -11,6 +11,8 @@ export default defineCharacter({
   title: "The Responsible Scaler",
   lab: "Anthropic",
   labId: "anthropic",
+  archetype: "defensive",
+  difficulty: 2,
   bio: "Builds barriers, counters impatience and wins long rounds on chip resistance. Puts a Constitutional Barrier between himself and the opponent, zones with Country of Geniuses, and punishes rushes with ASL Safeguard.",
   quotes: {
     intro: "Intelligence may be very powerful, but it isn't magic fairy dust.",
