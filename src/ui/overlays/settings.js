@@ -57,7 +57,7 @@ export function createSettingsOverlay(ui, params = {}) {
         ...[["master", "Master volume"], ["music", "Music"], ["sfx", "Effects"], ["announcer", "Announcer"]].map(([k, label]) => ({
           type: "slider", label, get: () => S.get().audio[k], set: (x) => S.set(`audio.${k}`, x), format: pct,
         })),
-        { type: "action", label: "Test announcer", run: () => ui.audio.announce("Round one. Fight!") },
+        { type: "action", label: "Test announcer", run: () => ui.audio.announce("Round one. Fight!", { test: true }) },
       ];
     }
     if (TABS[tab].id === "gameplay") {

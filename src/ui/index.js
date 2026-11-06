@@ -68,6 +68,16 @@ export function mountUI(rootEl, game, options = {}) {
   const settings = createSettings(options.settings);
   const input = createMenuInput({ settings });
   const audio = createUiAudio(settings);
+  if (game?.audio?.announce) {
+    // The audio module already voices every announcement from engine events, so the HUD's
+    // speech fallback would double it; only the settings test line plays, through the module.
+    const voice = game.audio;
+    audio.announce = (text, opts) => {
+      if (!opts?.test) return;
+      voice.announce("ann.round1", { interrupt: true });
+      voice.announce("ann.fight");
+    };
+  }
 
   const screensEl = h("div", { class: "fs-ui__screens" });
   const hudEl = h("div", { class: "fs-ui__hud" });
