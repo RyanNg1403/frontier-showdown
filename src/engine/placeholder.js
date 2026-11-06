@@ -140,6 +140,7 @@ function poseFor(f) {
       return { ...STANCE, drop: k * 60, lean: -0.45, fUpper: -0.6, fFore: -0.2, bUpper: 0.9, bFore: 1.4, fThigh: 0.3 + k * 2, fShin: -k * 2, bThigh: -0.2, bShin: 0.1 };
     }
     case "dazed":
+    case "finished":
       return { ...STANCE, lean: Math.sin(sf / 9) * 0.25, fUpper: 0.15, fFore: 0.3, bUpper: -0.1, bFore: 0.2, fThigh: 0.15, fShin: 0, bThigh: -0.15, bShin: 0.05 };
     case "victory":
     case "finisher":
@@ -157,7 +158,6 @@ function bodyRotation(f) {
     case "juggle":
       return -Math.min(Math.PI / 2, 0.35 + f.stateFrame * 0.07);
     case "ko":
-    case "finished":
       return f.airborne ? -Math.min(Math.PI / 2, 0.3 + f.stateFrame * 0.06) : -Math.PI / 2;
     case "knockdown":
       return -Math.PI / 2;

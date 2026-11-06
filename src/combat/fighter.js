@@ -7,7 +7,7 @@ import { passiveFor } from "./passives.js";
 const NEUTRAL = new Set(["idle", "walk_fwd", "walk_back", "crouch", "block", "crouch_block"]);
 const STUNNED = new Set(["hitstun", "juggle"]);
 const CROUCHING = new Set(["crouch", "crouch_block"]);
-const LYING = new Set(["knockdown", "getup", "ko", "finished"]);
+const LYING = new Set(["knockdown", "getup", "ko"]);
 const SCRIPTED = new Set(["tag_in", "tag_out", "assist_in", "assist_out"]);
 const OFF_FIELD = "bench";
 
@@ -35,7 +35,7 @@ const STATE_ANIMS = {
   ko: "ko",
   dazed: "dazed",
   finisher: "finisher",
-  finished: "ko",
+  finished: "finished",
   victory: "victory",
   intro: "intro",
   tag_in: "tag_in",
@@ -167,7 +167,7 @@ export class Fighter {
 
   invulnTo(kind) {
     if (!this.onField || this.ko || this.state === OFF_FIELD) return true;
-    if (this.isLying || this.state === "thrown" || this.state === "tech" || this.state === "finisher" || this.state === "roll") return true;
+    if (this.isLying || this.state === "thrown" || this.state === "tech" || this.state === "finisher" || this.state === "finished" || this.state === "roll") return true;
     if (SCRIPTED.has(this.state) && this.state !== "assist_in") return true;
     if (this.invulnFrames > 0 || this.hidden || this.juggleLocked) return true;
     if (this.strikeInvulnFrames > 0 && kind !== "throw") return true;

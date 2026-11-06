@@ -110,6 +110,7 @@ export const REQUIRED_ANIMS = Object.freeze([
 export const ANIM_FALLBACKS = Object.freeze({
   dash_fwd: ["run", "walk_fwd"],
   dazed: ["hit_high"],
+  finished: ["dazed", "hit_high"],
   finisher: ["super", "special_1"],
   assist: ["special_1"],
   tag_out: ["dash_back", "walk_back"],
