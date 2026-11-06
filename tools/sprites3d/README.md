@@ -126,6 +126,12 @@ tilts, falls, lies down or flips. The 3D skin takes its tone from lit skin pixel
 face and neck. In a narrow band above the neck cut, the 3D neck and collar draw over the 2D head, so the joint shows
 no seam. Fei-Fei's neck cut deliberately sits at the bottom of her hair, so the hair falls over her shoulders.
 
+**Hair grade.** `head.grade` in a fighter config recolours the hair on every view (`post/headgrade.py`). The hair
+is segmented from the crown, remapped to `hair` with its strand contrast compressed and highlights capped, so light
+strands can't read blond at 1x. `grey_temples` greys the hair just above the ear. The hair is then quantized
+separately from the face (`colors` entries), so hair and skin never share palette colours. Sam uses
+`{"hair": "#6b4f3a", "contrast": 0.75, "highlight_cap": 1.3, "saturation": 1.1, "grey_temples": 0.5, "colors": 6}`.
+
 ## Props
 
 Props are simple meshes parented to bones, such as a flamethrower, hydrofoil, hex shield, EWI or scarf

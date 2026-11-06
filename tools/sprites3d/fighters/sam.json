@@ -102,7 +102,15 @@
         "neck_cut": 832
       }
     },
-    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json",
+    "grade": {
+      "hair": "#6b4f3a",
+      "contrast": 0.75,
+      "highlight_cap": 1.3,
+      "saturation": 1.1,
+      "grey_temples": 0.5,
+      "colors": 6
+    }
   },
   "likeness": "Section 3.1 of docs/roster-and-moves.md: slim, narrow shoulders, slightly large head on a lean neck; charcoal crew-neck knit, dark jeans, white running sneakers."
 }

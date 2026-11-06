@@ -26,6 +26,7 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import headgrade
 import headmeta
 
 key_background = headmeta.key_background  # used by prep_head.py and heads/make_heads.py
@@ -86,6 +87,23 @@ def quantize_rgba(img, colors):
     return np.dstack([np.asarray(q.convert("RGB")), np.where(alpha, 255, 0).astype(np.uint8)])
 
 
+def quantize_regions(img, region, n_region, n_total):
+    """Quantize `region` (e.g. the hair) and the rest separately, so they never share palette entries."""
+    arr = np.asarray(img).copy()
+    alpha = arr[..., 3] > 127
+    out = np.zeros_like(arr)
+    for mask, n in ((region & alpha, n_region), (~region & alpha, max(2, n_total - n_region))):
+        if not mask.any():
+            continue
+        part = arr.copy()
+        part[~mask, :3] = np.median(arr[mask][:, :3], axis=0).astype(np.uint8)
+        part[..., 3] = 255
+        q = quantize_rgba(Image.fromarray(part), n)
+        out[mask] = q[mask]
+    out[..., 3] = np.where(alpha, 255, 0)
+    return out
+
+
 class HeadView:
     """One 2D head image, cut below the jaw and scaled to 1/`heads_tall` of the fighter's height."""
 
@@ -101,9 +119,14 @@ class HeadView:
         src[rows[:, 0] > m["neck_cut"], :, 3] = 0
         blend = max(2, int(0.06 * (m["chin"] - m["crown"])))
         zone = ((rows >= m["neck_cut"] - blend) & (src[..., 3:4][..., 0] > 127)).astype(np.uint8) * 255
+        hcfg = cfg.get("head") or {}
+        hair = np.zeros(src.shape[:2], bool)
+        if hcfg.get("grade"):
+            src, hair = headgrade.grade(src, m, hcfg["grade"])
         self.src = Image.fromarray(src)
         self.zone = Image.fromarray(zone[..., 0] if zone.ndim == 3 else zone)
-        hcfg = cfg.get("head") or {}
+        self.hair = Image.fromarray(hair.astype(np.uint8) * 255)
+        self.hair_colors = hcfg.get("grade", {}).get("colors", 6) if hair.any() else 0
         target = cfg["height_px"] / hcfg.get("heads_tall", 7.2) * view_cfg.get("scale", hcfg.get("scale", 1.0))
         self.scale = target / max(1, m["chin"] - m["crown"])
         self.colors = hcfg.get("colors", 18)
@@ -134,16 +157,23 @@ class HeadView:
             r = int(math.ceil(max(math.hypot(px - x, py - y) for x in (0, w) for y in (0, h)))) + 2
             canvas = Image.new("RGBA", (2 * r, 2 * r), (0, 0, 0, 0))
             zone = Image.new("L", (2 * r, 2 * r), 0)
+            hair = Image.new("L", (2 * r, 2 * r), 0)
             off = (int(round(r - px)), int(round(r - py)))
             canvas.paste(self.src, off)
             zone.paste(self.zone, off)
+            hair.paste(self.hair, off)
             if t:
                 canvas = canvas.rotate(-t, resample=Image.BICUBIC, center=(r, r))
                 zone = zone.rotate(-t, resample=Image.NEAREST, center=(r, r))
+                hair = hair.rotate(-t, resample=Image.NEAREST, center=(r, r))
             size = max(1, round(2 * r * self.scale))
             mid = canvas.resize((size * 4, size * 4), Image.LANCZOS)
             small = mid.resize((size, size), Image.BOX)
-            rgba = quantize_rgba(small, self.colors)
+            if self.hair_colors:
+                hm = np.asarray(hair.resize((size, size), Image.BOX)) > 127
+                rgba = quantize_regions(small, hm, self.hair_colors, self.colors)
+            else:
+                rgba = quantize_rgba(small, self.colors)
             z = np.asarray(zone.resize((size, size), Image.NEAREST)) > 0
             self.cache[t] = (rgba, z, (size / 2.0, size / 2.0))
         return self.cache[t]
