@@ -1,6 +1,7 @@
 import { BTN, RULES } from "./constants.js";
 import { mirrorDir, parseMotion } from "./input.js";
 import { createRng } from "./rng.js";
+import { kitFor } from "./ai-kits/index.js";
 
 export const DIFFICULTIES = Object.freeze({
   easy: { reaction: 26, block: 0.18, lowRead: 0.3, antiAir: 0.12, punish: 0.12, combo: 0.25, aggression: 0.3, zoning: 0.15, tech: 0.05, breaker: 0, mistake: 0.25, superUse: 0.3, assist: 0.002, tag: 0.002 },
@@ -153,6 +154,9 @@ export class CpuController {
     if (!self.isNeutral && self.state !== "run") return;
 
     if (match.tagMode && this.tagLogic(match, side, self, team, dist)) return;
+
+    const kit = kitFor(self.id);
+    if (kit && kit(this, { match, side, self, team, opp, dist, seen, steps: motionSteps })) return;
 
     if (this.chance(p.mistake * 0.2)) {
       this.press(this.rng.pick([5, 2, 6]), this.rng.pick([BTN.LP, BTN.HP, BTN.LK, BTN.HK]));
@@ -333,7 +337,7 @@ export class CpuController {
       this.push(motionSteps(sup.input));
       return;
     }
-    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
+    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (s.hitbox || s.projectile) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
     const sp = options.find((s) => !s.projectile && s.velocity.length) || options[0];
     if (sp) this.doSpecial(self, team, sp);
   }
