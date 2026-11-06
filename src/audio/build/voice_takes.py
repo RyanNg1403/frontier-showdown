@@ -25,7 +25,9 @@ from piper import PiperVoice, SynthesisConfig
 
 HERE = Path(__file__).resolve().parent
 NUMBERS = {"1": "one", "2": "two", "3": "three", "1st": "first"}
-SAME = {"k-o": "ko", "k.o": "ko", "kayo": "ko", "x-a-i": "xai", "x-ai": "xai"}
+SAME = {"k-o": "ko", "k.o": "ko", "kayo": "ko", "x-a-i": "xai", "x-ai": "xai", "ahmee": "ami", "ah-mee": "ami", "a.m.i": "ami",
+        # AMI is said "ah-mee" (/ˈɑːmiː/), which Whisper writes as "Army"; "Amy" (/ˈeɪmi/) is wrong and stays unmatched.
+        "army": "ami"}
 
 
 def lines_from_catalog():
@@ -39,7 +41,8 @@ def words(text):
     tokens = [SAME.get(t, NUMBERS.get(t, t)).replace("-", "").replace(".", "") for t in tokens]
     joined = " ".join(tokens)
     for a, b in (("k o", "ko"), ("x a i", "xai"), ("open a i", "openai"), ("open ai", "openai"), ("x ai", "xai"),
-                 ("deep seek", "deepseek"), ("deep mind", "deepmind"), ("n vidia", "nvidia"), ("en vidia", "nvidia")):
+                 ("deep seek", "deepseek"), ("deep mind", "deepmind"), ("n vidia", "nvidia"), ("en vidia", "nvidia"),
+                 ("super intelligence", "superintelligence"), ("superintelligence", "superintelligence"), ("a m i", "ami")):
         joined = re.sub(rf"\b{a}\b", b, joined)
     return joined.split()
 
