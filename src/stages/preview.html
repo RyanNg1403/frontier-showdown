@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frontier Showdown · Stage preview</title>
+  <style>
+    :root { color-scheme: dark; --ink: #e8e4da; --dim: #8d877c; --line: #2a2723; --panel: #121110; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #070706; color: var(--ink); font: 13px/1.45 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; padding: 16px; min-height: 100vh; }
+    .stage-wrap { position: relative; align-self: start; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--line); }
+    canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+    aside { display: flex; flex-direction: column; gap: 14px; }
+    section { background: var(--panel); border: 1px solid var(--line); padding: 12px; }
+    h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: 0.04em; text-transform: uppercase; }
+    h2 { font-size: 11px; margin: 0 0 8px; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; }
+    .loc { color: var(--dim); margin: 0 0 8px; }
+    .stages { display: grid; gap: 4px; }
+    .stages button { text-align: left; background: transparent; color: var(--ink); border: 1px solid var(--line); padding: 6px 8px; font: inherit; cursor: pointer; }
+    .stages button[aria-pressed="true"] { border-color: var(--accent, #e8c27a); color: var(--accent, #e8c27a); }
+    label { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    input[type="range"] { flex: 1; }
+    .swatches { display: flex; gap: 0; margin: 8px 0; border: 1px solid var(--line); }
+    .swatches span { flex: 1; height: 22px; }
+    .toggles { display: grid; grid-template-columns: 1fr 1fr; }
+    kbd { border: 1px solid var(--line); padding: 0 4px; }
+    .sources { margin: 0 0 10px; padding-left: 16px; }
+    .sources a { color: var(--accent, #e8c27a); }
+    body.capture main { display: block; padding: 0; }
+    body.capture aside { display: none; }
+    body.capture .stage-wrap { width: 1280px; height: 720px; border: 0; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="stage-wrap"><canvas id="view" width="1280" height="720"></canvas></div>
+    <aside>
+      <section>
+        <h2>Stages</h2>
+        <div class="stages" id="stage-list"></div>
+      </section>
+      <section>
+        <h1 id="stage-name"></h1>
+        <p class="loc" id="stage-loc"></p>
+        <p id="stage-notes"></p>
+        <h2>Real world</h2>
+        <p class="loc" id="stage-real"></p>
+        <ul class="sources" id="stage-sources"></ul>
+        <h2>Palette</h2>
+        <div class="swatches" id="swatches"></div>
+        <p id="palette-note"></p>
+      </section>
+      <section>
+        <h2>Camera</h2>
+        <label><input type="checkbox" id="auto-pan" checked /> auto pan</label>
+        <label>x <input type="range" id="cam-x" min="0" max="640" value="320" /> <span id="cam-x-val"></span></label>
+        <h2>Layers</h2>
+        <div class="toggles" id="layer-toggles"></div>
+        <label><input type="checkbox" id="show-guides" checked /> ground line &amp; scale dummies</label>
+        <p class="loc"><kbd>←</kbd>/<kbd>→</kbd> pan · <kbd>1</kbd>–<kbd>9</kbd>, <kbd>[</kbd>/<kbd>]</kbd> stage</p>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="./preview.js"></script>
+</body>
+</html>

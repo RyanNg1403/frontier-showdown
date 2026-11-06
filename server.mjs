@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile, readFileSync } from "node:fs";
+import { existsSync, readFile, readFileSync, readdirSync } from "node:fs";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
@@ -519,10 +519,17 @@ const mimeTypes = {
   ".mp3": "audio/mpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".woff2": "font/woff2",
+  ".mjs": "text/javascript; charset=utf-8",
 };
 const publicFiles = new Set([
-  "index.html", "game.js", "styles.css", "favicon.svg",
+  "index.html", "legacy.html", "game.js", "styles.css", "favicon.svg",
 ]);
+const publicDirs = ["assets/", "src/", "styles/"];
 
 function serveFile(request, response) {
   let pathname;
@@ -533,7 +540,7 @@ function serveFile(request, response) {
     return;
   }
   const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
-  if (!publicFiles.has(relativePath) && !relativePath.startsWith("assets/")) {
+  if (!publicFiles.has(relativePath) && !publicDirs.some((dir) => relativePath.startsWith(dir))) {
     sendJson(response, 404, { error: "Not found." });
     return;
   }
@@ -553,11 +560,53 @@ function serveFile(request, response) {
       "Cache-Control": "no-cache",
       "X-Content-Type-Options": "nosniff",
     });
-    response.end(content);
+    response.end(request.method === "HEAD" ? undefined : content);
   });
 }
 
+const NON_CHARACTER_FILES = new Set(["index.js", "schema.js"]);
+
+/** Character modules present in src/characters, with whether their atlas exists. */
+function listCharacters() {
+  const dir = join(projectRoot, "src", "characters");
+  let files = [];
+  try {
+    files = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  return files
+    .filter((f) => /^[a-z0-9-]+\.js$/.test(f) && !NON_CHARACTER_FILES.has(f))
+    .map((f) => {
+      const id = f.slice(0, -3);
+      return { id, atlas: existsSync(join(projectRoot, "assets", "fighters", id, "atlas.json")) };
+    });
+}
+
+/** Which optional sibling modules exist, so the client never requests missing files. */
+function manifest() {
+  const has = (...parts) => existsSync(join(projectRoot, ...parts));
+  return {
+    modules: {
+      stage: has("src", "stages", "index.js"),
+      vfx: has("src", "vfx", "index.js"),
+      ui: has("src", "ui", "index.js"),
+      audio: has("src", "audio", "index.js"),
+    },
+    styles: { ui: has("styles", "ui.css") },
+    characters: listCharacters(),
+  };
+}
+
 createServer((request, response) => {
+  if (request.method === "GET" && request.url === "/api/manifest") {
+    sendJson(response, 200, manifest());
+    return;
+  }
+  if (request.method === "GET" && request.url === "/api/characters") {
+    sendJson(response, 200, { characters: listCharacters() });
+    return;
+  }
   if (request.method === "GET" && request.url === "/api/health") {
     const provider = getDecisionProvider();
     sendJson(response, 200, {
@@ -571,7 +620,7 @@ createServer((request, response) => {
     void chooseResponse(request, response);
     return;
   }
-  if (request.method === "GET") {
+  if (request.method === "GET" || request.method === "HEAD") {
     serveFile(request, response);
     return;
   }

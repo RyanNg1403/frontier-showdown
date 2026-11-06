@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frontier Showdown - VFX preview</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: dark; --bg: #0b0a10; --panel: #15131d; --line: #2a2636; --text: #e9e4f5; --dim: #8d86a3; --hot: #ffb02e; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 ui-monospace, "SFMono-Regular", Menlo, monospace; display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+    aside { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+    h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+    p.sub { margin: 0 0 12px; color: var(--dim); }
+    h2 { font-size: 11px; margin: 16px 0 6px; color: var(--hot); letter-spacing: 0.12em; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    button { background: #1e1b29; color: var(--text); border: 1px solid var(--line); padding: 6px 7px; font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; border-radius: 3px; }
+    button:hover { border-color: var(--hot); }
+    button.on { background: var(--hot); color: #160f02; border-color: var(--hot); }
+    select { background: #1e1b29; color: var(--text); border: 1px solid var(--line); font: inherit; padding: 3px; }
+    label { display: flex; gap: 6px; align-items: center; margin: 4px 0; color: var(--dim); }
+    main { display: grid; place-items: center; overflow: hidden; background: #050408; }
+    canvas { image-rendering: pixelated; max-width: 100%; max-height: 100vh; aspect-ratio: 16 / 9; }
+    #status { margin-top: 10px; color: var(--dim); min-height: 3em; }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Combat VFX</h1>
+    <p class="sub">Click any effect to play it. Space replays the last one.</p>
+    <div class="grid">
+      <button id="playAll">Play all (loop)</button>
+      <button id="clear">Clear</button>
+    </div>
+    <label><input type="checkbox" id="optShake" checked> Screen shake</label>
+    <label><input type="checkbox" id="optHitstop" checked> Hitstop on dummy</label>
+    <label><input type="checkbox" id="optAtlas" checked> Use generated sprites</label>
+    <label>Template lab <select id="optLab"><option value="auto">per template</option></select></label>
+    <div id="families"></div>
+    <div id="status"></div>
+  </aside>
+  <main><canvas id="view" width="1280" height="720"></canvas></main>
+  <script type="module" src="./preview.js"></script>
+</body>
+</html>
