@@ -77,7 +77,7 @@ export default defineCharacter({
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Superposition", startup: 10, active: 4, recovery: 28, damage: 52, hits: 2, hitInterval: 2, hitstun: 26, blockstun: 18,
+      name: "Superposition", startup: 10, active: 4, recovery: 29, damage: 52, hits: 2, hitInterval: 2, hitstun: 26, blockstun: 18,
       hitbox: { x: 8, y: -222, w: 80, h: 140 }, knockback: { x: 80 }, level: "mid", meterGain: 6, hitstop: 10,
       lastHit: { knockback: { x: 100, y: 1150 } }, cancelInto: ["special", "super"],
       description: "A rising strike with two overlapping ghost arms; hits twice and launches.",
@@ -157,5 +157,6 @@ export default defineCharacter({
     punish: ["circuit_trace:LK", "c_hp"],
     cancel: ["circuit_trace:LK", "feature_visualization:LP"],
     projectileRange: [220, 1000],
+    zoning: 0.7,
   },
 });

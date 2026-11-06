@@ -80,7 +80,8 @@ function hintKit(cpu, k) {
   const sup = self.def.super;
   if (sup && self.canSuper({ team }, sup)) {
     const range = hints.superRange ?? (sup.projectile ? 600 : 220);
-    if (dist < range && (!sup.grab || grabbable(opp)) && cpu.chance(p.superUse * 0.04)) {
+    const opening = sup.grab ? grabbable(opp) : seen.recovering || opp.isStunned || seen.airborne;
+    if (dist < range && opening && cpu.chance(p.superUse * (sup.grab ? 0.04 : 0.5))) {
       cpu.push(k.steps(sup.input));
       return true;
     }
@@ -92,12 +93,12 @@ function hintKit(cpu, k) {
 
   const proj = self.def.specials.find((s) => s.projectile);
   const [lo, hi] = hints.projectileRange || [0, Infinity];
-  if (proj && dist > 170 && cpu.chance(p.zoning * 0.6)) {
-    if (dist >= lo && dist <= hi && !match.projectiles.some((pr) => pr.ownerUid === self.uid)) {
+  if (proj && dist > 170 && dist >= lo && cpu.chance(p.zoning * 0.6)) {
+    if (dist <= hi && !match.projectiles.some((pr) => pr.ownerUid === self.uid)) {
       cpu.push(k.steps(proj.input));
       cpu.cooldown = 10;
     } else {
-      cpu.hold(dist < lo ? 4 : 6, 10);
+      cpu.hold(6, 10);
     }
     return true;
   }
@@ -109,7 +110,7 @@ function hintKit(cpu, k) {
       return true;
     }
     const pressure = inReach(self, "pressure", dist);
-    if (pressure.length && cpu.chance(0.08 + p.aggression * 0.15)) return pick(pressure);
+    if (pressure.length && cpu.chance(0.1 + p.aggression * 0.3)) return pick(pressure);
     return false;
   }
 
@@ -119,7 +120,8 @@ function hintKit(cpu, k) {
     return pick(reachable);
   }
   const dive = entries(self, "jumpIn")[0];
-  if (dive && dist < 420 && cpu.chance((0.18 * p.aggression + 0.05) * 0.6)) return use(cpu, k, dive);
+  const opening = seen.recovering || match.projectiles.some((pr) => pr.side !== side && !pr.dead);
+  if (dive && dist < 420 && opening && cpu.chance((0.18 * p.aggression + 0.05) * 1.5)) return use(cpu, k, dive);
   return false;
 }
 

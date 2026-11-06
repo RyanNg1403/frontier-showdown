@@ -108,7 +108,7 @@ export default defineCharacter({
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Residual", startup: 10, active: 3, recovery: 28, damage: 90, hitstun: 30, blockstun: 18,
+      name: "Residual", startup: 10, active: 3, recovery: 30, damage: 90, hitstun: 30, blockstun: 18,
       hitbox: { x: 8, y: -218, w: 78, h: 136 }, knockback: { x: 110, y: 1150 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"],
       description: "Uppercut that leaves a residual copy of itself, which hits again 10 frames later.",
@@ -156,7 +156,7 @@ export default defineCharacter({
     {
       id: "one_write_head", name: "One Write-Head", input: "B,F+P",
       description: "Three ghost heads lunge in sequence along one glowing key/value line: three quick hits of 30. Scale Up: the last ghost launches.",
-      startup: 14, active: 12, recovery: 26, damage: 30, chip: 4, hitstun: 18, blockstun: 15, hits: 3, hitInterval: 4,
+      startup: 14, active: 12, recovery: 26, damage: 30, chip: 4, hitstun: 18, blockstun: 22, hits: 3, hitInterval: 4,
       hitbox: { x: 18, y: -180, w: 104, h: 70 }, knockback: { x: 130 }, level: "mid", meterGain: 8,
       velocity: [{ from: 8, to: 22, vx: 360 }], lastHit: { knockback: { x: 300 } }, vfx: "special_openai",
       mechanicData: { ghosts: { count: 3 } },
@@ -188,5 +188,7 @@ export default defineCharacter({
     punish: ["one_write_head:LP", "c_hp"],
     cancel: ["one_write_head:LP", "attention:LP"],
     superRange: 900,
+    aggression: 1.5,
+    zoning: 1.2,
   },
 });

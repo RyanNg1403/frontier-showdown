@@ -35,7 +35,7 @@ export default defineCharacter({
   stats: { health: 930, walkSpeed: 250, runSpeed: 560, jump: 215, weight: 0.9, height: 212 },
   normals: {
     lp: {
-      name: "Whip Jab", startup: 5, active: 2, recovery: 10, damage: 20, hitstun: 15, blockstun: 12,
+      name: "Whip Jab", startup: 6, active: 2, recovery: 10, damage: 20, hitstun: 15, blockstun: 12,
       hitbox: { x: 22, y: -172, w: 86, h: 22 }, knockback: { x: 140 }, level: "high", meterGain: 3,
       cancelInto: ["lp", "hp", "special", "super"],
     },
@@ -71,7 +71,7 @@ export default defineCharacter({
       velocity: [{ from: 1, to: 7, vx: 280 }], cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Wind Uppercut", startup: 9, active: 3, recovery: 28, damage: 96, hitstun: 30, blockstun: 18,
+      name: "Wind Uppercut", startup: 9, active: 3, recovery: 30, damage: 96, hitstun: 30, blockstun: 18,
       hitbox: { x: 6, y: -236, w: 76, h: 156 }, knockback: { x: 100, y: 1190 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"],
     },

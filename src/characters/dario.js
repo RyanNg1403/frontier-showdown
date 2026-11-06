@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/originals.js";
 
 /**
  * Dario Amodei, "The Responsible Scaler" (roster doc 3.2). Defensive fortress and zoner:
@@ -62,12 +63,12 @@ export default defineCharacter({
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Hex Palm", startup: 11, active: 3, recovery: 31, damage: 92, hitstun: 30, blockstun: 18,
+      name: "Hex Palm", startup: 10, active: 3, recovery: 31, damage: 115, hitstun: 30, blockstun: 18,
       hitbox: { x: 6, y: -220, w: 72, h: 136 }, knockback: { x: 100, y: 1160 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"], vfx: "lab_burst",
     },
     c_hk: {
-      name: "Slow Takeoff Sweep", startup: 13, active: 3, recovery: 29, damage: 72, hitstun: 24, blockstun: 18,
+      name: "Slow Takeoff Sweep", startup: 13, active: 3, recovery: 29, damage: 78, hitstun: 24, blockstun: 18,
       hitbox: { x: 18, y: -26, w: 136, h: 26 }, knockback: { x: 210, y: 320 }, level: "low", knockdown: true,
       meterGain: 5,
     },

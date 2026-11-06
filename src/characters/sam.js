@@ -1,4 +1,5 @@
 import { defineCharacter } from "./schema.js";
+import "../combat/ai-kits/originals.js";
 
 /**
  * Sam Altman, "The Iterative Deployer" (roster doc 3.1). All-rounder shoto: a fireball,
