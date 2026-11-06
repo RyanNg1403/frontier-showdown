@@ -237,7 +237,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       return def;
     });
     const audioPromise = audio?.loadGroup
-      ? Promise.resolve(audioCall(() => audio.loadGroup("fight"))).catch(() => {}).then(() => {
+      ? Promise.resolve(audioCall(() => audio.loadGroup("fight", { fighters: ids }))).catch(() => {}).then(() => {
         done += 1;
         progress("Sound ready");
       })
@@ -624,8 +624,9 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       uiMounted = true;
       domHud = Boolean(uiInstance?.hud);
       if (audio && typeof uiInstance?.on === "function") {
-        uiInstance.on("screen", ({ id }) => {
+        uiInstance.on("screen", ({ id, from }) => {
           if (SCREEN_MUSIC[id]) audioCall(() => audio.music(SCREEN_MUSIC[id]));
+          if (audio?.screen) audioCall(() => audio.screen(id, { from, session: uiInstance.session }));
         });
       }
     } catch (error) {

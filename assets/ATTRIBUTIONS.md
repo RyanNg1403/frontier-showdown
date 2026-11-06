@@ -26,6 +26,14 @@ By Kevin MacLeod ([incompetech.com](https://incompetech.com)), licensed under
 | `music/fight.mp3` | "Cyborg Ninja" | [Cyborg Ninja.mp3](https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cyborg%20Ninja.mp3) | silence trimmed, loudness normalized |
 | `music/victory.mp3` | "Fanfare for Space" | [Fanfare for Space.mp3](https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fanfare%20for%20Space.mp3) | first 11 s, fade-out, loudness normalized |
 
+### Character and announcer voices: `voices/*.ogg`
+
+The 143 clips listed in `voices/manifest.json` (14 announcer lines, and each fighter's versus,
+taunt, special, super, win and tag-in lines) are AI-generated with OpenAI
+`gpt-4o-mini-tts-2025-12-15`, using fictional stock character voices. No real person's voice was
+sampled or cloned. The game plays them in place of the recorded announcer below, which stays as
+the fallback when a clip can't load (and for "Round three" and "Finish it!").
+
 ### Announcer: `voice/*.wav`
 
 | Files | Recording | Author | License |

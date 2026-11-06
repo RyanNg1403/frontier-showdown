@@ -52,13 +52,16 @@ export function audioExtension() {
   return audioExt || null;
 }
 
+// Ogg Opus sources (the voice clips) are served as they are, or as the build's MP3 copy where
+// the browser can't decode Opus.
 function audioTarget(path) {
-  if (!/\.(wav|mp3)$/i.test(path) || !path.startsWith("assets/")) return path;
+  const ogg = /\.ogg$/i.test(path);
+  if (!(ogg || /\.(wav|mp3)$/i.test(path)) || !path.startsWith("assets/")) return path;
   const ext = audioExtension();
-  if (!ext) return path;
+  if (!ext || (ogg && ext === "ogg")) return path;
   const rule = manifest.formats.audioDirs;
   if (rule && !rule.some((d) => path.startsWith(d))) return path;
-  return path.replace(/\.(wav|mp3)$/i, `.${ext}`);
+  return path.replace(/\.(wav|mp3|ogg)$/i, `.${ext}`);
 }
 
 /** Repo-relative path ("assets/ui/logo.png") as served by this deployment. */

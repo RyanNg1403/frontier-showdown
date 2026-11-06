@@ -105,6 +105,9 @@ const stageFiles = walk("assets/stages").filter((f) => /\.png$/i.test(f) && !/\/
 const uiFiles = walk("assets/ui").filter((f) => /\.(png|jpe?g|webp|woff2|svg|txt)$/i.test(f));
 const vfxFiles = ["assets/vfx/vfx-atlas.json", "assets/vfx/vfx-atlas.png"].filter(exists);
 const audioFiles = walk("assets/audio").filter((f) => /\.(wav|mp3)$/i.test(f));
+// Voice clips are already Ogg Opus: shipped untouched, with an MP3 copy for browsers without Opus.
+const voiceClips = walk("assets/audio/voices").filter((f) => /\.ogg$/i.test(f));
+const voiceManifest = ["assets/audio/voices/manifest.json"].filter(exists);
 const docFiles = ["assets/ATTRIBUTIONS.md", "assets/stages/SOURCES.md", "assets/ui/fonts/OFL.txt"].filter(exists);
 // Install manifest and home-screen icons: copied as-is, since their URLs are fixed in the manifest and index.html.
 const appFiles = walk("assets/app");
@@ -196,6 +199,15 @@ await pool(audioFiles, Math.max(2, cpus().length), async (rel) => {
     await run(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vn", "-map_metadata", "-1", ...codec, out]);
     written.set(`${stem}.${ext}`, statSync(out).size);
   }
+});
+for (const rel of voiceManifest) writeOut(rel, JSON.stringify(JSON.parse(readFileSync(join(root, rel), "utf8"))));
+await pool(voiceClips, Math.max(2, cpus().length), async (rel) => {
+  sourceBytes.audio += statSync(join(root, rel)).size;
+  copy(rel);
+  if (!haveFfmpeg) return;
+  const mp3 = rel.replace(/\.ogg$/i, ".mp3");
+  await run(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-i", join(root, rel), "-vn", "-map_metadata", "-1", "-c:a", "libmp3lame", ...AUDIO_PROFILES.sfx.mp3, join(outDir, mp3)]);
+  written.set(mp3, statSync(join(outDir, mp3)).size);
 });
 
 // ---------------------------------------------------------------------------------- manifest

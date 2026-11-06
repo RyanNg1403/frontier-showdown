@@ -63,7 +63,7 @@ test("2v2: a point fighter falling mid-round gets the tag sting, not K.O.; the r
   m.point(1).health = 0;
   hold(m, 1);
   await tick();
-  assert.deepEqual(audio.koCalls(), ["ann.ko"], "K.O. once, when the round ends");
+  assert.deepEqual(audio.koCalls(), ["announcer.ko"], "K.O. once, when the round ends");
   assert.ok(audio.played().includes("ko.impact"));
 });
 
@@ -72,5 +72,5 @@ test("a double KO is announced once", async () => {
   for (const s of [0, 1]) for (const f of m.sides[s].members) f.health = 0;
   hold(m, 1);
   await tick();
-  assert.deepEqual(audio.koCalls(), ["ann.doubleko"]);
+  assert.deepEqual(audio.koCalls(), ["announcer.double-ko"]);
 });
