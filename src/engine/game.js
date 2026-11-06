@@ -9,7 +9,7 @@ import { InputDevices } from "./input.js";
 import { createLoop } from "./loop.js";
 import { assetApi, loadAtlas } from "./assets.js";
 import { loadModules } from "./modules.js";
-import { createFallbackVfx, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
+import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { adaptVfx } from "./vfx-adapter.js";
 import { adaptStageDef, listModuleStages, stageCamera } from "./stage-adapter.js";
@@ -291,6 +291,8 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       ctx.save();
       camera.apply(ctx);
       for (const f of order) drawShadow(ctx, f);
+      const t = performance.now();
+      for (const w of match.barriers) drawBarrier(ctx, w, t);
       for (const f of order) drawFighter(ctx, f);
       ctx.restore();
       const now = performance.now();

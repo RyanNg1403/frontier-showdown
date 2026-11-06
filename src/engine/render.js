@@ -3,7 +3,7 @@ import { toWorld } from "../combat/boxes.js";
 import { VIEW_H, VIEW_W } from "./camera.js";
 
 export function drawFighter(ctx, f) {
-  if (!f.onField || f.state === "bench") return;
+  if (!f.onField || f.state === "bench" || f.hidden) return;
   const shake = f.shake > 0 ? ((f.shake % 2) * 2 - 1) * 3 : 0;
   const atlas = f.atlas;
   const frame = atlas ? f.atlasFrame : null;
@@ -24,7 +24,7 @@ export function drawFighter(ctx, f) {
 }
 
 export function drawShadow(ctx, f) {
-  if (!f.onField || f.state === "bench") return;
+  if (!f.onField || f.state === "bench" || f.hidden) return;
   const h = Math.min(1, -f.y / 260);
   const w = (f.isLying ? 110 : 62) * (1 - h * 0.5);
   ctx.save();
@@ -56,6 +56,34 @@ export function drawProjectileFallback(ctx, p, time) {
     ctx.arc(-p.facing * i * r * 0.55, Math.sin((time + i * 70) / 60) * 4, r * (0.8 - i * 0.15), 0, Math.PI * 2);
     ctx.fillStyle = pal.primary;
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Constitutional-Barrier style wall: translucent panel with scrolling lines of "text". */
+export function drawBarrier(ctx, w, time) {
+  const pal = w.palette;
+  const fade = Math.min(1, w.life / 30, (w.maxLife - w.life + 1) / 8);
+  const x = w.x - w.w / 2;
+  ctx.save();
+  ctx.globalAlpha = 0.85 * fade;
+  const g = ctx.createLinearGradient(x, 0, x + w.w, 0);
+  g.addColorStop(0, "rgba(255,240,220,0.05)");
+  g.addColorStop(0.5, `${pal.accent}55`);
+  g.addColorStop(1, "rgba(255,240,220,0.05)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x, -w.h, w.w, w.h);
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, -w.h, w.w, w.h);
+  ctx.beginPath();
+  ctx.rect(x, -w.h, w.w, w.h);
+  ctx.clip();
+  ctx.fillStyle = "rgba(255,244,230,0.75)";
+  const scroll = (time / 40) % 12;
+  for (let y = -w.h + 6 - scroll; y < 0; y += 12) {
+    const len = 6 + ((Math.abs(Math.floor(y)) * 7) % (w.w - 12));
+    ctx.fillRect(x + 5, y, len, 2);
   }
   ctx.restore();
 }
@@ -266,6 +294,17 @@ export function drawFallbackHud(ctx, state) {
     ctx.font = "bold 14px system-ui, sans-serif";
     ctx.fillStyle = "#bfe8ff";
     ctx.fillText(`${s.bars}`, flip ? mx - 12 : mx + 314, VIEW_H - 36);
+    const rw = 200 * (s.runway ?? 0) / (s.runwayMax || 200);
+    const rx = flip ? VIEW_W - 40 - 200 : 40;
+    ctx.fillStyle = "rgba(10,8,20,0.85)";
+    ctx.fillRect(rx - 2, VIEW_H - 22, 204, 8);
+    ctx.fillStyle = (s.runway ?? 0) >= (s.runwayMax || 200) ? "#9cf29a" : "#5fae6a";
+    ctx.fillRect(flip ? rx + 200 - rw : rx, VIEW_H - 20, rw, 4);
+    if (s.lastStanding) {
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.fillStyle = "#ff9a6b";
+      ctx.fillText("LAST ONE STANDING", flip ? x + W : x, 134);
+    }
     if (s.combo.hits >= 2) {
       ctx.font = "bold 44px system-ui, sans-serif";
       ctx.fillStyle = "#ffd34d";

@@ -190,6 +190,17 @@ function limb(ctx, x, y, a1, l1, a2, l2, color, width) {
   return { x: ex, y: ey };
 }
 
+function shoe(ctx, foot, color) {
+  ctx.fillStyle = "rgba(10,10,18,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(foot.x + 6, foot.y - 1, 13, 7, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(foot.x + 6, foot.y - 1, 10.5, 5, 0, 0, TAU);
+  ctx.fill();
+}
+
 export function drawPlaceholder(ctx, f) {
   const pal = f.def.palette;
   const pose = poseFor(f);
@@ -209,7 +220,8 @@ export function drawPlaceholder(ctx, f) {
   const neckY = hipY - Math.cos(lean) * NECK;
   const shoulder = { x: neckX * 0.92, y: neckY + 8 };
 
-  limb(ctx, -4, hipY, pose.bThigh, THIGH, pose.bThigh + pose.bShin, SHIN, shade(pal.secondary, -18), 13);
+  const bFoot = limb(ctx, -4, hipY, pose.bThigh, THIGH, pose.bThigh + pose.bShin, SHIN, shade(pal.secondary, -18), 13);
+  shoe(ctx, bFoot, shade(pal.shoes || "#202020", -25));
   limb(ctx, shoulder.x - 3, shoulder.y, pose.bUpper, UPPER, pose.bFore, FORE, shade(pal.primary, -35), 11);
 
   ctx.fillStyle = "rgba(10,10,18,0.85)";
@@ -233,14 +245,23 @@ export function drawPlaceholder(ctx, f) {
   ctx.fill();
   ctx.fillStyle = pal.secondary;
   ctx.fillRect(-17, hipY - 6, 34, 10);
-  ctx.strokeStyle = pal.accent;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(neckX * 0.3 + 4, neckY + 10);
-  ctx.lineTo(neckX * 0.15 + 6, hipY - 10);
-  ctx.stroke();
+  if (pal.shirt) {
+    ctx.fillStyle = pal.shirt;
+    ctx.beginPath();
+    ctx.moveTo(neckX - 7, neckY + 4);
+    ctx.lineTo(neckX + 9, neckY + 4);
+    ctx.lineTo(neckX * 0.6 + 2, neckY + 34);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillStyle = pal.accent;
+    ctx.beginPath();
+    ctx.arc(neckX * 0.55 + 6, neckY + 22, 3.5, 0, TAU);
+    ctx.fill();
+  }
 
-  limb(ctx, 4, hipY, pose.fThigh, THIGH, pose.fThigh + pose.fShin, SHIN, pal.secondary, 14);
+  const fFoot = limb(ctx, 4, hipY, pose.fThigh, THIGH, pose.fThigh + pose.fShin, SHIN, pal.secondary, 14);
+  shoe(ctx, fFoot, pal.shoes || "#202020");
 
   const headX = neckX + Math.sin(lean) * 18;
   const headY = neckY - Math.cos(lean) * 18;
@@ -256,8 +277,18 @@ export function drawPlaceholder(ctx, f) {
   ctx.beginPath();
   ctx.arc(headX - 2, headY - 3, 15.5, Math.PI * 0.95, Math.PI * 2.05);
   ctx.fill();
-  ctx.fillStyle = "rgba(10,10,18,0.9)";
-  ctx.fillRect(headX + 7, headY - 2, 3, 4);
+  if (pal.glasses) {
+    ctx.strokeStyle = pal.glasses;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(headX + 3, headY - 4, 10, 7);
+    ctx.beginPath();
+    ctx.moveTo(headX + 3, headY - 1);
+    ctx.lineTo(headX - 8, headY - 2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "rgba(10,10,18,0.9)";
+    ctx.fillRect(headX + 7, headY - 2, 3, 4);
+  }
 
   limb(ctx, shoulder.x + 3, shoulder.y, pose.fUpper, UPPER, pose.fFore, FORE, pal.primary, 12);
   ctx.restore();

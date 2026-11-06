@@ -52,7 +52,9 @@ export function mountFallbackUI(root, game) {
         <button class="fs-go" id="fs-start">FIGHT</button>
         <div class="fs-keys">
           P1: WASD move, U/I punch, J/K kick, L block, O tag, P assist. P2: arrows, Numpad 4/5 punch, 1/2 kick, 6 block, 8 tag, 9 assist.<br>
-          Throw LP+LK, breaker Forward+Block in a combo, dash by double-tapping. Esc pauses, F1 shows hitboxes. Gamepads work too.
+          Block is a button (add down for lows). Throw LP+LK. Dash/run: double-tap. Scale Up: Block right after a special.
+          Rollback breaker: Forward+Block mid-combo. Pushblock: HP+HK while blocking. 2v2: tap Tag for an assist, hold it to tag out.
+          Esc pauses, F1 shows hitboxes. Gamepads work too.
         </div>
       </div>`;
     const ids = chars.map((c) => c.id);
