@@ -223,6 +223,8 @@ export class Fighter {
 
   localHurtboxes() {
     const set = this.def.hurtboxes || DEFAULT_HURTBOXES;
+    const moveBoxes = this.state === "attack" ? moveMechanic(this.move)?.hurtboxes?.(this, this.move) : null;
+    if (moveBoxes) return moveBoxes;
     const frameBoxes = this.atlasFrameBoxes("hurtboxes");
     if (frameBoxes) return frameBoxes;
     if (this.isLying) return set.down || DEFAULT_HURTBOXES.down;
