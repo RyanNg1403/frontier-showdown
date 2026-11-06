@@ -1,0 +1,860 @@
+[
+  {
+    "id": "announcer.round-1",
+    "character": "announcer",
+    "text": "Round one!",
+    "file": "announcer-round-1.ogg"
+  },
+  {
+    "id": "announcer.round-2",
+    "character": "announcer",
+    "text": "Round two!",
+    "file": "announcer-round-2.ogg"
+  },
+  {
+    "id": "announcer.final-round",
+    "character": "announcer",
+    "text": "Final round!",
+    "file": "announcer-final-round.ogg"
+  },
+  {
+    "id": "announcer.fight",
+    "character": "announcer",
+    "text": "Fight!",
+    "file": "announcer-fight.ogg"
+  },
+  {
+    "id": "announcer.ko",
+    "character": "announcer",
+    "text": "K.O.!",
+    "file": "announcer-ko.ogg"
+  },
+  {
+    "id": "announcer.perfect",
+    "character": "announcer",
+    "text": "Perfect!",
+    "file": "announcer-perfect.ogg"
+  },
+  {
+    "id": "announcer.double-ko",
+    "character": "announcer",
+    "text": "Double K.O.!",
+    "file": "announcer-double-ko.ogg"
+  },
+  {
+    "id": "announcer.time-up",
+    "character": "announcer",
+    "text": "Time up!",
+    "file": "announcer-time-up.ogg"
+  },
+  {
+    "id": "announcer.you-win",
+    "character": "announcer",
+    "text": "You win!",
+    "file": "announcer-you-win.ogg"
+  },
+  {
+    "id": "announcer.you-lose",
+    "character": "announcer",
+    "text": "You lose!",
+    "file": "announcer-you-lose.ogg"
+  },
+  {
+    "id": "announcer.draw",
+    "character": "announcer",
+    "text": "Draw!",
+    "file": "announcer-draw.ogg"
+  },
+  {
+    "id": "announcer.player-1",
+    "character": "announcer",
+    "text": "Player one!",
+    "file": "announcer-player-1.ogg"
+  },
+  {
+    "id": "announcer.player-2",
+    "character": "announcer",
+    "text": "Player two!",
+    "file": "announcer-player-2.ogg"
+  },
+  {
+    "id": "announcer.choose-your-fighter",
+    "character": "announcer",
+    "text": "Choose your fighter!",
+    "file": "announcer-choose-your-fighter.ogg"
+  },
+  {
+    "id": "sam.versus",
+    "character": "sam",
+    "text": "Let's ship it and see.",
+    "file": "sam-versus.ogg"
+  },
+  {
+    "id": "sam.taunt",
+    "character": "sam",
+    "text": "Feedback noted. Next version's better.",
+    "file": "sam-taunt.ogg"
+  },
+  {
+    "id": "sam.special.prompt_burst",
+    "character": "sam",
+    "text": "Prompt Burst!",
+    "file": "sam-special-prompt-burst.ogg"
+  },
+  {
+    "id": "sam.special.event_horizon",
+    "character": "sam",
+    "text": "Event Horizon!",
+    "file": "sam-special-event-horizon.ogg"
+  },
+  {
+    "id": "sam.special.stargate_rush",
+    "character": "sam",
+    "text": "Stargate Rush!",
+    "file": "sam-special-stargate-rush.ogg"
+  },
+  {
+    "id": "sam.super.few_thousand_days",
+    "character": "sam",
+    "text": "A Few Thousand Days!",
+    "file": "sam-super-few-thousand-days.ogg"
+  },
+  {
+    "id": "sam.win",
+    "character": "sam",
+    "text": "We'll iterate on that. Good match.",
+    "file": "sam-win.ogg"
+  },
+  {
+    "id": "sam.tag-in",
+    "character": "sam",
+    "text": "Okay. Deploying now.",
+    "file": "sam-tag-in.ogg"
+  },
+  {
+    "id": "dario.versus",
+    "character": "dario",
+    "text": "Let's keep this careful and focused.",
+    "file": "dario-versus.ogg"
+  },
+  {
+    "id": "dario.taunt",
+    "character": "dario",
+    "text": "Careful scaling beats reckless scaling.",
+    "file": "dario-taunt.ogg"
+  },
+  {
+    "id": "dario.special.constitutional_barrier",
+    "character": "dario",
+    "text": "Constitutional Barrier!",
+    "file": "dario-special-constitutional-barrier.ogg"
+  },
+  {
+    "id": "dario.special.country_of_geniuses",
+    "character": "dario",
+    "text": "Country of Geniuses!",
+    "file": "dario-special-country-of-geniuses.ogg"
+  },
+  {
+    "id": "dario.special.asl_safeguard",
+    "character": "dario",
+    "text": "A S L Safeguard!",
+    "file": "dario-special-asl-safeguard.ogg"
+  },
+  {
+    "id": "dario.super.compressed_century",
+    "character": "dario",
+    "text": "Compressed Century!",
+    "file": "dario-super-compressed-century.ogg"
+  },
+  {
+    "id": "dario.win",
+    "character": "dario",
+    "text": "Powerful, yes. Magic, no.",
+    "file": "dario-win.ogg"
+  },
+  {
+    "id": "dario.tag-in",
+    "character": "dario",
+    "text": "Stepping in. Safeguards on.",
+    "file": "dario-tag-in.ogg"
+  },
+  {
+    "id": "mark.versus",
+    "character": "mark",
+    "text": "Alright. Let's go a few rounds.",
+    "file": "mark-versus.ogg"
+  },
+  {
+    "id": "mark.taunt",
+    "character": "mark",
+    "text": "Move fast. Try to keep up.",
+    "file": "mark-taunt.ogg"
+  },
+  {
+    "id": "mark.special.send_me_location",
+    "character": "mark",
+    "text": "Send Me Location!",
+    "file": "mark-special-send-me-location.ogg"
+  },
+  {
+    "id": "mark.special.hydrofoil_rush",
+    "character": "mark",
+    "text": "Hydrofoil Rush!",
+    "file": "mark-special-hydrofoil-rush.ogg"
+  },
+  {
+    "id": "mark.special.move_fast",
+    "character": "mark",
+    "text": "Move Fast and Break Things!",
+    "file": "mark-special-move-fast.ogg"
+  },
+  {
+    "id": "mark.super.metaverse_submission",
+    "character": "mark",
+    "text": "Metaverse Submission!",
+    "file": "mark-super-metaverse-submission.ogg"
+  },
+  {
+    "id": "mark.win",
+    "character": "mark",
+    "text": "Good roll. Same time tomorrow?",
+    "file": "mark-win.ogg"
+  },
+  {
+    "id": "mark.tag-in",
+    "character": "mark",
+    "text": "Tapping in!",
+    "file": "mark-tag-in.ogg"
+  },
+  {
+    "id": "elon.versus",
+    "character": "elon",
+    "text": "Launch window is open.",
+    "file": "elon-versus.ogg"
+  },
+  {
+    "id": "elon.taunt",
+    "character": "elon",
+    "text": "First principles say you lose.",
+    "file": "elon-taunt.ogg"
+  },
+  {
+    "id": "elon.special.not_a_flamethrower",
+    "character": "elon",
+    "text": "Not-a-Flamethrower!",
+    "file": "elon-special-not-a-flamethrower.ogg"
+  },
+  {
+    "id": "elon.special.mechazilla_catch",
+    "character": "elon",
+    "text": "Mechazilla Catch!",
+    "file": "elon-special-mechazilla-catch.ogg"
+  },
+  {
+    "id": "elon.special.armor_glass",
+    "character": "elon",
+    "text": "Armor Glass!",
+    "file": "elon-special-armor-glass.ogg"
+  },
+  {
+    "id": "elon.special.the_walrus",
+    "character": "elon",
+    "text": "The Walrus!",
+    "file": "elon-special-the-walrus.ogg"
+  },
+  {
+    "id": "elon.super.colossus_launch",
+    "character": "elon",
+    "text": "Colossus Launch!",
+    "file": "elon-super-colossus-launch.ogg"
+  },
+  {
+    "id": "elon.win",
+    "character": "elon",
+    "text": "Rapid unscheduled defeat. For you.",
+    "file": "elon-win.ogg"
+  },
+  {
+    "id": "elon.tag-in",
+    "character": "elon",
+    "text": "T-minus zero. I'm in.",
+    "file": "elon-tag-in.ogg"
+  },
+  {
+    "id": "demis.versus",
+    "character": "demis",
+    "text": "Your move. I've already seen it.",
+    "file": "demis-versus.ogg"
+  },
+  {
+    "id": "demis.taunt",
+    "character": "demis",
+    "text": "Interesting. Let's solve this.",
+    "file": "demis-taunt.ogg"
+  },
+  {
+    "id": "demis.special.move_37",
+    "character": "demis",
+    "text": "Move Thirty-Seven!",
+    "file": "demis-special-move-37.ogg"
+  },
+  {
+    "id": "demis.special.alphafold",
+    "character": "demis",
+    "text": "AlphaFold!",
+    "file": "demis-special-alphafold.ogg"
+  },
+  {
+    "id": "demis.special.self_play",
+    "character": "demis",
+    "text": "Self-Play!",
+    "file": "demis-special-self-play.ogg"
+  },
+  {
+    "id": "demis.super.promptable_world_event",
+    "character": "demis",
+    "text": "Promptable World Event!",
+    "file": "demis-super-promptable-world-event.ogg"
+  },
+  {
+    "id": "demis.win",
+    "character": "demis",
+    "text": "Checkmate. Good game.",
+    "file": "demis-win.ogg"
+  },
+  {
+    "id": "demis.tag-in",
+    "character": "demis",
+    "text": "My turn to play.",
+    "file": "demis-tag-in.ogg"
+  },
+  {
+    "id": "jensen.versus",
+    "character": "jensen",
+    "text": "Let me show you something incredible.",
+    "file": "jensen-versus.ogg"
+  },
+  {
+    "id": "jensen.taunt",
+    "character": "jensen",
+    "text": "More compute! Always more compute!",
+    "file": "jensen-taunt.ogg"
+  },
+  {
+    "id": "jensen.special.been_cooking",
+    "character": "jensen",
+    "text": "This Has Been Cooking!",
+    "file": "jensen-special-been-cooking.ogg"
+  },
+  {
+    "id": "jensen.special.dgx_delivery",
+    "character": "jensen",
+    "text": "Hand-Delivered D G X!",
+    "file": "jensen-special-dgx-delivery.ogg"
+  },
+  {
+    "id": "jensen.special.ai_factory",
+    "character": "jensen",
+    "text": "A I Factory!",
+    "file": "jensen-special-ai-factory.ogg"
+  },
+  {
+    "id": "jensen.super.vera_rubin_keynote",
+    "character": "jensen",
+    "text": "Vera Rubin Keynote!",
+    "file": "jensen-super-vera-rubin-keynote.ogg"
+  },
+  {
+    "id": "jensen.win",
+    "character": "jensen",
+    "text": "That was accelerated computing.",
+    "file": "jensen-win.ogg"
+  },
+  {
+    "id": "jensen.tag-in",
+    "character": "jensen",
+    "text": "Ladies and gentlemen, I'm in!",
+    "file": "jensen-tag-in.ogg"
+  },
+  {
+    "id": "ilya.versus",
+    "character": "ilya",
+    "text": "I see where this ends.",
+    "file": "ilya-versus.ogg"
+  },
+  {
+    "id": "ilya.taunt",
+    "character": "ilya",
+    "text": "Can you feel it?",
+    "file": "ilya-taunt.ogg"
+  },
+  {
+    "id": "ilya.special.peak_data",
+    "character": "ilya",
+    "text": "Peak Data!",
+    "file": "ilya-special-peak-data.ogg"
+  },
+  {
+    "id": "ilya.special.straight_shot",
+    "character": "ilya",
+    "text": "Straight Shot!",
+    "file": "ilya-special-straight-shot.ogg"
+  },
+  {
+    "id": "ilya.special.ilya_saw",
+    "character": "ilya",
+    "text": "What did Ilya see?",
+    "file": "ilya-special-ilya-saw.ogg"
+  },
+  {
+    "id": "ilya.super.feel_the_agi",
+    "character": "ilya",
+    "text": "Feel the A G I!",
+    "file": "ilya-super-feel-the-agi.ogg"
+  },
+  {
+    "id": "ilya.win",
+    "character": "ilya",
+    "text": "As expected. Back to research.",
+    "file": "ilya-win.ogg"
+  },
+  {
+    "id": "ilya.tag-in",
+    "character": "ilya",
+    "text": "Straight in.",
+    "file": "ilya-tag-in.ogg"
+  },
+  {
+    "id": "arthur.versus",
+    "character": "arthur",
+    "text": "Efficient, open, and very fast.",
+    "file": "arthur-versus.ogg"
+  },
+  {
+    "id": "arthur.taunt",
+    "character": "arthur",
+    "text": "Too slow. Try a smaller model.",
+    "file": "arthur-taunt.ogg"
+  },
+  {
+    "id": "arthur.special.mistral_gust",
+    "character": "arthur",
+    "text": "Mistral Gust!",
+    "file": "arthur-special-mistral-gust.ogg"
+  },
+  {
+    "id": "arthur.special.magnet_link",
+    "character": "arthur",
+    "text": "Magnet Link!",
+    "file": "arthur-special-magnet-link.ogg"
+  },
+  {
+    "id": "arthur.special.le_chonk",
+    "character": "arthur",
+    "text": "Le Chonk Drop!",
+    "file": "arthur-special-le-chonk.ogg"
+  },
+  {
+    "id": "arthur.super.chinchilla_optimal",
+    "character": "arthur",
+    "text": "Chinchilla Optimal!",
+    "file": "arthur-super-chinchilla-optimal.ogg"
+  },
+  {
+    "id": "arthur.win",
+    "character": "arthur",
+    "text": "Efficient. As always.",
+    "file": "arthur-win.ogg"
+  },
+  {
+    "id": "arthur.tag-in",
+    "character": "arthur",
+    "text": "Allez, my turn!",
+    "file": "arthur-tag-in.ogg"
+  },
+  {
+    "id": "andrej.versus",
+    "character": "andrej",
+    "text": "Let's build this from scratch.",
+    "file": "andrej-versus.ogg"
+  },
+  {
+    "id": "andrej.taunt",
+    "character": "andrej",
+    "text": "Just vibe with it.",
+    "file": "andrej-taunt.ogg"
+  },
+  {
+    "id": "andrej.special.tokenizer",
+    "character": "andrej",
+    "text": "Tokenizer!",
+    "file": "andrej-special-tokenizer.ogg"
+  },
+  {
+    "id": "andrej.special.vibe_coding",
+    "character": "andrej",
+    "text": "Vibe Coding!",
+    "file": "andrej-special-vibe-coding.ogg"
+  },
+  {
+    "id": "andrej.special.rubiks_rotation",
+    "character": "andrej",
+    "text": "Rubik's Rotation!",
+    "file": "andrej-special-rubiks-rotation.ogg"
+  },
+  {
+    "id": "andrej.super.microgpt",
+    "character": "andrej",
+    "text": "Micro G P T!",
+    "file": "andrej-super-microgpt.ogg"
+  },
+  {
+    "id": "andrej.win",
+    "character": "andrej",
+    "text": "Loss went down. Nice.",
+    "file": "andrej-win.ogg"
+  },
+  {
+    "id": "andrej.tag-in",
+    "character": "andrej",
+    "text": "Okay, I'll take the keyboard.",
+    "file": "andrej-tag-in.ogg"
+  },
+  {
+    "id": "yann.versus",
+    "character": "yann",
+    "text": "You need a world model for this.",
+    "file": "yann-versus.ogg"
+  },
+  {
+    "id": "yann.taunt",
+    "character": "yann",
+    "text": "Even a house cat saw that.",
+    "file": "yann-taunt.ogg"
+  },
+  {
+    "id": "yann.special.convolution",
+    "character": "yann",
+    "text": "Convolution!",
+    "file": "yann-special-convolution.ogg"
+  },
+  {
+    "id": "yann.special.rc_air_strike",
+    "character": "yann",
+    "text": "R C Air Strike!",
+    "file": "yann-special-rc-air-strike.ogg"
+  },
+  {
+    "id": "yann.special.cake_analogy",
+    "character": "yann",
+    "text": "The Cake!",
+    "file": "yann-special-cake-analogy.ogg"
+  },
+  {
+    "id": "yann.super.jepa",
+    "character": "yann",
+    "text": "Jeppa!",
+    "file": "yann-super-jepa.ogg"
+  },
+  {
+    "id": "yann.win",
+    "character": "yann",
+    "text": "As I said. Open wins.",
+    "file": "yann-win.ogg"
+  },
+  {
+    "id": "yann.tag-in",
+    "character": "yann",
+    "text": "Fine, I will handle this.",
+    "file": "yann-tag-in.ogg"
+  },
+  {
+    "id": "liang.versus",
+    "character": "liang",
+    "text": "Curiosity first. Then we fight.",
+    "file": "liang-versus.ogg"
+  },
+  {
+    "id": "liang.taunt",
+    "character": "liang",
+    "text": "Cheaper. And better.",
+    "file": "liang-taunt.ogg"
+  },
+  {
+    "id": "liang.special.aha_moment",
+    "character": "liang",
+    "text": "Aha Moment!",
+    "file": "liang-special-aha-moment.ogg"
+  },
+  {
+    "id": "liang.special.latent_attention",
+    "character": "liang",
+    "text": "Latent Attention!",
+    "file": "liang-special-latent-attention.ogg"
+  },
+  {
+    "id": "liang.special.group_relative",
+    "character": "liang",
+    "text": "Group Relative Strike!",
+    "file": "liang-special-group-relative.ogg"
+  },
+  {
+    "id": "liang.super.whale_breach",
+    "character": "liang",
+    "text": "The Whale Breach!",
+    "file": "liang-super-whale-breach.ogg"
+  },
+  {
+    "id": "liang.win",
+    "character": "liang",
+    "text": "Efficient enough.",
+    "file": "liang-win.ogg"
+  },
+  {
+    "id": "liang.tag-in",
+    "character": "liang",
+    "text": "Quietly, I enter.",
+    "file": "liang-tag-in.ogg"
+  },
+  {
+    "id": "mustafa.versus",
+    "character": "mustafa",
+    "text": "The wave is coming. Stay contained.",
+    "file": "mustafa-versus.ogg"
+  },
+  {
+    "id": "mustafa.taunt",
+    "character": "mustafa",
+    "text": "Healthy fear is useful.",
+    "file": "mustafa-taunt.ogg"
+  },
+  {
+    "id": "mustafa.special.containment_field",
+    "character": "mustafa",
+    "text": "Containment Field!",
+    "file": "mustafa-special-containment-field.ogg"
+  },
+  {
+    "id": "mustafa.special.coming_wave",
+    "character": "mustafa",
+    "text": "The Coming Wave!",
+    "file": "mustafa-special-coming-wave.ogg"
+  },
+  {
+    "id": "mustafa.special.copilot",
+    "character": "mustafa",
+    "text": "Copilot!",
+    "file": "mustafa-special-copilot.ogg"
+  },
+  {
+    "id": "mustafa.super.modern_turing_test",
+    "character": "mustafa",
+    "text": "Modern Turing Test!",
+    "file": "mustafa-super-modern-turing-test.ogg"
+  },
+  {
+    "id": "mustafa.win",
+    "character": "mustafa",
+    "text": "Contained. As promised.",
+    "file": "mustafa-win.ogg"
+  },
+  {
+    "id": "mustafa.tag-in",
+    "character": "mustafa",
+    "text": "Stepping in. Let's contain this.",
+    "file": "mustafa-tag-in.ogg"
+  },
+  {
+    "id": "geoffrey.versus",
+    "character": "geoffrey",
+    "text": "Let's see what you've learned.",
+    "file": "geoffrey-versus.ogg"
+  },
+  {
+    "id": "geoffrey.taunt",
+    "character": "geoffrey",
+    "text": "I'd reconsider that gradient.",
+    "file": "geoffrey-taunt.ogg"
+  },
+  {
+    "id": "geoffrey.special.backpropagation",
+    "character": "geoffrey",
+    "text": "Backpropagation!",
+    "file": "geoffrey-special-backpropagation.ogg"
+  },
+  {
+    "id": "geoffrey.special.dropout",
+    "character": "geoffrey",
+    "text": "Dropout!",
+    "file": "geoffrey-special-dropout.ogg"
+  },
+  {
+    "id": "geoffrey.special.boltzmann_machine",
+    "character": "geoffrey",
+    "text": "Boltzmann Machine!",
+    "file": "geoffrey-special-boltzmann-machine.ogg"
+  },
+  {
+    "id": "geoffrey.super.forward_forward",
+    "character": "geoffrey",
+    "text": "Forward-Forward!",
+    "file": "geoffrey-super-forward-forward.ogg"
+  },
+  {
+    "id": "geoffrey.win",
+    "character": "geoffrey",
+    "text": "Well. That went as predicted.",
+    "file": "geoffrey-win.ogg"
+  },
+  {
+    "id": "geoffrey.tag-in",
+    "character": "geoffrey",
+    "text": "Right. Let the old professor in.",
+    "file": "geoffrey-tag-in.ogg"
+  },
+  {
+    "id": "noam.versus",
+    "character": "noam",
+    "text": "Pay attention. It's all you need.",
+    "file": "noam-versus.ogg"
+  },
+  {
+    "id": "noam.taunt",
+    "character": "noam",
+    "text": "My experts say you're in trouble.",
+    "file": "noam-taunt.ogg"
+  },
+  {
+    "id": "noam.special.attention",
+    "character": "noam",
+    "text": "Attention Is All You Need!",
+    "file": "noam-special-attention.ogg"
+  },
+  {
+    "id": "noam.special.mixture_of_experts",
+    "character": "noam",
+    "text": "Mixture of Experts!",
+    "file": "noam-special-mixture-of-experts.ogg"
+  },
+  {
+    "id": "noam.special.one_write_head",
+    "character": "noam",
+    "text": "One Write-Head!",
+    "file": "noam-special-one-write-head.ogg"
+  },
+  {
+    "id": "noam.super.divine_benevolence",
+    "character": "noam",
+    "text": "Divine Benevolence!",
+    "file": "noam-super-divine-benevolence.ogg"
+  },
+  {
+    "id": "noam.win",
+    "character": "noam",
+    "text": "Scaled up. Sorted out.",
+    "file": "noam-win.ogg"
+  },
+  {
+    "id": "noam.tag-in",
+    "character": "noam",
+    "text": "Routing to the right expert. Me.",
+    "file": "noam-tag-in.ogg"
+  },
+  {
+    "id": "chris.versus",
+    "character": "chris",
+    "text": "Let's look inside this network.",
+    "file": "chris-versus.ogg"
+  },
+  {
+    "id": "chris.taunt",
+    "character": "chris",
+    "text": "I can see your features.",
+    "file": "chris-taunt.ogg"
+  },
+  {
+    "id": "chris.special.feature_visualization",
+    "character": "chris",
+    "text": "Feature Visualization!",
+    "file": "chris-special-feature-visualization.ogg"
+  },
+  {
+    "id": "chris.special.golden_gate",
+    "character": "chris",
+    "text": "Golden Gate!",
+    "file": "chris-special-golden-gate.ogg"
+  },
+  {
+    "id": "chris.special.circuit_trace",
+    "character": "chris",
+    "text": "Circuit Trace!",
+    "file": "chris-special-circuit-trace.ogg"
+  },
+  {
+    "id": "chris.super.scaling_monosemanticity",
+    "character": "chris",
+    "text": "Scaling Monosemanticity!",
+    "file": "chris-super-scaling-monosemanticity.ogg"
+  },
+  {
+    "id": "chris.win",
+    "character": "chris",
+    "text": "Interpretable. And beaten.",
+    "file": "chris-win.ogg"
+  },
+  {
+    "id": "chris.tag-in",
+    "character": "chris",
+    "text": "Let me take a closer look.",
+    "file": "chris-tag-in.ogg"
+  },
+  {
+    "id": "feifei.versus",
+    "character": "feifei",
+    "text": "First I see. Then I win.",
+    "file": "feifei-versus.ogg"
+  },
+  {
+    "id": "feifei.taunt",
+    "character": "feifei",
+    "text": "Look closer. The world has depth.",
+    "file": "feifei-taunt.ogg"
+  },
+  {
+    "id": "feifei.special.imagenet",
+    "character": "feifei",
+    "text": "ImageNet!",
+    "file": "feifei-special-imagenet.ogg"
+  },
+  {
+    "id": "feifei.special.marble_world",
+    "character": "feifei",
+    "text": "Marble World!",
+    "file": "feifei-special-marble-world.ogg"
+  },
+  {
+    "id": "feifei.special.spatial_step",
+    "character": "feifei",
+    "text": "Spatial Step!",
+    "file": "feifei-special-spatial-step.ogg"
+  },
+  {
+    "id": "feifei.super.the_worlds_i_see",
+    "character": "feifei",
+    "text": "The Worlds I See!",
+    "file": "feifei-super-the-worlds-i-see.ogg"
+  },
+  {
+    "id": "feifei.win",
+    "character": "feifei",
+    "text": "A well-labeled victory.",
+    "file": "feifei-win.ogg"
+  },
+  {
+    "id": "feifei.tag-in",
+    "character": "feifei",
+    "text": "Stepping into the world.",
+    "file": "feifei-tag-in.ogg"
+  }
+]
