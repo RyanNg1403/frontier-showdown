@@ -1,3 +1,2 @@
-export const LABS = {};
-export const LAB_IDS = [];
+export { LABS, LAB_IDS } from "./labs-data.js";
 export const labEffects = {};

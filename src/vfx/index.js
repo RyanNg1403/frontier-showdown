@@ -246,6 +246,15 @@ export function createVfx(ctx, assets, options = {}) {
   };
 
   function worldPass(drawCtx, cam, layer) {
+    // Full-resolution passes (afterimages of fighter sprites) go under the
+    // pixel buffers so sparks stay on top.
+    for (const fx of effects) {
+      if (fx.layer !== layer || !fx.def.direct || fx.t < 0) continue;
+      drawCtx.save();
+      drawCtx.imageSmoothingEnabled = false;
+      fx.def.direct(fx, drawCtx, cam, vfx);
+      drawCtx.restore();
+    }
     let any = false;
     for (const fx of effects) if (fx.layer === layer && fx.def.draw) { any = true; break; }
     if (!any) return;

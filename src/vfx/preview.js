@@ -110,6 +110,7 @@ const state = {
   queue: [],
   queueT: 0,
   footfall: null,
+  timers: [],
 };
 
 function sceneInfo() {
@@ -129,7 +130,36 @@ const HITSTOP = { hit_light: 7, hit_heavy: 12, hit_counter: 16, block: 6, throw_
 // Per-type demo scripts. Anything not listed falls back to its family default.
 const DEMOS = {
   dust_step: (v, s) => { v.spawn("dust_step", s.p1.x - 10, s.ground, { dir: 1 }); v.spawn("dust_step", s.p1.x + 22, s.ground, { dir: 1, delay: 0.25 }); },
+  afterimage: (v, s) => {
+    for (let i = 1; i <= 3; i += 1) v.spawn("afterimage", 0, 0, { sprite: { ...s.sprite(), x: s.p1.x - i * 46 }, lab: "openai", life: 0.25 + i * 0.12, alpha: 0.8 - i * 0.15 });
+  },
+  afterimage_trail: (v, s) => {
+    const x0 = s.p1.x;
+    s.p1.x = x0 - 240;
+    s.p1.vx = 1100;
+    after(0.22, () => { s.p1.vx = 0; });
+    after(0.9, () => { s.p1.x = x0; });
+    v.spawn("dust_dash", s.p1.x, s.ground, { dir: 1 });
+    return v.spawn("afterimage_trail", 0, 0, { sprite: s.sprite, lab: "openai", life: 0.3 });
+  },
+  motion_trail: (v, s) => v.spawn("motion_trail", 0, 0, {
+    lab: "anthropic",
+    width: 14,
+    life: 0.6,
+    follow: (t) => (t < 0.3 ? { x: s.p1.x + 10 + Math.cos(-2.6 + t * 9) * 90, y: s.ground - 90 + Math.sin(-2.6 + t * 9) * 90 } : null),
+  }),
+  slash_arc: (v, s) => v.spawn("slash_arc", s.p1.x + 10, s.ground - 110, { dir: 1, lab: "mistral", radius: 100 }),
+  super_freeze: (v, s) => v.spawn("super_freeze", s.p1.x + 30, s.ground - 140, { lab: "openai", portrait: s.portraits.sam, side: "left" }),
+  ko: (v, s) => v.spawn("ko", s.hit.x, s.hit.y, { dir: 1 }),
+  tag_in: (v, s) => v.spawn("tag_in", s.p1.x, s.ground, { lab: "anthropic", side: "left" }),
+  tag_out: (v, s) => v.spawn("tag_out", s.p2.x, s.ground, { lab: "deepmind", side: "right" }),
 };
+
+const HOLDS = { super_freeze: 1.4, ko: 2.4, afterimage_trail: 1.1, tag_in: 1.0 };
+
+function after(seconds, fn) {
+  state.timers.push({ t: seconds, fn });
+}
 
 function familyDefault(item, v, s) {
   const o = { dir: 1, ...(item.demo.opts || {}) };
@@ -179,13 +209,21 @@ function simStep(dt) {
     f.x += f.vx * gameDt;
   }
   if (state.footfall) state.footfall(gameDt);
+  for (let i = state.timers.length - 1; i >= 0; i -= 1) {
+    const tm = state.timers[i];
+    tm.t -= dt;
+    if (tm.t <= 0) {
+      state.timers.splice(i, 1);
+      tm.fn();
+    }
+  }
   if (state.playAll) {
     state.queueT -= dt;
     if (state.queueT <= 0) {
       if (!state.queue.length) state.queue = effectCatalog().slice();
       const item = state.queue.shift();
       play(item);
-      state.queueT = (item.demo.hold ?? 0.9);
+      state.queueT = (item.demo.hold ?? HOLDS[item.type] ?? 0.9);
     }
   }
   v.update(dt);
@@ -223,6 +261,7 @@ function resetScene(seed = 1234) {
   state.p2 = makeFighter(state.p2?.atlas || state.p2Atlas, 760, -1);
   state.footfall = null;
   state.playAll = false;
+  state.timers = [];
 }
 
 function cropFrom(src, focus, cw, chh) {
@@ -272,7 +311,12 @@ function sheet(family, o = {}) {
     frames.forEach((f, col) => {
       resetScene(4321 + row);
       if (item.demo.pose) item.demo.pose(sceneInfo());
-      const focusFn = item.demo.focus || ((s) => (item.family === "hits" ? s.hit : item.family === "dust" ? { x: s.p1.x, y: s.ground - 60 } : s.mid));
+      const focusFn = item.demo.focus || ((s) => {
+        if (item.family === "hits") return s.hit;
+        if (item.family === "dust") return { x: s.p1.x, y: s.ground - 60 };
+        if (item.family === "motion") return { x: s.p1.x - 20, y: s.ground - 130 };
+        return s.mid;
+      });
       runDemo(item, state.vfx, false);
       for (let i = 0; i < f; i += 1) simStep(STEP);
       render(sc);
@@ -329,7 +373,7 @@ const SCRIPTS = {
     let at = 4;
     for (const item of items) {
       script.push({ at, type: item.type });
-      at += Math.round((item.demo.hold ?? 0.9) * 60);
+      at += Math.round((item.demo.hold ?? HOLDS[item.type] ?? 0.9) * 60);
     }
     return record(script, { frames: at + 20, every: 3 });
   },
@@ -342,7 +386,7 @@ function recordScript(name, family) {
   let at = 4;
   for (const item of items) {
     script.push({ at, type: item.type });
-    at += Math.round((item.demo.hold ?? 0.9) * 60);
+    at += Math.round((item.demo.hold ?? HOLDS[item.type] ?? 0.9) * 60);
   }
   return record(script, { frames: at + 20, every: 2 });
 }
