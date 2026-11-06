@@ -104,8 +104,8 @@ for (const id of readdirSync(join(root, "assets/fighters"), { withFileTypes: tru
 const stageFiles = walk("assets/stages").filter((f) => /\.png$/i.test(f) && !/\/_(source|pipeline)\//.test(f));
 const uiFiles = walk("assets/ui").filter((f) => /\.(png|jpe?g|webp|woff2|svg|txt)$/i.test(f));
 const vfxFiles = ["assets/vfx/vfx-atlas.json", "assets/vfx/vfx-atlas.png"].filter(exists);
-const audioFiles = [...walk("assets/audio").filter((f) => /\.wav$/i.test(f)), "assets/frontier-soundtrack.mp3"].filter(exists);
-const docFiles = ["assets/ATTRIBUTIONS.md", "assets/audio/ATTRIBUTIONS.md", "assets/stages/SOURCES.md", "assets/ui/fonts/OFL.txt"].filter(exists);
+const audioFiles = walk("assets/audio").filter((f) => /\.(wav|mp3)$/i.test(f));
+const docFiles = ["assets/ATTRIBUTIONS.md", "assets/stages/SOURCES.md", "assets/ui/fonts/OFL.txt"].filter(exists);
 // Install manifest and home-screen icons: copied as-is, since their URLs are fixed in the manifest and index.html.
 const appFiles = walk("assets/app");
 const plainFiles = ["index.html", "favicon.svg", "styles/ui.css", ...appFiles].filter(exists);
@@ -179,7 +179,8 @@ if (!haveFfmpeg && !flag("no-audio")) console.warn("[build] ffmpeg not found; au
 const audioDurations = {};
 const AUDIO_PROFILES = {
   music: { opus: ["-b:a", "48k"], mp3: ["-q:a", "6"] },
-  soundtrack: { opus: ["-b:a", "80k"], mp3: ["-q:a", "7"] },
+  // Recorded stereo tracks streamed through a media element.
+  stream: { opus: ["-b:a", "64k"], mp3: ["-q:a", "7"] },
   sfx: { opus: ["-b:a", "48k"], mp3: ["-q:a", "6"] },
 };
 await pool(audioFiles, Math.max(2, cpus().length), async (rel) => {
@@ -187,7 +188,7 @@ await pool(audioFiles, Math.max(2, cpus().length), async (rel) => {
   sourceBytes.audio += statSync(src).size;
   if (rel.startsWith("assets/audio/music/") && rel.endsWith(".wav")) audioDurations[rel] = wavDuration(src);
   if (!haveFfmpeg) return copy(rel);
-  const profile = rel.endsWith("frontier-soundtrack.mp3") ? AUDIO_PROFILES.soundtrack : rel.includes("/music/") ? AUDIO_PROFILES.music : AUDIO_PROFILES.sfx;
+  const profile = rel.endsWith(".mp3") ? AUDIO_PROFILES.stream : rel.includes("/music/") ? AUDIO_PROFILES.music : AUDIO_PROFILES.sfx;
   const stem = rel.replace(/\.(wav|mp3)$/i, "");
   for (const [ext, codec] of [["ogg", ["-c:a", "libopus", "-application", "audio", "-vbr", "on", ...profile.opus]], ["mp3", ["-c:a", "libmp3lame", ...profile.mp3]]]) {
     const out = join(outDir, `${stem}.${ext}`);
@@ -253,7 +254,7 @@ const manifest = {
   formats: {
     images: imageRule,
     audio: haveFfmpeg ? ["ogg", "mp3"] : [],
-    audioDirs: ["assets/audio/", "assets/frontier-soundtrack."],
+    audioDirs: ["assets/audio/"],
   },
   audioDurations,
   hashes,

@@ -1,5 +1,5 @@
-// Sound catalog shared by the runtime (`createAudio`) and the offline generator
-// (`src/audio/build/generate.mjs`). Paths are relative to `assets/audio/`.
+// Sound catalog shared by the runtime (`createAudio`) and the offline builder
+// (`src/audio/build/recordings.mjs`). Paths are relative to `assets/audio/`.
 //
 // Per-sound playback defaults:
 //   bus       "sfx" | "voice" (UI sounds share the sfx bus)
@@ -47,53 +47,56 @@ export const SOUNDS = {
   "ui.lock": ui("lock", { gain: -1 }),
 };
 
-// Labs with pre-rendered "<lab> wins" lines. `say` lists pronunciations tried by the TTS.
+// Labs the announcer recognises. Every lab's win line is the recorded "Winner!"; players 1 and 2
+// have their own "Player one/two... Winner!" lines.
 export const LABS = {
-  openai: { name: "OpenAI", say: ["Open A I", "Open A. I.", "Open ay eye"], aliases: ["open-ai"] },
-  anthropic: { name: "Anthropic", say: ["Anthropic", "Ann thropic", "An-thropic"] },
-  deepmind: { name: "Google DeepMind", say: ["Google DeepMind", "Google Deep Mind"], aliases: ["google", "google-deepmind", "gdm"] },
-  meta: { name: "Meta", say: ["Meta", "Metta", "Mehta", "Maytah"], aliases: ["meta-ai", "fair"] },
-  xai: { name: "xAI", say: ["X A I", "X. A. I.", "Ex, ay, eye", "X, A, I"], aliases: ["x-ai"] },
-  mistral: { name: "Mistral", say: ["Mistral", "Miss trall", "Mis-trahl"], aliases: ["mistral-ai"] },
-  deepseek: { name: "DeepSeek", say: ["Deep Seek", "DeepSeek"] },
-  microsoft: { name: "Microsoft", say: ["Microsoft"], aliases: ["microsoft-ai"] },
-  nvidia: { name: "NVIDIA", say: ["N Vidia", "En vidia", "Nvidia"] },
-  qwen: { name: "Qwen", say: ["Kwen", "Qwen", "Kwenn"], aliases: ["alibaba"] },
-  ssi: { name: "Safe Superintelligence", say: ["Safe Superintelligence", "Safe Super-intelligence", "Safe Super Intelligence"], aliases: ["safe-superintelligence"] },
-  "ami-labs": { name: "AMI Labs", say: ["Ah-mee Labs", "Ami Labs", "Ahmee Labs", "Amee Labs", "Ah me Labs", "Ahmi Labs"], aliases: ["ami", "advanced-machine-intelligence"] },
-  uoft: { name: "University of Toronto", say: ["University of Toronto"], aliases: ["university-of-toronto", "u-of-t"] },
-  "world-labs": { name: "World Labs", say: ["World Labs", "World Labs,"], aliases: ["worldlabs"] },
-  player1: { name: "Player 1", say: ["Player one"], aliases: ["p1"] },
-  player2: { name: "Player 2", say: ["Player two"], aliases: ["p2"] },
+  openai: { name: "OpenAI", aliases: ["open-ai"] },
+  anthropic: { name: "Anthropic" },
+  deepmind: { name: "Google DeepMind", aliases: ["google", "google-deepmind", "gdm"] },
+  meta: { name: "Meta", aliases: ["meta-ai", "fair"] },
+  xai: { name: "xAI", aliases: ["x-ai"] },
+  mistral: { name: "Mistral", aliases: ["mistral-ai"] },
+  deepseek: { name: "DeepSeek" },
+  microsoft: { name: "Microsoft", aliases: ["microsoft-ai"] },
+  nvidia: { name: "NVIDIA" },
+  qwen: { name: "Qwen", aliases: ["alibaba"] },
+  ssi: { name: "Safe Superintelligence", aliases: ["safe-superintelligence"] },
+  "ami-labs": { name: "AMI Labs", aliases: ["ami", "advanced-machine-intelligence"] },
+  uoft: { name: "University of Toronto", aliases: ["university-of-toronto", "u-of-t"] },
+  "world-labs": { name: "World Labs", aliases: ["worldlabs"] },
+  player1: { name: "Player 1", aliases: ["p1"] },
+  player2: { name: "Player 2", aliases: ["p2"] },
 };
 
-// `text` is the line as heard (used to verify takes); `say` lists TTS spellings to try.
-const voice = (name, text, say = [text], opts = {}) => ({ bus: "voice", dir: "voice", name, variants: 1, gain: 0, pitchVar: 0, volVar: 0, maxVoices: 1, text, say, ...opts });
+// `text` is the line as heard.
+const voice = (name, text, opts = {}) => ({ bus: "voice", dir: "voice", name, variants: 1, gain: 0, pitchVar: 0, volVar: 0, maxVoices: 1, text, ...opts });
 
 export const VOICE = {
   "ann.round1": voice("round-1", "Round one!"),
   "ann.round2": voice("round-2", "Round two!"),
   "ann.round3": voice("round-3", "Round three!"),
   "ann.final": voice("round-final", "Final round!"),
-  "ann.fight": voice("fight", "Fight!", ["Fight!", "FIGHT!"]),
-  "ann.ko": voice("ko", "K.O.!", ["K O!", "Kay oh!", "K. O.!"]),
-  "ann.doubleko": voice("double-ko", "Double K.O.!", ["Double K O!", "Double Kay oh!"]),
-  "ann.perfect": voice("perfect", "Perfect!"),
-  "ann.finish": voice("finish-them", "Finish them!"),
+  "ann.fight": voice("fight", "Fight!"),
+  "ann.ko": voice("ko", "K.O.!"),
+  "ann.doubleko": voice("double-ko", "Double K.O.!"),
+  "ann.perfect": voice("perfect", "Flawless victory!"),
+  "ann.finish": voice("finish-them", "Finish it!"),
   "ann.time": voice("time", "Time!"),
-  "ann.draw": voice("draw", "Draw!"),
-  ...Object.fromEntries(Object.entries(LABS).map(([id, lab]) => [
-    `ann.wins.${id}`, voice(`wins-${id}`, `${id === "xai" ? "X A I" : id === "openai" ? "Open A I" : lab.name} wins!`, lab.say.map((s) => `${s} wins!`)),
+  "ann.draw": voice("draw", "It's a tie!"),
+  "ann.winner": voice("winner", "Winner!"),
+  ...Object.fromEntries(Object.keys(LABS).map((id) => [
+    `ann.wins.${id}`,
+    id.startsWith("player") ? voice(`wins-${id}`, `Player ${id === "player1" ? "one" : "two"}... Winner!`) : voice("winner", "Winner!", { recipe: "ann.winner" }),
   ])),
 };
 
-// Music tracks. `stream` tracks play through a media element (long files);
-// the rest are decoded loops with sample-exact loop points (seconds).
+// Music tracks. `stream` tracks play through a media element (long files, never decoded into
+// memory); the rest are decoded buffers, with sample-exact loop points (seconds) when looped.
 export const MUSIC = {
-  menu: { file: "../frontier-soundtrack.mp3", stream: true, loop: true, gain: -3, title: "Frontier Showdown (existing soundtrack)" },
-  select: { file: "music/select.wav", loop: true, gain: -2, title: "Character Select" },
-  fight: { file: "music/fight.wav", loop: true, gain: -2, title: "Fight" },
-  victory: { file: "music/victory.wav", loop: false, gain: -2, title: "Victory" },
+  menu: { file: "music/menu.mp3", stream: true, loop: true, gain: -3, title: "Five Armies (Kevin MacLeod)" },
+  select: { file: "music/select.mp3", stream: true, loop: true, gain: -3, title: "Rynos Theme (Kevin MacLeod)" },
+  fight: { file: "music/fight.mp3", stream: true, loop: true, gain: -4, title: "Cyborg Ninja (Kevin MacLeod)" },
+  victory: { file: "music/victory.mp3", loop: false, gain: -2, title: "Fanfare for Space (Kevin MacLeod)" },
 };
 
 export const ALL_SOUNDS = { ...SOUNDS, ...VOICE };
