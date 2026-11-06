@@ -34,7 +34,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 HEADS = os.path.join(HERE, "..", "heads")
 
 # Mirrors outfit.PART_IDS (id: depth rank). Kept here so this script runs without Blender.
-PART_RANK = {1: 5, 2: 5, 3: 4, 4: 4, 5: 8, 6: 1, 7: 8, 8: 1, 9: 3, 10: 6, 11: 2, 12: 6, 13: 2, 14: 4, 15: 8, 16: 1}
+PART_RANK = {1: 5, 2: 5, 3: 4, 4: 4, 5: 8, 6: 1, 7: 8, 8: 1, 9: 3, 10: 6, 11: 2, 12: 6, 13: 2, 14: 4, 15: 8, 16: 1,
+             17: 9, 18: 0}
 HEAD_PARTS = (1, 2)
 NECK_PARTS = (3,)
 TORSO_PARTS = (4, 14)

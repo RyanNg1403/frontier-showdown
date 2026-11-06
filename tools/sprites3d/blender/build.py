@@ -33,6 +33,7 @@ import headmeta  # noqa: E402
 import human  # noqa: E402
 import outfit  # noqa: E402
 import posing  # noqa: E402
+import props  # noqa: E402
 import shared  # noqa: E402
 import toon  # noqa: E402
 
@@ -140,6 +141,7 @@ def render_animation(name, poses, fps, rig, rest, sk, cam, ppm, out_dir, id_mat,
     os.makedirs(out_dir, exist_ok=True)
     sc = bpy.context.scene
     rig.animation_data_clear()
+    props.clear_animation()
     order = posing.bone_order(rig)
     for i, pose in enumerate(poses):
         posing.apply_pose(rig, rest, order, pose, i + 1)

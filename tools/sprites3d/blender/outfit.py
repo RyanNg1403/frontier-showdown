@@ -19,6 +19,7 @@ PART_IDS = {
     "legs": (9, 3), "leg_near": (10, 6), "leg_far": (11, 2),
     "shoe_near": (12, 6), "shoe_far": (13, 2),
     "outer_torso": (14, 4), "outer_arm_near": (15, 8), "outer_arm_far": (16, 1),
+    "prop_front": (17, 9), "prop_back": (18, 0),
 }
 
 

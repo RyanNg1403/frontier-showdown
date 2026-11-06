@@ -75,6 +75,7 @@ class Pose:
     contact: dict = field(default_factory=dict)      # side -> True while the foot is planted
     body: Quaternion = field(default_factory=Quaternion)  # whole-body rotation about the pelvis (falls, throws)
     leg_fk: dict = field(default_factory=dict)       # side -> (hip, knee, foot) degrees: FK leg instead of IK
+    props: dict = field(default_factory=dict)        # prop name -> True/False or a transform dict (props.py)
 
 
 class Skeleton:

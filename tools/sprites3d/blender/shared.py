@@ -2,7 +2,7 @@
 
 States are authored as keyframes of a small parameter set layered over the orthodox guard (`GUARD`): foot
 placement, crouch, lean, chest twist, arm swing/elbow, whole-body rotation for falls and throws, FK legs for
-sitting, kneeling and lying. `pose_from` turns one parameter set into a `gait.Pose`; `keyed` builds a list of
+sitting, kneeling and lying, and `props` (see props.py). `pose_from` turns one parameter set into a `gait.Pose`; `keyed` builds a list of
 poses from keyframes (dicts are merged over the guard, so a key only lists what changes).
 
 Naming: the "lead" side is the rig's left (the far side, leading in an orthodox guard facing right), the
@@ -23,7 +23,7 @@ GUARD = dict(
     crouch=0.16, pelvis_h=None, fwd=0.0,
     yaw=-24.0, lean=5.0, chest_yaw=-36.0, chest_lean=7.0, neck=2.0, head=-1.0, head_roll=0.0,
     lead_arm=(66.0, 108.0, 8.0), rear_arm=(26.0, 132.0, 20.0), fist=1.0, fist_lead=None, fist_rear=None,
-    twist=40.0, body=0.0, roll=0.0, lead_fk=None, rear_fk=None,
+    twist=40.0, body=0.0, roll=0.0, lead_fk=None, rear_fk=None, props=None,
 )
 
 
@@ -70,6 +70,7 @@ def pose_from(sk, p):
     pose.neck = rz(cy * 0.4) @ rx(q["neck"])
     pose.head = rz(cy * 0.15) @ rx(q["head"]) @ ry(q["head_roll"])
     pose.body = rx(q["body"]) @ ry(q["roll"])
+    pose.props = dict(q["props"] or {})
     return pose
 
 
@@ -81,7 +82,7 @@ def tween(a, b, t):
     out = {}
     for k in qa:
         va, vb = qa[k], qb[k]
-        if va is None or vb is None:
+        if va is None or vb is None or isinstance(va, dict) or isinstance(vb, dict):
             out[k] = va if t < 0.5 else vb
         elif isinstance(va, tuple) or isinstance(vb, tuple):
             out[k] = tuple(x + (y - x) * t for x, y in zip(va, vb))

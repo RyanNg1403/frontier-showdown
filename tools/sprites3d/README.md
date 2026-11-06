@@ -101,29 +101,48 @@ with a warning, and the shared build still completes.
 
 ## Likeness heads
 
-The post stage composites `tools/sprites3d/heads/<id>.png` (the three-quarter view) and `<id>-<view>.png`, for
-example `-profile`, `-hurt` or `-victory`. Each animation picks a view: run uses `profile`; `hit_high`, `hit_low`,
-`knockdown`, `ko`, `dazed` and `thrown` use `hurt`. A missing view falls back to the three-quarter head, and without
-any head image the generic 3D head stays.
+The heads come from PR #12: `tools/sprites3d/heads/<id>_{tq,profile,hurt,shout}.png`, with `heads/heads.json`
+recording each file's crown, chin and neck-cut rows (in `source_height` units). `heads/make_heads.py` regenerates
+them from the source sheets.
 
-- **Image format:** head and neck, facing right, on a transparent background.
-- **Measurements:** `post/headmeta.py` finds the crown (top of the alpha), the chin (where the face edge recedes
-  fastest into the neck) and the neck cut. Override any of them with a sidecar `<id>-<view>.json` such as
-  `{"crown": 51, "chin": 360, "neck_cut": 390, "flip": false}` in image rows, or under `head.views.<view>` in the
-  fighter config.
-- **Size and placement:** the head is scaled to 1/`heads_tall` of the fighter's height (default 7.2). It is aligned
-  to the 3D crown and face on the idle pose, then rotated about that pivot with the head bone, so it stays attached
-  when the fighter tilts, falls, lies down or flips.
-- **Neck seam:** the 3D skin takes the head's neck tone (`skin_from_head`, on by default). In a narrow band above
-  the neck cut, the 3D neck and collar draw over the 2D head.
-- **Generated heads:** `post/prep_head.py` keys a generated head off a flat background.
+Each fighter config's `head` block points at `heads/<id>_tq.png` and lists every view with its rows, copied from
+`heads.json`. Without a `views` block, the renderer discovers `heads/<id>.png`, `<id>-<view>.png` and
+`<id>_<view>.png` itself and measures the rows from the alpha (`post/headmeta.py`). Sidecar `<id>_<view>.json`
+files override them. Without any head image, the generic 3D head stays.
 
-Sam's current head, `heads/sam.png`, was generated from these reference photos from Wikimedia Commons:
+**View per animation** (`process.HEAD_RULES`; an animation's explicit non-default `head`, or the config's
+`head.by_anim`, wins):
 
-- [Meeting with Masayoshi Son and Sam Altman (February 3, 2025)](https://commons.wikimedia.org/wiki/File:Meeting_with_Masayoshi_Son_and_Sam_Altman_(February_3,_2025)_(3x4_cropped_on_Altman).jpg),
-  Office of the Prime Minister of Japan, CC BY 4.0.
-- [Ilya Sutskever and Sam Altman in TAU](https://commons.wikimedia.org/wiki/File:Ilya_Sutskever_and_Sam_Altman_in_TAU.jpg),
-  Eladkarmel, CC BY-SA 4.0.
+| View | Animations |
+| --- | --- |
+| profile | `walk_back`, `dash_fwd`, `dash_back` |
+| hurt | `hit_high`, `hit_low`, `knockdown`, `ko`, `dazed`, `thrown` |
+| shout | `special*`, `super*`, `victory*`, `intro*`, `finisher*` |
+| three-quarter | everything else; also the fallback when a view is missing |
+
+**Placement.** Each view is scaled to 1/`heads_tall` of the fighter's height. It is aligned to the 3D crown and
+face on the idle pose, then rotated about that pivot with the head bone, so it stays attached when the fighter
+tilts, falls, lies down or flips. The 3D skin takes its tone from lit skin pixels on the three-quarter head's lower
+face and neck. In a narrow band above the neck cut, the 3D neck and collar draw over the 2D head, so the joint shows
+no seam. Fei-Fei's neck cut deliberately sits at the bottom of her hair, so the hair falls over her shoulders.
+
+## Props
+
+Props are simple meshes parented to bones, such as a flamethrower, hydrofoil, hex shield, EWI or scarf
+(`blender/props.py`). Create one per build with `props.add(name, mesh, color, bone, offset, rot, part="prop_front",
+space="bone")`, or call `props.register(name, obj)` for an object you placed yourself. A prop starts hidden. A pose
+shows it through `pose.props`, which a `shared.pose_from` key can also carry as `props`:
+
+```python
+{"hex_shield": True}                                           # visible at its attachment
+{"ewi": {"offset": (0, 0.02, 0), "rot": (0, 0, 15)}}           # visible and moved for this frame
+{"scarf": {"visible": True, "scale": (1, 1.4, 1), "space": "armature"}}
+```
+
+`posing.apply_pose` keys every registered prop on every frame: its visibility, and its transform (reset to the
+attachment when the pose gives none). A prop therefore never leaks into frames or animations that don't list it,
+the shared states included. The `prop_front` part draws in front of everything, including the 2D head;
+`prop_back` draws behind the body.
 
 ## Bodies, outfits, rendering
 
@@ -169,5 +188,4 @@ CC0.
 - Clothing is pushed-out body geometry: no cloth simulation, jacket flaps or hoods.
 - Long hair and caps must come from the 2D head, which is drawn behind the torso near the neck.
 - The 2D head turns only between the views supplied. Within a view it rotates in the image plane.
-- Only Sam has a likeness head so far. The other fighters show the generic 3D head until their heads land in
-  `heads/`; then rebuild them with `build_all.sh`.
+- Heads cover four views (three-quarter, profile, hurt, shout). A new expression needs a new file and a rule.

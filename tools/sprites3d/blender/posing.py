@@ -9,6 +9,7 @@ import math
 
 from mathutils import Matrix, Quaternion, Vector
 
+import props
 from gait import FWD, LAT, rx, rz
 
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
@@ -149,3 +150,4 @@ def apply_pose(rig, rest, order, pose, frame):
         if name == "pelvis":
             pb.location = Rb.inverted() @ pose.pelvis_offset
             pb.keyframe_insert("location", frame=frame)
+    props.apply(pose, frame)
