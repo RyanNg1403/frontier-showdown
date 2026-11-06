@@ -30,6 +30,18 @@ export function motionSteps(input, buttonOverride = null) {
   return steps;
 }
 
+const profiles = new WeakMap();
+
+/** The difficulty profile with `aggression` and `zoning` scaled by the fighter's `ai` hints (default 1). */
+function profileFor(difficulty, def) {
+  const ai = def.raw?.ai;
+  if (!ai || (ai.aggression == null && ai.zoning == null)) return DIFFICULTIES[difficulty];
+  let byDiff = profiles.get(def);
+  if (!byDiff) profiles.set(def, (byDiff = {}));
+  const base = DIFFICULTIES[difficulty];
+  return (byDiff[difficulty] ??= Object.freeze({ ...base, aggression: base.aggression * (ai.aggression ?? 1), zoning: base.zoning * (ai.zoning ?? 1) }));
+}
+
 export class CpuController {
   constructor(difficulty = "normal", seed = 1) {
     this.difficulty = DIFFICULTIES[difficulty] ? difficulty : "normal";
@@ -89,6 +101,7 @@ export class CpuController {
   think(match, side) {
     const self = match.point(side);
     const team = match.sides[side];
+    this.p = profileFor(this.difficulty, self.def);
     const seen = this.perceive(match, side);
     if (this.queue[0]?.interruptible && (self.isNeutral || self.state === "run") && this.incomingProjectile(match, side, self, 320)) {
       this.queue.length = 0;
@@ -140,7 +153,10 @@ export class CpuController {
       const push = !this.guardrailChecked && team.runway >= RULES.guardrailCost && this.chance(p.tech * 0.3);
       this.guardrailChecked = true;
       if (push) this.press(5, BTN.HP | BTN.HK);
-      else this.guard(4, seen.level === "low" && this.chance(p.lowRead));
+      else {
+        const proj = this.incomingProjectile(match, side, self, 220);
+        this.guard(4, proj ? proj.def.level === "low" : seen.level === "low" && this.chance(p.lowRead));
+      }
       return;
     }
     this.guardrailChecked = false;
@@ -171,14 +187,9 @@ export class CpuController {
     if (match.tagMode && this.tagLogic(match, side, self, team, dist)) return;
 
     const kit = kitFor(self.id);
-    if (kit && kit(this, { match, side, self, team, opp, dist, seen, steps: motionSteps })) return;
-
-    if (this.chance(p.mistake * 0.2)) {
-      this.press(this.rng.pick([5, 2, 6]), this.rng.pick([BTN.LP, BTN.HP, BTN.LK, BTN.HK]));
-      return;
-    }
-
+    const kitArgs = { match, side, self, team, opp, dist, seen, steps: motionSteps };
     const incoming = this.incomingProjectile(match, side, self, 360);
+    if (incoming && kit?.handlesProjectiles && kit(this, kitArgs)) return;
     if (incoming) {
       const gap = Math.abs(self.x - incoming.x);
       const own = this.projectileSpecial(self);
@@ -187,11 +198,20 @@ export class CpuController {
         return;
       }
       const r = this.rng.next();
-      if (r < Math.max(p.block, 0.4)) this.guard(Math.min(30, Math.round(gap / Math.max(60, Math.abs(incoming.vx)) * 60) + 8));
+      const low = incoming.def.level === "low";
+      if (r < Math.max(p.block, 0.4)) this.guard(Math.min(30, Math.round(gap / Math.max(60, Math.abs(incoming.vx)) * 60) + 8), low);
       else if (gap > 170) this.push([{ dir: 9, frames: 6 }]);
-      else this.guard(16);
+      else this.guard(16, low);
       return;
     }
+
+    if (kit && kit(this, kitArgs)) return;
+
+    if (this.chance(p.mistake * 0.2)) {
+      this.press(this.rng.pick([5, 2, 6]), this.rng.pick([BTN.LP, BTN.HP, BTN.LK, BTN.HK]));
+      return;
+    }
+
 
     if (seen.airborne && !seen.lying && dist < 250 && seen.y < -40) {
       if (this.chance(p.antiAir)) {
@@ -354,7 +374,7 @@ export class CpuController {
 
   /** Cancel a connected normal. Only commit to unsafe enders when the opponent is actually hit. */
   planCancel(self, team, dist, opp = null) {
-    const usable = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (s.hitbox || s.projectile || s.teleport) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
+    const usable = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && !s.airOnly && (s.hitbox || s.projectile || s.teleport) && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
     if (opp && opp.state === "blockstun") {
       const safe = usable.find((s) => s.projectile);
       if (safe && dist > 140 && this.chance(this.p.zoning)) this.doSpecial(self, team, safe);
@@ -383,7 +403,7 @@ export class CpuController {
       this.press(2, BTN.HP);
       return;
     }
-    const rush = self.def.specials.find((s) => !s.projectile && !s.grab && !s.parry && !s.barrier && (s.velocity.length || s.teleport) && s.knockback.y === 0);
+    const rush = self.def.specials.find((s) => !s.projectile && !s.grab && !s.parry && !s.barrier && !s.airOnly && (s.velocity.length || s.teleport) && s.knockback.y === 0);
     if (rush && (!rush.motion.charge || this.chargeReady(team, self, rush.motion.charge.dir))) {
       this.doSpecial(self, team, rush);
       return;

@@ -68,6 +68,10 @@ export const groupDKits = {
       cpu.cooldown = 8;
       return true;
     }
+    if (!seen.attacking && dist < 150 && cpu.chance(p.aggression * 0.3)) {
+      cpu.press(2, cpu.chance(0.5) ? BTN.HK : BTN.LK);
+      return true;
+    }
     return false;
   },
 
@@ -121,5 +125,6 @@ export const groupDKits = {
     return false;
   },
 };
+groupDKits.geoffrey.handlesProjectiles = true;
 
 registerKits(groupDKits);

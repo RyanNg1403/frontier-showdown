@@ -76,6 +76,13 @@ test("Sam and Dario follow the roster doc kits", async () => {
   assert.equal(d.passive, "Responsible Scaling");
 });
 
+test("kick-variant and dedicated move animations are allowed and fall back to shared states", () => {
+  for (const [name, base] of [["crouch_light_kick", "crouch_light"], ["crouch_heavy_kick", "crouch_heavy"], ["air_kick", "air_attack"], ["air_dive", "air_attack"], ["ship_it", "heavy_punch"], ["knights_move", "heavy_kick"]]) {
+    assert.ok(KNOWN_ANIMS.has(name), `${name} is a known animation`);
+    assert.deepEqual(ANIM_FALLBACKS[name], [base]);
+  }
+});
+
 test("defineCharacter fills defaults for sparse data", () => {
   const c = defineCharacter({ id: "test", normals: { lp: { damage: 20, hitbox: { x: 0, y: -100, w: 50, h: 20 } } } });
   assert.equal(c.stats.health, 1000);

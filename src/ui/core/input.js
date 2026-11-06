@@ -43,7 +43,7 @@ export function createMenuInput({ settings, target = window }) {
       case "Tab": return null;
       default: break;
     }
-    const sets = [[p1.keyboard, 0], [p2.keyboard, 1]];
+    const sets = [[p1.keyboard, 0], [p2.keyboard, 1], [p1.keyboardAlt || {}, 0], [p2.keyboardAlt || {}, 1]];
     for (const [map, player] of sets) {
       if (code === map.up) return ["up", player];
       if (code === map.down) return ["down", player];

@@ -87,12 +87,12 @@ export default defineCharacter({
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Gradient Ascent", startup: 10, active: 4, recovery: 29, damage: 100, hitstun: 30, blockstun: 18,
+      name: "Gradient Ascent", startup: 10, active: 4, recovery: 29, damage: 115, hitstun: 30, blockstun: 18,
       hitbox: { x: 6, y: -236, w: 82, h: 154 }, knockback: { x: 100, y: 1150 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"], description: "A rising palm; Geoffrey's anti-air.",
     },
     c_hk: {
-      name: "Long Division Sweep", startup: 13, active: 3, recovery: 29, damage: 70, hitstun: 24, blockstun: 18,
+      name: "Long Division Sweep", startup: 13, active: 3, recovery: 29, damage: 78, hitstun: 24, blockstun: 18,
       hitbox: { x: 18, y: -26, w: 164, h: 26 }, knockback: { x: 210, y: 320 }, level: "low", knockdown: true, meterGain: 5,
     },
     j_p: {

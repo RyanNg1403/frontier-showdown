@@ -142,6 +142,7 @@ export default defineCharacter({
     cancel: ["straight_shot:LP"],
     projectileRange: [280, 900],
     superRange: 240,
+    zoning: 0.75,
   },
   sharedSkills: ["dash", "run", "throw", "throw_tech", "block", "alignment_block", "guardrail", "scale_up", "rollback", "breakthrough", "tag", "assist", "swap_guard", "lab:ssi"],
 });

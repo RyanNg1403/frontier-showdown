@@ -3,6 +3,8 @@
  * at import time, and the character file imports it, so nobody edits a shared list.
  * `kit(cpu, k)` runs when the CPU is free to act and returns true when it queued an action;
  * `k` is `{ match, side, self, team, opp, dist, seen, steps }` (`steps` = `motionSteps`).
+ * The generic CPU defends against incoming projectiles before kits run; a kit that answers
+ * projectiles itself (counters, reflects) sets `kit.handlesProjectiles = true` to go first.
  */
 const KITS = new Map();
 

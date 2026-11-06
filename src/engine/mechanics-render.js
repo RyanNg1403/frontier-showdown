@@ -239,6 +239,28 @@ function drawIcing(ctx, f, st) {
   ctx.restore();
 }
 
+/** `slow` overlays follow the status's source: `look: "icing"` (Yann's cake), `wind` / `look: "wind"` (Arthur's gust). */
+function drawSlow(ctx, f, st, t) {
+  if (st.look === "icing") drawIcing(ctx, f, st);
+  else if (st.look === "wind" || st.wind) drawWindTrail(ctx, f, st, t);
+}
+
+function drawWindTrail(ctx, f, st, t) {
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, st.frames / 12) * 0.7;
+  ctx.strokeStyle = "#9be7ff";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i += 1) {
+    const y = -40 - i * 38 + (f.y || 0);
+    const drift = ((t / 6 + i * 23) % 40) - 20;
+    ctx.beginPath();
+    ctx.moveTo(f.x - 46 + drift, y);
+    ctx.quadraticCurveTo(f.x + drift, y - 8, f.x + 46 + drift, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawShadowCopies(ctx, f) {
   const m = f.move;
   if (f.state !== "attack" || !m?.mech?.hitLevels) return;
@@ -269,7 +291,7 @@ export function drawMechanics(ctx, match, t, layer) {
     }
     for (const f of match.fighters) {
       const slow = mech.status(f, "slow");
-      if (slow && f.onField) drawIcing(ctx, f, slow);
+      if (slow && f.onField) drawSlow(ctx, f, slow, t);
       drawShadowCopies(ctx, f);
     }
     return;

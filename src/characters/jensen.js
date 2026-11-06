@@ -155,6 +155,7 @@ export default defineCharacter({
     grabRate: 0.3,
     projectileRange: [300, 900],
     superRange: 700,
+    zoning: 0.3,
   },
   sharedSkills: ["dash", "run", "throw", "throw_tech", "block", "alignment_block", "guardrail", "scale_up", "rollback", "breakthrough", "tag", "assist", "swap_guard", "lab:nvidia"],
 });

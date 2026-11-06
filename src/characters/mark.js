@@ -40,42 +40,42 @@ export default defineCharacter({
   mechanics: ["rotation-360", "grab-hold", "guard-crush"],
   normals: {
     lp: {
-      name: "MMA Jab", startup: 6, active: 2, recovery: 11, damage: 24, hitstun: 16, blockstun: 13,
+      name: "MMA Jab", startup: 6, active: 2, recovery: 11, damage: 28, hitstun: 16, blockstun: 13,
       hitbox: { x: 22, y: -160, w: 82, h: 24 }, knockback: { x: 150 }, level: "high", meterGain: 3,
       cancelInto: ["lp", "hp", "special", "super"],
     },
     hp: {
-      name: "Overhand Right", startup: 12, active: 3, recovery: 21, damage: 66, hitstun: 22, blockstun: 17,
+      name: "Overhand Right", startup: 12, active: 3, recovery: 21, damage: 70, hitstun: 22, blockstun: 17,
       hitbox: { x: 24, y: -168, w: 100, h: 34 }, knockback: { x: 280 }, level: "high", meterGain: 5,
       velocity: [{ from: 4, to: 12, vx: 90 }], cancelInto: ["special", "super"],
     },
     lk: {
-      name: "Teep", startup: 9, active: 3, recovery: 16, damage: 32, hitstun: 16, blockstun: 13,
+      name: "Teep", startup: 9, active: 3, recovery: 16, damage: 35, hitstun: 16, blockstun: 13,
       hitbox: { x: 20, y: -112, w: 104, h: 28 }, knockback: { x: 300 }, level: "mid", meterGain: 4,
       cancelInto: ["hk", "special", "super"],
     },
     hk: {
-      name: "Muay Thai Leg Kick", startup: 13, active: 3, recovery: 22, damage: 62, hitstun: 22, blockstun: 17,
+      name: "Muay Thai Leg Kick", startup: 13, active: 3, recovery: 22, damage: 76, hitstun: 22, blockstun: 17,
       hitbox: { x: 22, y: -58, w: 112, h: 32 }, knockback: { x: 220 }, level: "low", meterGain: 6,
       cancelInto: ["special", "super"],
     },
     c_lp: {
-      name: "Clinch Jab", startup: 7, active: 2, recovery: 12, damage: 20, hitstun: 15, blockstun: 12,
+      name: "Clinch Jab", startup: 7, active: 2, recovery: 12, damage: 24, hitstun: 15, blockstun: 12,
       hitbox: { x: 18, y: -98, w: 80, h: 22 }, knockback: { x: 140 }, level: "mid", meterGain: 3,
       cancelInto: ["c_lp", "c_lk", "special", "super"],
     },
     c_lk: {
-      name: "Ankle Pick", startup: 8, active: 2, recovery: 15, damage: 24, hitstun: 15, blockstun: 12,
+      name: "Ankle Pick", startup: 8, active: 2, recovery: 15, damage: 25, hitstun: 15, blockstun: 12,
       hitbox: { x: 20, y: -26, w: 100, h: 24 }, knockback: { x: 150 }, level: "low", meterGain: 3,
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Double-Underhook Lift", startup: 10, active: 4, recovery: 28, damage: 100, hitstun: 30, blockstun: 18,
+      name: "Double-Underhook Lift", startup: 10, active: 4, recovery: 28, damage: 120, hitstun: 30, blockstun: 18,
       hitbox: { x: 6, y: -210, w: 80, h: 140 }, knockback: { x: 100, y: 1150 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"],
     },
     c_hk: {
-      name: "Single-Leg Sweep", startup: 13, active: 3, recovery: 28, damage: 70, hitstun: 24, blockstun: 18,
+      name: "Single-Leg Sweep", startup: 13, active: 3, recovery: 28, damage: 80, hitstun: 24, blockstun: 18,
       hitbox: { x: 18, y: -26, w: 136, h: 26 }, knockback: { x: 200, y: 320 }, level: "low", knockdown: true,
       meterGain: 5,
     },
@@ -149,11 +149,12 @@ export default defineCharacter({
   ai: {
     grabRate: 0.4,
     antiAir: "c_hp",
-    pressure: ["move_fast"],
-    punish: ["send_me_location:HP", "move_fast", "c_hp"],
+    pressure: ["move_fast", "c_lk", "c_hk"],
+    punish: ["c_hp", "move_fast", "send_me_location:HP", "c_hk"],
     evade: "hydrofoil_rush:HK",
     approach: ["hydrofoil_rush:LK", "hydrofoil_rush:HK"],
     superRange: 95,
+    aggression: 1.4,
   },
   sharedSkills: ["dash", "run", "throw", "throw_tech", "block", "alignment_block", "guardrail", "scale_up", "rollback", "breakthrough", "tag", "assist", "swap_guard", "lab:meta"],
 });

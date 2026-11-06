@@ -166,5 +166,6 @@ export default defineCharacter({
     vfx: "finisher_mit_license",
   },
   assists: { a: "latent_attention", b: "group_relative" },
+  ai: { zoning: 0.7 },
   sharedSkills: ["dash", "run", "throw", "throw_tech", "block", "alignment_block", "guardrail", "scale_up", "rollback", "breakthrough", "tag", "assist", "swap_guard", "lab:deepseek"],
 });
