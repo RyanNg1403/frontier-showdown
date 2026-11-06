@@ -8,6 +8,7 @@ import "./projectiles.js";
 import "./placed.js";
 import "./companion.js";
 import "./meter-parry.js";
+import "./fighter-hooks.js";
 
 /**
  * Runtime for match-level systems registered with `registerSystem` (see `../mechanics.js`).

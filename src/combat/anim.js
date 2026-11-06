@@ -3,10 +3,21 @@ import { ANIM_FALLBACKS } from "./constants.js";
 /** Pick the first animation name the atlas actually has, following the fallback chain. */
 export function resolveAnim(atlas, name) {
   if (!atlas?.animations) return name;
-  if (atlas.animations[name]) return name;
-  for (const alt of ANIM_FALLBACKS[name] || []) {
-    if (atlas.animations[alt]) return alt;
-    for (const alt2 of ANIM_FALLBACKS[alt] || []) if (atlas.animations[alt2]) return alt2;
+  const viaFallbacks = (n) => {
+    if (atlas.animations[n]) return n;
+    for (const alt of ANIM_FALLBACKS[n] || []) {
+      if (atlas.animations[alt]) return alt;
+      for (const alt2 of ANIM_FALLBACKS[alt] || []) if (atlas.animations[alt2]) return alt2;
+    }
+    return null;
+  };
+  const direct = viaFallbacks(name);
+  if (direct) return direct;
+  // Variant names fall back to their base: "heavy_punch_grappler" -> "heavy_punch".
+  for (let base = name, i = base.lastIndexOf("_"); i > 0; i = base.lastIndexOf("_")) {
+    base = base.slice(0, i);
+    const found = viaFallbacks(base);
+    if (found) return found;
   }
   return atlas.animations.idle ? "idle" : Object.keys(atlas.animations)[0];
 }

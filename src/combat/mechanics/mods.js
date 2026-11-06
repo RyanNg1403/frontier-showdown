@@ -13,6 +13,8 @@ export const NO_MODS = Object.freeze({
   chainNormals: false,
   /** Normals cancel into specials from their first active frame even on whiff. */
   whiffCancel: false,
+  /** Pushboxes and walls are skipped (Dropout, dash-through). Hurtboxes are unchanged. */
+  intangible: false,
 });
 
 export function combineMods(list) {
@@ -20,7 +22,7 @@ export function combineMods(list) {
   const out = { ...NO_MODS };
   for (const m of list) {
     if (m.speedMul !== undefined) out.speedMul *= m.speedMul;
-    for (const k of ["noDash", "noBlock", "chainNormals", "whiffCancel"]) if (m[k]) out[k] = true;
+    for (const k of ["noDash", "noBlock", "chainNormals", "whiffCancel", "intangible"]) if (m[k]) out[k] = true;
   }
   return Object.freeze(out);
 }

@@ -59,7 +59,7 @@
 .fs-ui__screens, .fs-ui__hud, .fs-ui__overlays { position: absolute; inset: 0; }
 .fs-ui__screens { z-index: 1; }
 .fs-ui__hud { z-index: 2; pointer-events: none; }
-.fs-ui__overlays { z-index: 3; }
+.fs-ui__overlays { z-index: 3; pointer-events: none; }
 
 /* Screens ------------------------------------------------------------------------------------ */
 

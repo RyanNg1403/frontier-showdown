@@ -331,9 +331,9 @@ export function createAudio(options = {}) {
     state.gain.gain.setValueAtTime(Math.max(0.0001, state.gain.gain.value), t);
     state.gain.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.02, fade));
     setTimeout(() => {
-      try { state.node.stop?.(); } catch { /* already stopped */ }
+      try { state.node?.stop?.(); } catch { /* already stopped */ }
       state.element?.pause();
-      state.node.disconnect();
+      state.node?.disconnect();
     }, (fade + 0.1) * 1000);
   }
 

@@ -18,16 +18,16 @@ export const DEFAULT_BINDINGS = {
   p1: {
     keyboard: {
       up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD",
-      lightPunch: "KeyU", heavyPunch: "KeyI", lightKick: "KeyJ", heavyKick: "KeyK", block: "KeyO", tag: "KeyL",
+      lightPunch: "KeyU", heavyPunch: "KeyI", lightKick: "KeyJ", heavyKick: "KeyK", block: "KeyL", tag: "KeyO",
     },
-    gamepad: { up: 12, down: 13, left: 14, right: 15, lightPunch: 2, heavyPunch: 3, lightKick: 0, heavyKick: 1, block: 7, tag: 5 },
+    gamepad: { up: 12, down: 13, left: 14, right: 15, lightPunch: 2, heavyPunch: 3, lightKick: 0, heavyKick: 1, block: 7, tag: 4 },
   },
   p2: {
     keyboard: {
       up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight",
-      lightPunch: "Numpad4", heavyPunch: "Numpad5", lightKick: "Numpad1", heavyKick: "Numpad2", block: "Numpad6", tag: "Numpad3",
+      lightPunch: "Numpad4", heavyPunch: "Numpad5", lightKick: "Numpad1", heavyKick: "Numpad2", block: "Numpad6", tag: "Numpad8",
     },
-    gamepad: { up: 12, down: 13, left: 14, right: 15, lightPunch: 2, heavyPunch: 3, lightKick: 0, heavyKick: 1, block: 7, tag: 5 },
+    gamepad: { up: 12, down: 13, left: 14, right: 15, lightPunch: 2, heavyPunch: 3, lightKick: 0, heavyKick: 1, block: 7, tag: 4 },
   },
 };
 
@@ -39,7 +39,7 @@ export const DIFFICULTIES = [
 ];
 
 export const DEFAULT_SETTINGS = {
-  version: 1,
+  version: 2,
   controls: DEFAULT_BINDINGS,
   audio: { master: 0.8, music: 0.6, sfx: 0.8, announcer: 0.9 },
   gameplay: { difficulty: "normal", roundTime: 99, roundsToWin: 2 },
@@ -61,7 +61,12 @@ export function createSettings(initial) {
   let value = clone(DEFAULT_SETTINGS);
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (stored?.version === 1) value = merge(value, stored);
+    if (stored?.version === 2) value = merge(value, stored);
+    else if (stored?.version === 1) {
+      // v1 shipped Block and Tag swapped relative to the engine; keep everything but the controls.
+      const { controls: _old, ...rest } = stored;
+      value = merge(value, { ...rest, version: 2 });
+    }
   } catch { /* storage unavailable: keep defaults */ }
   if (initial) value = merge(value, initial);
   const listeners = new Set();
