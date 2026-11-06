@@ -1,0 +1,97 @@
+{
+  "id": "feifei",
+  "name": "Fei-Fei Li",
+  "height_px": 185,
+  "speeds": {
+    "walk": 190,
+    "run": 440
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 0.0,
+    "age": 0.692,
+    "muscle": 0.3,
+    "weight": 0.36,
+    "proportions": 0.55,
+    "height": 0.3,
+    "cupsize": 0.4,
+    "race": {
+      "asian": 1.0
+    }
+  },
+  "skin": "#e9c4a2",
+  "hair": {
+    "color": "#1e1612",
+    "thickness": 0.012,
+    "top": 0.01,
+    "coverage": 0.4
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#34405e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#ecebe6",
+      "thickness": 0.005,
+      "sole": 0.006,
+      "contrast": 0.6
+    },
+    {
+      "kind": "top",
+      "name": "hoodie",
+      "color": "#6b2737",
+      "thickness": 0.024,
+      "sleeve": 0.99,
+      "collar": "crew",
+      "hem": -0.07,
+      "smooth": 0.9,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/feifei_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/feifei_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 936
+      },
+      "profile": {
+        "image": "heads/feifei_profile.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 736,
+        "neck_cut": 938
+      },
+      "hurt": {
+        "image": "heads/feifei_hurt.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 736,
+        "neck_cut": 944
+      },
+      "shout": {
+        "image": "heads/feifei_shout.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 736,
+        "neck_cut": 942
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Baggy maroon hoodie over a white tee, jeans, white sneakers; petite and slim. Shoulder-length hair comes from the 2D head."
+}

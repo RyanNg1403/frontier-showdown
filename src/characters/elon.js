@@ -89,7 +89,7 @@ export default defineCharacter({
       hitbox: { x: 8, y: -98, w: 112, h: 48 }, knockback: { x: 210 }, level: "overhead", meterGain: 4,
     },
     f_hk: {
-      name: "Cybertruck Charge", anim: "heavy_punch", limb: "arm", startup: 16, active: 4, recovery: 22, damage: 70,
+      name: "Cybertruck Charge", anim: "cybertruck_charge", limb: "arm", startup: 16, active: 4, recovery: 22, damage: 70,
       hitstun: 22, blockstun: 18, hitbox: { x: 16, y: -176, w: 92, h: 120 }, knockback: { x: 380 }, level: "mid",
       velocity: [{ from: 5, to: 19, vx: 380 }], meterGain: 5, cancelInto: ["special", "super"],
     },
@@ -127,7 +127,7 @@ export default defineCharacter({
       scaleUp: { projectile: { spread: [-620, -300], damage: 60 } },
     },
     {
-      id: "the_walrus", name: "The Walrus", input: "D+HP", airOnly: true, anim: "air_attack",
+      id: "the_walrus", name: "The Walrus", input: "D+HP", airOnly: true, anim: "air_dive",
       description: "Jumping down+HP belly-flop dive. Overhead; a hit slams the opponent into the floor for a ground bounce. Short landing recovery when it connects.",
       startup: 9, active: 30, recovery: 4, damage: 70, chip: 0, hitstun: 22, blockstun: 18, juggle: 2, scaleUp: false,
       hitbox: { x: -34, y: -96, w: 124, h: 80 }, knockback: { x: 160 }, level: "overhead", knockdown: true,

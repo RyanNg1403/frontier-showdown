@@ -79,7 +79,7 @@ export default defineCharacter({
       hitbox: { x: 8, y: -92, w: 104, h: 48 }, knockback: { x: 200 }, level: "overhead", meterGain: 4,
     },
     f_hp: {
-      name: "Ship It", startup: 20, active: 3, recovery: 20, damage: 60, hitstun: 22, blockstun: 17,
+      name: "Ship It", anim: "ship_it", startup: 20, active: 3, recovery: 20, damage: 60, hitstun: 22, blockstun: 17,
       hitbox: { x: 20, y: -150, w: 100, h: 150 }, knockback: { x: 240 }, level: "overhead", meterGain: 5,
       cancelInto: ["special", "super"],
     },

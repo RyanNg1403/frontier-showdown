@@ -1,0 +1,107 @@
+{
+  "id": "geoffrey",
+  "name": "Geoffrey Hinton",
+  "height_px": 212,
+  "speeds": {
+    "walk": 170,
+    "run": 400
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.908,
+    "muscle": 0.3,
+    "weight": 0.35,
+    "proportions": 0.65,
+    "height": 0.75,
+    "race": {
+      "caucasian": 1.0
+    }
+  },
+  "skin": "#efc8b0",
+  "hair": {
+    "color": "#e2e2e2",
+    "thickness": 0.008,
+    "top": 0.01,
+    "forward": -0.01,
+    "coverage": 0.7
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#6e7076",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#5b3b26",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#2f86c9",
+      "thickness": 0.01,
+      "sleeve": 0.99,
+      "collar": "shirt",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "top",
+      "name": "sweater",
+      "color": "#1f2230",
+      "thickness": 0.016,
+      "sleeve": 0.93,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/geoffrey_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/geoffrey_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/geoffrey_profile.png",
+        "source_height": 1024,
+        "crown": 106,
+        "chin": 732,
+        "neck_cut": 834
+      },
+      "hurt": {
+        "image": "heads/geoffrey_hurt.png",
+        "source_height": 1024,
+        "crown": 108,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "shout": {
+        "image": "heads/geoffrey_shout.png",
+        "source_height": 1024,
+        "crown": 112,
+        "chin": 738,
+        "neck_cut": 840
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Dark-navy crewneck sweater over a bright blue collared shirt (collar and cuffs showing), grey trousers, brown shoes; tall, slender, upright."
+}

@@ -1,0 +1,95 @@
+{
+  "id": "mustafa",
+  "name": "Mustafa Suleyman",
+  "height_px": 202,
+  "speeds": {
+    "walk": 190,
+    "run": 440
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.631,
+    "muscle": 0.45,
+    "weight": 0.45,
+    "proportions": 0.5,
+    "height": 0.55,
+    "race": {
+      "caucasian": 1.0
+    }
+  },
+  "skin": "#d7a57e",
+  "hair": {
+    "color": "#2a1f18",
+    "thickness": 0.01,
+    "top": 0.012,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#23283a",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#232326",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "turtleneck",
+      "color": "#151517",
+      "thickness": 0.012,
+      "sleeve": 0.72,
+      "collar": "turtle",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/mustafa_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/mustafa_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "profile": {
+        "image": "heads/mustafa_profile.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 736,
+        "neck_cut": 838
+      },
+      "hurt": {
+        "image": "heads/mustafa_hurt.png",
+        "source_height": 1024,
+        "crown": 114,
+        "chin": 740,
+        "neck_cut": 842
+      },
+      "shout": {
+        "image": "heads/mustafa_shout.png",
+        "source_height": 1024,
+        "crown": 116,
+        "chin": 742,
+        "neck_cut": 844
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Black turtleneck with sleeves pushed to the forearms, dark jeans, dark sneakers; slim-to-medium."
+}

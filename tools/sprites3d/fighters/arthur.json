@@ -1,0 +1,123 @@
+{
+  "id": "arthur",
+  "name": "Arthur Mensch",
+  "height_px": 212,
+  "speeds": {
+    "walk": 250,
+    "run": 560
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.569,
+    "muscle": 0.42,
+    "weight": 0.3,
+    "proportions": 0.8,
+    "height": 0.75,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "upperlegs-height-incr": 0.3,
+      "lowerlegs-height-incr": 0.3
+    }
+  },
+  "skin": "#efc6a8",
+  "hair": {
+    "color": "#2b1d16",
+    "thickness": 0.012,
+    "top": 0.03,
+    "forward": -0.006,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#1c2541",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#151515",
+      "thickness": 0.005,
+      "sole": 0.006
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#eceef2",
+      "thickness": 0.01,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2,
+      "v_depth": 0.06
+    },
+    {
+      "kind": "tie",
+      "name": "tie",
+      "color": "#22406e",
+      "thickness": 0.016,
+      "width": 0.03
+    },
+    {
+      "kind": "outer",
+      "name": "suit_jacket",
+      "color": "#1c2541",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/arthur_tq.png",
+    "heads_tall": 7.2,
+    "colors": 18,
+    "views": {
+      "threequarter": {
+        "image": "heads/arthur_tq.png",
+        "source_height": 1024,
+        "crown": 102,
+        "chin": 726,
+        "neck_cut": 828
+      },
+      "profile": {
+        "image": "heads/arthur_profile.png",
+        "source_height": 1024,
+        "crown": 104,
+        "chin": 728,
+        "neck_cut": 830
+      },
+      "hurt": {
+        "image": "heads/arthur_hurt.png",
+        "source_height": 1024,
+        "crown": 110,
+        "chin": 734,
+        "neck_cut": 836
+      },
+      "shout": {
+        "image": "heads/arthur_shout.png",
+        "source_height": 1024,
+        "crown": 118,
+        "chin": 742,
+        "neck_cut": 844
+      }
+    },
+    "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
+  },
+  "likeness": "Dark-navy suit, white shirt, dark-blue tie; tall and lean, long limbs."
+}

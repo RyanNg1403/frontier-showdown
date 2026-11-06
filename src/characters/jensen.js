@@ -61,7 +61,7 @@ export default defineCharacter({
       cancelInto: ["special", "super"],
     },
     f_hp: {
-      name: "Denny's Booth", startup: 22, active: 3, recovery: 22, damage: 68, hitstun: 24, blockstun: 17,
+      name: "Denny's Booth", anim: "dennys_booth", startup: 22, active: 3, recovery: 22, damage: 68, hitstun: 24, blockstun: 17,
       hitbox: { x: 18, y: -170, w: 112, h: 170 }, knockback: { x: 260 }, level: "overhead", meterGain: 5, hitstop: 13,
       cancelInto: ["special", "super"], description: "An overhead diner-tray smash.",
     },
