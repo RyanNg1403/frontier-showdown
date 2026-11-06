@@ -3,6 +3,7 @@ import { isBack, isDown, isFwd, isUp, matchDoubleTap, matchMotion } from "./inpu
 import { DEFAULT_HURTBOXES, DEFAULT_PUSHBOX, toWorld } from "./boxes.js";
 import { LOCOMOTION, attackFrameIndex, cycleFrameIndex, resolveAnim } from "./anim.js";
 import { passiveFor } from "./passives.js";
+import { fighterMechanics, moveMechanic } from "./mechanics.js";
 
 const NEUTRAL = new Set(["idle", "walk_fwd", "walk_back", "crouch", "block", "crouch_block"]);
 const STUNNED = new Set(["hitstun", "juggle"]);
@@ -120,6 +121,16 @@ export class Fighter {
     this.damageMul = 1;
     this.regenPause = 0;
     this.passive = {};
+    this.mech = {};
+    this.noBlockFrames = 0;
+    this.chainCount = 0;
+    this.entryInvuln = false;
+  }
+
+  /** Fighter-level mechanic hooks from `def.mechanics` (see mechanics.js). */
+  get mechanicHooks() {
+    if (!this._mechanicHooks) this._mechanicHooks = fighterMechanics(this.def);
+    return this._mechanicHooks;
   }
 
   // ------------------------------------------------------------------ queries
@@ -168,7 +179,7 @@ export class Fighter {
   invulnTo(kind) {
     if (!this.onField || this.ko || this.state === OFF_FIELD) return true;
     if (this.isLying || this.state === "thrown" || this.state === "tech" || this.state === "finisher" || this.state === "finished" || this.state === "roll") return true;
-    if (SCRIPTED.has(this.state) && this.state !== "assist_in") return true;
+    if (SCRIPTED.has(this.state) && this.state !== "assist_in" && !(this.state === "tag_in" && !this.entryInvuln)) return true;
     if (this.invulnFrames > 0 || this.hidden || this.juggleLocked) return true;
     if (this.strikeInvulnFrames > 0 && kind !== "throw") return true;
     if (kind === "throw") {
@@ -222,7 +233,7 @@ export class Fighter {
   /** Index of the active hit within a multi-hit move, or -1 when not active. */
   activeHitIndex() {
     const m = this.move;
-    if (this.state !== "attack" || !m || !m.hitbox || m.projectile || m.grab || m.parry || this.hidden) return -1;
+    if ((this.state !== "attack" && this.state !== "tag_in") || !m || !m.hitbox || m.projectile || m.grab || m.parry || this.hidden) return -1;
     const f = this.moveFrame;
     if (f < m.startup || f >= m.startup + m.active) return -1;
     return Math.min(m.hits - 1, Math.floor((f - m.startup) / m.hitInterval));
@@ -336,15 +347,19 @@ export class Fighter {
         env.emit("lastCheckpoint", { fighter: this.id, side: this.side });
       }
       env.freeze?.(move.freeze, this);
-      env.emit("super", { fighter: this.id, side: this.side, moveId: move.id, name: move.name });
+      env.emit("super", { fighter: this.id, side: this.side, moveId: move.id, name: move.name, x: this.x });
       env.vfx("super_flash", this.x, this.y - 120, { characterId: this.id, palette: this.def.palette });
     } else if (move.category === "special") {
-      env.emit("special", { fighter: this.id, side: this.side, moveId: move.id, name: move.name, button: move.button, assist: this.assistMode });
+      env.emit("special", { fighter: this.id, side: this.side, moveId: move.id, name: move.name, button: move.button, assist: this.assistMode, x: this.x });
     }
     if (move.category === "special" || move.category === "super") {
       env.vfx("special_cast", this.x + this.facing * 50, this.y - 120, { characterId: this.id, moveId: move.id, vfx: move.vfx, palette: this.def.palette });
     }
     env.input?.consume();
+    this.chainCount = cancel && this.move?.id === move.id ? this.chainCount + 1 : 1;
+    if (move.hitbox && !move.grab && !move.parry) {
+      env.emit("attack", { fighter: this.id, side: this.side, moveId: move.id, kind: move.kind, weight: move.kind === "light" ? "light" : move.category === "normal" ? "heavy" : move.category, x: this.x });
+    }
     const keepVx = this.state === "run" ? this.vx * 0.5 : 0;
     this.setState("attack", { keepAnim: true });
     this.move = move;
@@ -358,6 +373,8 @@ export class Fighter {
     if (!this.airborne) this.vx = keepVx;
     if (move.air) this.airAttackUsed = true;
     if (cancel) env.vfx("dust_dash", this.x, this.y, {});
+    moveMechanic(move)?.onStart?.(this, move, env);
+    for (const h of this.mechanicHooks) h.onMoveStart?.(this, move, env);
   }
 
   // ------------------------------------------------------------------ per-frame update
@@ -374,7 +391,9 @@ export class Fighter {
     if (this.invulnFrames > 0) this.invulnFrames -= 1;
     if (this.strikeInvulnFrames > 0) this.strikeInvulnFrames -= 1;
     if (this.throwInvuln > 0) this.throwInvuln -= 1;
+    if (this.noBlockFrames > 0) this.noBlockFrames -= 1;
     if (this.shake > 0) this.shake -= 1;
+    for (const h of this.mechanicHooks) h.update?.(this, env);
     this.stateFrame += 1;
     const x0 = this.x;
     const handler = this[`st_${this.state}`];
@@ -421,6 +440,7 @@ export class Fighter {
     switch (this.state) {
       case "jump":
         this.vx = 0;
+        env.emit("land", { fighter: this.id, side: this.side, x: this.x });
         this.setState("jump_land");
         this.landingRecovery = this.pendingLanding ?? 3;
         this.pendingLanding = null;
@@ -430,6 +450,7 @@ export class Fighter {
         if (this.move?.air || this.move?.velocity.some((v) => v.vy !== undefined)) {
           this.vx = 0;
           const rec = this.move.landingRecovery;
+          env.emit("land", { fighter: this.id, side: this.side, x: this.x });
           this.setState("jump_land");
           this.landingRecovery = rec;
           env.vfx("dust_land", this.x, 0, { facing: this.facing, side: this.side });
@@ -444,6 +465,7 @@ export class Fighter {
         this.setState("knockdown", { keepAnim: true });
         this.knockdownLength = RULES.knockdownFrames;
         this.passiveDef?.onKnockdown?.(this);
+        env.emit("knockdown", { fighter: this.id, side: this.side, x: this.x });
         env.vfx("knockdown_impact", this.x, 0, { facing: this.facing, side: this.side, impact });
         env.shake?.(4);
         break;
@@ -486,6 +508,7 @@ export class Fighter {
 
   allowedBy(filter, move) {
     if (!filter) return true;
+    if (move.kind === "light" && move.id === this.move?.id && this.chainCount >= 2) return false;
     if (filter.includes(move.id)) return true;
     if (move.category === "special" && filter.includes("special")) return true;
     if (move.category === "super" && filter.includes("super")) return true;
@@ -563,7 +586,10 @@ export class Fighter {
     const b = env.input;
     if (!b || !env.canAct) return false;
     const team = env.team;
-    if (team.breakerUsed || team.meter < RULES.breakerCost || team.runway < RULES.runwayMax || this.combo.hits < 2) return false;
+    const cost = this.passiveDef?.breakerCost ?? RULES.breakerCost;
+    if (team.breakerUsed || team.meter < cost || team.runway < RULES.runwayMax || this.combo.hits < 2) return false;
+    const opp = env.opponent;
+    if (opp && opp.state === "attack" && opp.move?.category === "super") return false;
     return b.pressedNow(BTN.BLOCK) && isFwd(b.dir(this.facing));
   }
 
@@ -572,6 +598,7 @@ export class Fighter {
     const b = env?.input;
     if (!b || !this.onField || this.ko) return null;
     if (!(this.isNeutral || this.state === "blockstun")) return null;
+    if (this.noBlockFrames > 0 && this.state !== "blockstun") return null;
     const away = fromX >= this.x ? 1 : -1;
     const d = b.dir(away);
     const guarding = this.state === "blockstun" || b.held(BTN.BLOCK) || (env.backBlocks && isBack(d));
@@ -627,12 +654,14 @@ export class Fighter {
     if (matchDoubleTap(b, 6, this.facing)) {
       b.consume();
       this.setState("dash_fwd");
+      env.emit("dash", { fighter: this.id, side: this.side, x: this.x, dir: 1 });
       env.vfx("dust_dash", this.x, 0, { facing: this.facing, side: this.side });
       return;
     }
     if (matchDoubleTap(b, 4, this.facing)) {
       b.consume();
       this.setState("dash_back");
+      env.emit("dash", { fighter: this.id, side: this.side, x: this.x, dir: -1 });
       this.strikeInvulnFrames = 5;
       env.vfx("dust_dash", this.x, 0, { facing: -this.facing, side: this.side });
       return;
@@ -645,7 +674,7 @@ export class Fighter {
       return;
     }
     const down = isDown(d);
-    if (b.held(BTN.BLOCK)) {
+    if (b.held(BTN.BLOCK) && this.noBlockFrames === 0) {
       this.vx = 0;
       this.setNeutral(down ? "crouch_block" : "block");
       return;
@@ -676,7 +705,7 @@ export class Fighter {
   }
 
   st_dash_fwd(env) {
-    const total = 18;
+    const total = 18 - (this.passiveDef?.dashFramesCut ?? 0);
     const run = this.locomotionSpeed("run");
     const t = this.stateFrame / total;
     this.vx = this.facing * run * (1.05 - 0.55 * t);
@@ -693,7 +722,7 @@ export class Fighter {
 
   st_dash_back(env) {
     const total = 22;
-    const speed = this.locomotionSpeed("run") * 0.85;
+    const speed = this.locomotionSpeed("run") * 1.7;
     this.vx = -this.facing * speed * Math.max(0, 1 - this.stateFrame / total);
     if (this.stateFrame >= total) this.toNeutral(env);
   }
@@ -725,6 +754,7 @@ export class Fighter {
       return;
     }
     this.vx *= 0.4;
+    this.noBlockFrames = RULES.noBlockAfterRun;
     env.vfx("dust_skid", this.x, 0, { facing: this.facing, side: this.side });
     this.toNeutral(env);
   }
@@ -740,6 +770,7 @@ export class Fighter {
       this.airAttackUsed = false;
       this.setState("jump");
       this.y = -0.02;
+      env.emit("jump", { fighter: this.id, side: this.side, x: this.x });
       env.vfx("dust_jump", this.x, 0, { facing: this.facing, side: this.side });
     }
   }
@@ -766,8 +797,8 @@ export class Fighter {
       this.startMove(next, env, { cancel: true });
       return;
     }
-    if (m.scaled && !m.isScaled && this.moveFrame <= RULES.scaleUpWindow && env.input?.pressedNow(BTN.BLOCK) && env.team.meter >= RULES.scaleUpCost && !this.assistMode) {
-      env.team.meter -= RULES.scaleUpCost;
+    if (m.scaled && !m.isScaled && this.moveFrame <= RULES.scaleUpWindow && env.input?.pressedNow(BTN.BLOCK) && env.team.meter >= (this.passiveDef?.scaleUpCost ?? RULES.scaleUpCost) && !this.assistMode) {
+      env.team.meter -= this.passiveDef?.scaleUpCost ?? RULES.scaleUpCost;
       this.move = m = m.scaled;
       env.emit("scaleUp", { fighter: this.id, side: this.side, moveId: m.id });
       env.vfx("scale_up", this.x, this.y - 110, { characterId: this.id, palette: this.def.palette });
@@ -778,6 +809,8 @@ export class Fighter {
       if (v.vy !== undefined) this.vy = v.vy;
     }
     if (m.teleport) this.runTeleport(env, m.teleport);
+    moveMechanic(m)?.onFrame?.(this, m, env);
+    if (this.state !== "attack" || this.move !== m) return;
     if (m.projectile && this.moveFrame === m.projectile.spawnFrame) env.spawnProjectile(this, m);
     if (m.barrier && this.moveFrame === m.barrier.frame) env.spawnBarrier?.(this, m);
     if (env.canAct && env.input) {
@@ -1019,7 +1052,9 @@ export class Fighter {
   }
 
   st_tag_in(env) {
+    if (this.move) this.moveFrame = this.stateFrame;
     if (this.runScript(env)) {
+      this.move = null;
       env.vfx("dust_land", this.x, 0, { facing: this.facing, side: this.side });
       this.invulnFrames = 8;
       const entry = this.entryMove;

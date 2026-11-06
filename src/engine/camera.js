@@ -50,7 +50,8 @@ export class Camera {
     this.zoom = t.zoom;
   }
 
-  update(fighters, bounds = this.bounds, shake = 0, rand = Math.random) {
+  /** `offset` ({x, y} screen px) overrides the built-in shake, e.g. a VFX module's shake. */
+  update(fighters, bounds = this.bounds, shake = 0, rand = Math.random, offset = null) {
     this.bounds = bounds;
     const t = this.target(fighters, bounds);
     this.zoom += (t.zoom - this.zoom) * 0.08;
@@ -59,6 +60,11 @@ export class Camera {
     const halfW = VIEW_W / 2 / this.zoom;
     if (bounds.right - bounds.left > halfW * 2) {
       this.x = Math.max(bounds.left + halfW, Math.min(bounds.right - halfW, this.x));
+    }
+    if (offset) {
+      this.shakeX = offset.x;
+      this.shakeY = offset.y;
+      return;
     }
     const amp = Math.min(10, shake);
     this.shakeX = shake > 0 ? (rand() * 2 - 1) * amp : 0;

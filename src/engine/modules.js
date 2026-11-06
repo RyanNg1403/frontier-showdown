@@ -12,14 +12,16 @@ async function tryImport(url, label) {
 }
 
 export async function loadModules() {
-  const [stage, vfx, ui] = await Promise.all([
+  const [stage, vfx, ui, audio] = await Promise.all([
     tryImport("../stages/index.js", "stage"),
     tryImport("../vfx/index.js", "vfx"),
     tryImport("../ui/index.js", "ui"),
+    tryImport("../audio/index.js", "audio"),
   ]);
   return {
     stage: stage && typeof stage.drawStage === "function" ? stage : null,
     vfx: vfx && typeof vfx.createVfx === "function" ? vfx : null,
     ui: ui && (typeof ui.mountUI === "function" || typeof ui.drawHud === "function") ? ui : null,
+    audio: audio && typeof audio.createAudio === "function" ? audio : null,
   };
 }

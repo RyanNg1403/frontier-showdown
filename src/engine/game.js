@@ -2,7 +2,7 @@ import { DT } from "../combat/constants.js";
 import { Match } from "../combat/match.js";
 import { createCpu } from "../combat/ai.js";
 import { describeCharacter } from "../characters/schema.js";
-import { loadAllCharacters } from "../characters/index.js";
+import { discoverCharacters, loadAllCharacters } from "../characters/index.js";
 import { createEmitter } from "./emitter.js";
 import { Camera, VIEW_H, VIEW_W } from "./camera.js";
 import { InputDevices } from "./input.js";
@@ -50,10 +50,17 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
   const events = createEmitter();
   const devices = new InputDevices(window);
   const modules = preloaded || (await loadModules());
-  const characters = await loadAllCharacters();
+  const roster = await discoverCharacters();
+  const characters = await loadAllCharacters(roster.ids);
   const charMap = new Map(characters.map((c) => [c.id, c]));
   const atlasReady = new Map();
-  await Promise.all(characters.map((c) => loadAtlas(c.id).then((a) => atlasReady.set(c.id, Boolean(a)))));
+  const hasAtlasFile = (id) => !roster.atlases || roster.atlases.has(id);
+  const fetchAtlas = (id) => (hasAtlasFile(id) ? loadAtlas(id) : Promise.resolve(null));
+  const atlases = {};
+  await Promise.all(characters.map((c) => fetchAtlas(c.id).then((a) => {
+    atlasReady.set(c.id, Boolean(a));
+    if (a) atlases[c.id] = a;
+  })));
 
   const fallbackVfx = createFallbackVfx();
   let vfx = fallbackVfx;
@@ -78,6 +85,22 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     stageFailed = true;
     return undefined;
   });
+  let audio = null;
+  if (modules.audio) {
+    try {
+      audio = modules.audio.createAudio();
+    } catch (error) {
+      console.error("[engine] createAudio failed; continuing without sound.", error);
+    }
+  }
+  const audioCall = guarded("audio", () => {
+    audio = null;
+    return undefined;
+  });
+  /** VFX timing helpers (hitstop, freeze, shake, slow-mo) when the VFX module provides them. */
+  const fx = () => (vfx !== fallbackVfx ? vfx.module : null);
+  let holdFrames = 0;
+  let lastShake = 0;
   let hudFailed = !modules.ui?.drawHud;
   const hudCall = guarded("ui", () => {
     hudFailed = true;
@@ -104,6 +127,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       vfxCall(() => vfx.update(payload.dt));
       return;
     }
+    if (name === "slowmo" && payload.active && fx()?.slowmo) vfxCall(() => fx().slowmo(payload.rate, payload.seconds));
     events.emit(name, payload);
   }
 
@@ -130,7 +154,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
 
   function playMusic(url) {
     stopMusic();
-    if (!url) return;
+    if (!url || audio) return;
     try {
       music = new Audio(url);
       music.loop = true;
@@ -168,7 +192,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     const stageId = config.stage || listStages()[0]?.id || "default";
     const [stage, atlases] = await Promise.all([
       loadStageDef(stageId),
-      Promise.all(sides.flatMap((s) => s.team).map(async (id) => [id, await loadAtlas(id)])),
+      Promise.all(sides.flatMap((s) => s.team).map(async (id) => [id, await fetchAtlas(id)])),
     ]);
     stageDef = stage;
     loading = false;
@@ -245,6 +269,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     stopMusic();
     refreshSnapshot();
     events.emit("menu", {});
+    if (audio) audioCall(() => audio.music("menu"));
   }
 
   devices.onKey((code) => {
@@ -254,14 +279,25 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
 
   function step() {
     if (devices.startPressed(0) || devices.startPressed(1)) togglePause();
-    if (!match || paused) return;
+    if (!match || paused) {
+      loop.timeScale = 1;
+      return;
+    }
     const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(s.side) : null));
-    match.step(inputs);
+    const helpers = fx();
+    const vfxHold = Boolean(helpers && vfxCall(() => helpers.isHitstopped?.() || helpers.isFrozen?.()));
+    holdFrames = vfxHold ? holdFrames + 1 : 0;
+    match.step(inputs, { hold: vfxHold && holdFrames <= 90 });
+    if (helpers?.timeScale) loop.timeScale = vfxCall(() => helpers.timeScale()) ?? 1;
+    else loop.timeScale = match.slowmo ? match.slowmo.rate : 1;
+    if (match.shakeFrames > lastShake && helpers?.shake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
+    lastShake = match.shakeFrames;
     if (vfx.syncProjectiles) {
       vfxCall(() => vfx.syncProjectiles(match.projectiles.map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
     }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
-    camera.update(targets, match.bounds, match.shakeFrames);
+    const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
+    camera.update(targets, match.bounds, match.shakeFrames, Math.random, offset || null);
     if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, snapshot));
     refreshSnapshot();
   }
@@ -343,10 +379,13 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       return match;
     },
     get modules() {
-      return { stage: Boolean(modules.stage) && !stageFailed, vfx: vfx !== fallbackVfx, ui: Boolean(modules.ui) };
+      return { stage: Boolean(modules.stage) && !stageFailed, vfx: vfx !== fallbackVfx, ui: Boolean(modules.ui), audio: Boolean(audio) };
     },
     camera,
     canvas,
+    get audio() {
+      return audio;
+    },
     bindings: devices.bindings,
     refreshBindings: () => devices.refreshBound(),
     listCharacters,
@@ -371,6 +410,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     } catch (error) {
       console.error("[engine] mountUI failed; using the built-in menu.", error);
     }
+  }
+  if (audio) {
+    audioCall(() => audio.attach(game, { atlases }));
+    audioCall(() => audio.music("menu"));
   }
   if (!uiMounted) mountFallbackUI(uiRoot, game);
   const firstStage = listStages()[0]?.id;

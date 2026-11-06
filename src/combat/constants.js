@@ -40,7 +40,7 @@ export const RULES = Object.freeze({
   handoffCancelCost: 100,
   swapGuardCost: 100,
   getupAttackCost: 100,
-  defenderMeterRatio: 0.08,
+  defenderMeterRatio: 0.06,
   blockMeterAttacker: 2,
   blockMeterDefender: 2,
   // Runway (defensive stamina)
@@ -69,7 +69,9 @@ export const RULES = Object.freeze({
   alignmentWindow: 3,
   alignmentMeter: 8,
   alignmentBlockstunCut: 3,
-  guardrailPush: 420,
+  guardrailPush: 790,
+  breakerPush: 1020,
+  noBlockAfterRun: 4,
   throwRange: 80,
   throwTechWindow: 10,
   throwDamage: 110,
@@ -95,7 +97,7 @@ export const RULES = Object.freeze({
   lastCheckpointHealth: 0.3,
   finishWindow: 300,
   // Input
-  bufferFrames: 6,
+  bufferFrames: 3,
   chargeFrames: 40,
   proximityGuard: 280,
 });

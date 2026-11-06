@@ -179,7 +179,8 @@ test("launchers juggle, then the defender is knocked down and invulnerable until
 test("juggle limit makes the defender untouchable until they land", () => {
   const m = makeMatch();
   place(m, -40, 40);
-  play(m, 0, [{ dir: 2, buttons: BTN.HP }, { dir: 2, frames: 2 }]);
+  play(m, 0, [{ dir: 2, buttons: BTN.HP }]);
+  until(m, () => events(m, "hit").length > 0, 20, { dir: 2, buttons: 0 });
   const d = m.point(1);
   d.juggleCount = RULES.maxJuggle;
   play(m, 0, [{ dir: 6 }, { dir: 2 }, { dir: 3, buttons: BTN.LP }, { frames: 4 }]);

@@ -53,7 +53,9 @@ test("deciding round: finish prompt, dazed loser, then the winner's finisher", (
   tap(m, 0, BTN.LP);
   hold(m, 6);
   assert.equal(m.phase, "finish");
-  assert.equal(events(m, "finish")[0].side, 0);
+  assert.equal(events(m, "finishThem")[0].side, 0);
+  assert.equal(events(m, "finish").length, 0, "renamed to finishThem");
+  assert.equal(events(m, "slowmo")[0].active, true);
   const loser = m.point(1);
   until(m, () => loser.state === "dazed", 120);
   assert.equal(loser.state, "dazed");

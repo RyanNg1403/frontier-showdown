@@ -278,6 +278,7 @@ test("2v2 red health is lost when hit again before it heals", () => {
   const s = m.sides[0].members[0];
   const red1 = s.red;
   assert.ok(red1 > 0);
+  until(m, () => m.point(1).isNeutral && s.isNeutral, 120);
   place(m, -40, 40);
   tap(m, 1, BTN.LP);
   hold(m, 20);
