@@ -100,6 +100,16 @@ export class InputBuffer {
     return null;
   }
 
+  /** Was any bit in `mask` pressed in the last `window` frames, ignoring consumption? */
+  pressedWithin(mask, window) {
+    for (let age = 0; age < window; age += 1) {
+      const e = this.at(age);
+      if (!e) break;
+      if (e.pressed & mask) return true;
+    }
+    return false;
+  }
+
   pressedNow(mask) {
     const e = this.current;
     return e.frame > this.consumed && (e.pressed & mask) !== 0;
@@ -134,7 +144,7 @@ const NAMED = {
   RDP: [4, 2, 1],
   HCF: [4, 1, 2, 3, 6],
   HCB: [6, 3, 2, 1, 4],
-  F: [6], B: [4], U: [8], D: [2],
+  F: [6], B: [4], U: [8], D: [2], N: [5],
   DF: [3], DB: [1], UF: [9], UB: [7],
 };
 

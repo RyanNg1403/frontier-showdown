@@ -32,16 +32,12 @@ export function meterOnHit(move, damage) {
   };
 }
 
-export function meterOnBlock(move) {
-  const gain = move.meterGain ?? 6;
-  return { attacker: Math.round(gain * RULES.blockMeterRatio), defender: Math.round(gain * 0.25) };
-}
-
 /** Apply damage with red (recoverable) health tracking. Returns damage dealt. */
-export function applyDamage(fighter, amount, { redRatio = 0, floor = 0 } = {}) {
+export function applyDamage(fighter, amount, { redRatio = 0, floor = 0, replaceRed = false } = {}) {
   const before = fighter.health;
   fighter.health = Math.max(floor, fighter.health - amount);
   const dealt = before - fighter.health;
+  if (replaceRed) fighter.red = 0;
   if (redRatio > 0) {
     fighter.red = Math.min(fighter.maxHealth - fighter.health, fighter.red + dealt * redRatio);
   } else {

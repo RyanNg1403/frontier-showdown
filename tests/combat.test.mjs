@@ -1,26 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BTN, N, back, downBack, events, fwd, hold, makeMatch, place, play, tap, until } from "./helpers.mjs";
+import { BTN, N, back, events, fwd, hold, makeMatch, place, play, tap, until } from "./helpers.mjs";
+
+const GUARD = { dir: 5, buttons: BTN.BLOCK };
+const LOW_GUARD = { dir: 2, buttons: BTN.BLOCK };
 import { RULES } from "../src/combat/constants.js";
 
 test("a standing light punch hits an idle opponent for its listed damage", () => {
   const m = makeMatch();
   place(m, -40, 40);
   tap(m, 0, BTN.LP);
-  hold(m, 4);
+  hold(m, 5);
   const hits = events(m, "hit");
   assert.equal(hits.length, 1);
-  assert.equal(hits[0].damage, 30);
+  assert.equal(hits[0].damage, 24);
   assert.equal(hits[0].moveId, "lp");
-  assert.equal(m.point(1).health, 1050 - 30);
+  assert.equal(m.point(1).health, 1050 - 24);
   assert.equal(m.point(1).state, "hitstun");
 });
 
-test("startup counts the press frame: LP (startup 4) connects on its 4th frame", () => {
+test("startup counts the press frame: LP (startup 6) connects on its 6th frame", () => {
   const m = makeMatch();
   place(m, -40, 40);
   m.step([{ dir: 5, buttons: BTN.LP }, N]);
-  hold(m, 2);
+  hold(m, 4);
   assert.equal(events(m, "hit").length, 0);
   hold(m, 1);
   assert.equal(events(m, "hit").length, 1);
@@ -35,40 +38,54 @@ test("high attacks whiff over a crouching opponent", () => {
   assert.equal(m.point(1).health, 1050);
 });
 
-test("holding back blocks mids, normals do no chip, specials do", () => {
+test("the block button blocks mids; normals do no chip, specials do", () => {
   const m = makeMatch();
   place(m, -60, 60);
-  const guard = { dir: back(-1), buttons: 0 };
-  play(m, 0, [{ buttons: BTN.HK }, { frames: 20 }], guard);
+  hold(m, 6, N, GUARD);
+  play(m, 0, [{ buttons: BTN.HK }, { frames: 24 }], GUARD);
   assert.equal(events(m, "block").length, 1);
   assert.equal(events(m, "hit").length, 0);
   assert.equal(m.point(1).health, 1050);
 
   const m2 = makeMatch();
   place(m2, -60, 60);
-  play(m2, 0, [{ dir: 2 }, { dir: 1 }, { dir: 4, buttons: BTN.LK }, { frames: 40 }], guard);
-  const blocks = events(m2, "block");
-  assert.ok(blocks.length >= 1, "scaling rush is blocked");
+  hold(m2, 6, N, GUARD);
+  play(m2, 0, [{ dir: 6 }, { dir: 2 }, { dir: 3, buttons: BTN.LP }, { frames: 30 }], GUARD);
+  assert.equal(events(m2, "block").length, 1, "Event Horizon is blocked");
   assert.ok(m2.point(1).health < 1050, "special chip lands");
+});
+
+test("holding back does not block unless the match enables back-blocking", () => {
+  const m = makeMatch();
+  place(m, -60, 60);
+  play(m, 0, [{ buttons: BTN.HK }, { frames: 24 }], { dir: back(-1), buttons: 0 });
+  assert.equal(events(m, "hit").length, 1);
+
+  const m2 = makeMatch({ backBlocks: true });
+  place(m2, -60, 60);
+  play(m2, 0, [{ buttons: BTN.HK }, { frames: 24 }], { dir: back(-1), buttons: 0 });
+  assert.equal(events(m2, "block").length, 1);
 });
 
 test("lows beat standing guard and lose to crouching guard", () => {
   const m = makeMatch();
   place(m, -60, 60);
-  play(m, 0, [{ dir: 2, buttons: BTN.LK }, { dir: 2, frames: 14 }], { dir: back(-1), buttons: 0 });
+  hold(m, 4, N, GUARD);
+  play(m, 0, [{ dir: 2, buttons: BTN.LK }, { dir: 2, frames: 14 }], GUARD);
   assert.equal(events(m, "hit").length, 1, "low hits a standing blocker");
   assert.equal(events(m, "hit")[0].level, "low");
 
   const m2 = makeMatch();
   place(m2, -60, 60);
-  play(m2, 0, [{ dir: 2, buttons: BTN.LK }, { dir: 2, frames: 14 }], { dir: downBack(-1), buttons: 0 });
+  hold(m2, 4, N, LOW_GUARD);
+  play(m2, 0, [{ dir: 2, buttons: BTN.LK }, { dir: 2, frames: 14 }], LOW_GUARD);
   assert.equal(events(m2, "block").length, 1, "crouch guard blocks the low");
 });
 
 test("jumping attacks are overheads and beat crouching guard", () => {
   const m = makeMatch();
   place(m, -240, 60);
-  const crouchGuard = { dir: downBack(-1), buttons: 0 };
+  const crouchGuard = LOW_GUARD;
   play(m, 0, [{ dir: 9, frames: 5 }], crouchGuard);
   const sam = m.point(0);
   until(m, () => sam.vy > 0 && sam.y > -150, 80, N, crouchGuard);
@@ -99,14 +116,14 @@ test("chains and special cancels scale damage after the second hit", () => {
       continue;
     }
     if (sent === plan.length) {
-      play(m, 0, [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.LP }, { frames: 40 }]);
+      play(m, 0, [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.HP }, { frames: 40 }]);
       sent += 1;
     }
   }
   const hits = events(m, "hit");
   assert.deepEqual(hits.map((h) => h.combo), [1, 2, 3, 4]);
-  assert.deepEqual(hits.map((h) => h.damage), [30, 30, 63, 56]);
-  assert.equal(hits[3].moveId, "model_drop");
+  assert.deepEqual(hits.map((h) => h.damage), [24, 24, 59, 44]);
+  assert.equal(hits[3].moveId, "prompt_burst");
 });
 
 test("throws connect after the tech window and deal throw damage", () => {
@@ -117,15 +134,15 @@ test("throws connect after the tech window and deal throw damage", () => {
   assert.equal(events(m, "throw").length, 1);
   const hit = events(m, "hit").find((h) => h.kind === "throw");
   assert.ok(hit);
-  assert.equal(hit.damage, 120);
-  assert.equal(m.point(1).health, 1050 - 120);
+  assert.equal(hit.damage, 110);
+  assert.equal(m.point(1).health, 1050 - 110);
 });
 
 test("throw tech: pressing throw while grabbed escapes without damage", () => {
   const m = makeMatch();
   place(m, -40, 40);
   m.step([{ dir: 5, buttons: BTN.LP | BTN.LK }, N]);
-  hold(m, 5);
+  until(m, () => m.point(1).state === "thrown", 12);
   assert.equal(m.point(1).state, "thrown");
   m.step([N, { dir: 5, buttons: BTN.LP | BTN.LK }]);
   hold(m, 20);
@@ -133,18 +150,12 @@ test("throw tech: pressing throw while grabbed escapes without damage", () => {
   assert.equal(m.point(1).health, 1050);
 });
 
-test("command grabs cannot be teched", () => {
+test("throws only reach close opponents", () => {
   const m = makeMatch();
-  place(m, -40, 40);
-  play(m, 1, [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.LP }]);
-  until(m, () => m.point(0).state === "thrown", 20);
-  assert.equal(m.point(0).state, "thrown");
-  for (let i = 0; i < 20; i += 1) m.step([{ dir: 5, buttons: i % 2 ? BTN.LP | BTN.LK : 0 }, N]);
-  hold(m, 20);
-  assert.equal(events(m, "tech").length, 0);
-  const hit = events(m, "hit").find((h) => h.moveId === "interpretability_probe");
-  assert.ok(hit);
-  assert.equal(hit.damage, 150);
+  place(m, -60, 60);
+  tap(m, 0, BTN.LP | BTN.LK);
+  hold(m, 30);
+  assert.equal(events(m, "throw").length, 0);
 });
 
 test("launchers juggle, then the defender is knocked down and invulnerable until getup ends", () => {
@@ -173,7 +184,7 @@ test("juggle limit makes the defender untouchable until they land", () => {
   d.juggleCount = RULES.maxJuggle;
   play(m, 0, [{ dir: 6 }, { dir: 2 }, { dir: 3, buttons: BTN.LP }, { frames: 4 }]);
   until(m, () => events(m, "hit").length >= 2, 30);
-  assert.equal(events(m, "hit")[1].moveId, "launch_day");
+  assert.equal(events(m, "hit")[1].moveId, "event_horizon");
   assert.ok(d.juggleLocked);
   assert.ok(d.invulnTo("strike"));
   until(m, () => d.state === "knockdown", 120);
@@ -184,6 +195,7 @@ test("combo breaker costs a bar, works once per round and knocks the attacker aw
   const m = makeMatch();
   place(m, -40, 40);
   m.sides[1].meter = 300;
+  assert.equal(m.sides[1].runway, RULES.runwayMax);
   m.step([{ dir: 5, buttons: BTN.LP }, N]);
   until(m, () => events(m, "hit").length >= 1, 20);
   m.step([{ dir: 5, buttons: BTN.LP }, N]);
@@ -193,6 +205,7 @@ test("combo breaker costs a bar, works once per round and knocks the attacker aw
   for (let i = 0; i < 20 && !events(m, "breaker").length; i += 1) m.step([N, i % 2 ? breakIn : N]);
   assert.equal(events(m, "breaker").length, 1);
   assert.equal(m.sides[1].meter, before - RULES.breakerCost);
+  assert.equal(m.sides[1].runway, 0, "Rollback spends the whole Runway");
   assert.ok(m.sides[1].breakerUsed);
   assert.equal(m.point(0).state === "hitstun" || m.point(0).state === "juggle", true);
   assert.ok(m.point(1).invulnFrames > 0 || m.point(1).state === "breaker");
@@ -202,27 +215,24 @@ test("supers spend meter, freeze the screen and land multiple scaled hits", () =
   const m = makeMatch();
   place(m, -60, 60);
   m.sides[0].meter = 300;
-  play(m, 0, [{ dir: 2 }, { dir: 3 }, { dir: 6 }, { dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.LP }]);
+  play(m, 0, [{ dir: 2 }, { dir: 3 }, { dir: 6 }, { dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.HP }]);
   assert.equal(events(m, "super").length, 1);
-  assert.equal(m.sides[0].meter, 100);
+  assert.equal(m.sides[0].meter, 0, "Breakthrough costs all three bars");
   assert.ok(m.freezeFrames > 0);
-  hold(m, 140);
-  const hits = events(m, "hit").filter((h) => h.moveId === "agi_keynote");
+  hold(m, 160);
+  const hits = events(m, "hit").filter((h) => h.moveId === "few_thousand_days");
   assert.ok(hits.length >= 5, `expected multi-hit super, got ${hits.length}`);
-  assert.equal(hits[0].damage, 55);
-  assert.ok(hits[hits.length - 1].damage < 55, "later hits are scaled");
+  assert.equal(hits[0].damage, 42);
+  assert.ok(hits[hits.length - 1].damage < 42, "later hits are scaled");
 });
 
 test("opposing projectiles cancel each other", () => {
   const m = makeMatch();
   place(m, -400, 400);
-  const qcfRight = [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.LP }];
-  const holdBack = { dir: 6, buttons: 0 };
-  hold(m, 50, N, holdBack);
-  for (let i = 0; i < qcfRight.length; i += 1) {
-    m.step([qcfRight[i], i === qcfRight.length - 1 ? { dir: 4, buttons: BTN.LP } : holdBack]);
-  }
-  hold(m, 90);
+  const qcfRight = [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: BTN.HP }];
+  const qcfLeft = [{ dir: 2 }, { dir: 1 }, { dir: 4, buttons: BTN.LP }];
+  for (let i = 0; i < 3; i += 1) m.step([qcfRight[i], qcfLeft[i]]);
+  hold(m, 120);
   assert.equal(events(m, "special").length, 2);
   assert.ok(m.log.some((e) => e.name === "vfx" && e.payload.type === "clash"));
   assert.equal(events(m, "hit").length, 0);
@@ -231,19 +241,19 @@ test("opposing projectiles cancel each other", () => {
 test("an invincible uppercut beats a meaty attack", () => {
   const m = makeMatch();
   place(m, -50, 50);
-  for (let t = 0; t < 40; t += 1) {
+  for (let t = 0; t < 50; t += 1) {
     const p2 = t === 0 ? { dir: 5, buttons: BTN.HK } : N;
     let p1 = N;
-    if (t === 5) p1 = { dir: 6, buttons: 0 };
-    if (t === 6) p1 = { dir: 2, buttons: 0 };
-    if (t === 7) p1 = { dir: 3, buttons: 0 };
-    if (t === 8) p1 = { dir: 3, buttons: BTN.LP };
+    if (t === 8) p1 = { dir: 6, buttons: 0 };
+    if (t === 9) p1 = { dir: 2, buttons: 0 };
+    if (t === 10) p1 = { dir: 3, buttons: 0 };
+    if (t === 11) p1 = { dir: 3, buttons: BTN.LP };
     m.step([p1, p2]);
   }
   const hits = events(m, "hit");
   assert.ok(hits.length >= 1);
   assert.ok(hits.every((h) => h.attacker === "sam"), "Dario's kick passes through the invincible uppercut");
-  assert.equal(hits[0].moveId, "launch_day");
+  assert.equal(hits[0].moveId, "event_horizon");
 });
 
 test("pushboxes keep fighters apart and corners push the attacker", () => {
@@ -288,17 +298,19 @@ test("specials input during recovery come out on the first actionable frame", ()
   hold(m, 4);
   const sp = events(m, "special");
   assert.equal(sp.length, 1, "buffered special fired");
-  assert.equal(sp[0].moveId, "model_drop");
+  assert.equal(sp[0].moveId, "prompt_burst");
 });
 
-test("charge specials need the full charge", () => {
-  const m = makeMatch({ p1: [makeMatch().point(1).def], p2: [makeMatch().point(0).def] });
-  place(m, -300, 300);
-  play(m, 0, [{ dir: 4, frames: 20 }, { dir: 6, buttons: BTN.LP }, { frames: 20 }]);
-  assert.equal(events(m, "special").length, 0);
-  play(m, 0, [{ dir: 4, frames: RULES.chargeFrames + 4 }, { dir: 6, buttons: BTN.LP }, { frames: 4 }]);
-  assert.equal(events(m, "special").length, 1);
-  assert.equal(events(m, "special")[0].moveId, "constitution_scroll");
+test("special variants follow the button: HP Prompt Burst is faster than LP", () => {
+  const speeds = {};
+  for (const [name, bit] of [["LP", BTN.LP], ["HP", BTN.HP]]) {
+    const m = makeMatch();
+    place(m, -400, 400);
+    play(m, 0, [{ dir: 2 }, { dir: 3 }, { dir: 6, buttons: bit }, { frames: 20 }]);
+    speeds[name] = Math.abs(m.projectiles[0].vx);
+  }
+  assert.equal(speeds.LP, 360);
+  assert.equal(speeds.HP, 600);
 });
 
 test("meter builds from landing and taking hits", () => {
@@ -322,6 +334,7 @@ test("double-tap forward dashes into a run, back double-tap backdashes", () => {
   const x0 = sam.x;
   hold(m, 30, { dir: 6, buttons: 0 });
   assert.ok(Math.abs(sam.x - x0 - sam.def.stats.runSpeed * 0.5) < 1);
+  assert.ok(m.sides[0].runway < RULES.runwayMax, "running drains Runway");
 
   const m2 = makeMatch();
   place(m2, -300, 300);

@@ -49,6 +49,11 @@ export class CpuController {
     this.push([{ dir, frames, buttons }]);
   }
 
+  /** Guard with the block button; `low` crouch-blocks. */
+  guard(frames, low = false) {
+    this.push([{ dir: low ? 2 : 5, frames, buttons: BTN.BLOCK }]);
+  }
+
   press(dir, buttons) {
     this.push([{ dir, buttons, frames: 2 }, { dir: 5, frames: 1 }]);
   }
@@ -118,14 +123,29 @@ export class CpuController {
     }
     this.techChecked = false;
 
+    if (self.state === "blockstun") {
+      const push = !this.guardrailChecked && team.runway >= RULES.guardrailCost && this.chance(p.tech * 0.3);
+      this.guardrailChecked = true;
+      if (push) this.press(5, BTN.HP | BTN.HK);
+      else this.guard(4, seen.level === "low" && this.chance(p.lowRead));
+      return;
+    }
+    this.guardrailChecked = false;
+
     if (self.isStunned) {
-      if (self.combo.hits >= 2 && !team.breakerUsed && meter >= RULES.breakerCost && match.frame - this.lastComboBreakCheck > 20) {
+      if (self.combo.hits >= 2 && !team.breakerUsed && meter >= RULES.breakerCost && team.runway >= RULES.runwayMax && match.frame - this.lastComboBreakCheck > 20) {
         this.lastComboBreakCheck = match.frame;
         if (this.chance(p.breaker)) this.press(6, BTN.BLOCK);
       }
       return;
     }
 
+    if (self.state === "attack" && self.move?.scaled && !self.move.isScaled && self.moveFrame <= 4 && meter >= RULES.scaleUpCost + 50 && !this.scaleChecked) {
+      this.scaleChecked = true;
+      if (this.chance(p.superUse * 0.3)) this.press(5, BTN.BLOCK);
+      return;
+    }
+    if (self.state !== "attack") this.scaleChecked = false;
     if (self.state === "attack" && self.connected && self.move?.cancelInto.length) {
       if (this.chance(p.combo * 0.25)) this.planCancel(self, team, dist);
       return;
@@ -142,7 +162,7 @@ export class CpuController {
     const incoming = match.projectiles.find((pr) => pr.side !== side && Math.sign(self.x - pr.x) === Math.sign(pr.vx) && Math.abs(self.x - pr.x) < 360);
     if (incoming) {
       const r = this.rng.next();
-      if (r < p.block) this.hold(4, 18);
+      if (r < p.block) this.guard(18);
       else if (r < p.block + 0.25 && Math.abs(self.x - incoming.x) > 160) this.hold(9, 6);
       else this.hold(6, 6);
       return;
@@ -156,9 +176,14 @@ export class CpuController {
     }
 
     if (seen.attacking && dist < 230) {
+      const parry = def.specials.find((s) => s.parry);
+      if (parry && seen.level !== "low" && dist < 170 && this.chance(p.punish * 0.25)) {
+        this.doSpecial(self, team, parry);
+        return;
+      }
       if (this.chance(p.block)) {
         const low = seen.level === "low" && this.chance(p.lowRead);
-        this.hold(low ? 1 : 4, this.rng.int(10, 18));
+        this.guard(this.rng.int(10, 18), low);
         return;
       }
     }
@@ -175,7 +200,7 @@ export class CpuController {
     }
 
     const sup = def.super;
-    if (sup && meter >= sup.meterCost && dist < (sup.projectile ? 600 : 220) && this.chance(p.superUse * 0.04)) {
+    if (sup && self.canSuper({ team }, sup) && dist < (sup.projectile ? 600 : 220) && this.chance(p.superUse * 0.04)) {
       this.push(motionSteps(sup.input));
       return;
     }
@@ -207,6 +232,12 @@ export class CpuController {
 
   farGame(match, self, team, dist) {
     const p = this.p;
+    const wall = self.def.specials.find((s) => s.barrier);
+    if (wall && !match.barriers.some((w) => w.ownerUid === self.uid) && this.chance(p.zoning * 0.5)) {
+      this.doSpecial(self, team, wall);
+      this.cooldown = 8;
+      return;
+    }
     const proj = this.projectileSpecial(self);
     if (proj && !match.projectiles.some((pr) => pr.ownerUid === self.uid) && this.chance(p.zoning)) {
       this.doSpecial(self, team, proj);
@@ -273,7 +304,7 @@ export class CpuController {
       return;
     }
     if (r < 0.75) {
-      this.hold(seen.crouching ? 1 : 4, this.rng.int(8, 16));
+      this.guard(this.rng.int(8, 16), seen.crouching);
       return;
     }
     this.push([{ dir: 4, frames: 2 }, { dir: 5, frames: 2 }, { dir: 4, frames: 2 }, { dir: 5, frames: 10 }]);
@@ -298,11 +329,11 @@ export class CpuController {
 
   planCancel(self, team, dist) {
     const sup = self.def.super;
-    if (sup && team.meter >= sup.meterCost && this.chance(this.p.superUse * 0.5)) {
+    if (sup && self.canSuper({ team }, sup) && this.chance(this.p.superUse * 0.5)) {
       this.push(motionSteps(sup.input));
       return;
     }
-    const options = self.def.specials.filter((s) => !s.grab && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
+    const options = self.def.specials.filter((s) => !s.grab && !s.parry && !s.barrier && (!s.motion.charge || this.chargeReady(team, self, s.motion.charge.dir)));
     const sp = options.find((s) => !s.projectile && s.velocity.length) || options[0];
     if (sp) this.doSpecial(self, team, sp);
   }
@@ -321,7 +352,7 @@ export class CpuController {
       this.press(2, BTN.HP);
       return;
     }
-    const rush = self.def.specials.find((s) => !s.projectile && !s.grab && s.velocity.length && s.knockback.y === 0);
+    const rush = self.def.specials.find((s) => !s.projectile && !s.grab && !s.parry && !s.barrier && (s.velocity.length || s.teleport) && s.knockback.y === 0);
     if (rush && (!rush.motion.charge || this.chargeReady(team, self, rush.motion.charge.dir))) {
       this.doSpecial(self, team, rush);
       return;
@@ -334,11 +365,11 @@ export class CpuController {
     if (!partner || partner.ko || partner.onField) return false;
     const share = self.health / self.maxHealth;
     if (team.tagCooldown === 0 && share < 0.35 && partner.health / partner.maxHealth > share + 0.15 && this.chance(this.p.tag * 6)) {
-      this.press(5, BTN.TAG);
+      this.push([{ dir: 5, buttons: BTN.TAG, frames: RULES.tagHoldFrames + 2 }, { dir: 5, frames: 1 }]);
       return true;
     }
-    if (team.assistCooldown === 0 && dist > 160 && dist < 520 && this.chance(this.p.assist * 4)) {
-      this.press(5, BTN.ASSIST);
+    if (team.assistCooldown === 0 && !team.lastStanding && dist > 160 && dist < 520 && this.chance(this.p.assist * 4)) {
+      this.press(this.chance(0.3) ? 4 : 5, BTN.TAG);
       return true;
     }
     return false;

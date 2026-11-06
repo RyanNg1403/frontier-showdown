@@ -34,7 +34,7 @@ test("a KO in a non-deciding round plays the KO, awards the round and starts the
   place(m, -40, 40);
   m.point(1).health = 10;
   tap(m, 0, BTN.LP);
-  hold(m, 4);
+  hold(m, 6);
   assert.equal(events(m, "ko").length, 1);
   assert.equal(m.phase, "ko");
   until(m, () => m.phase === "roundEnd", 300);
@@ -51,7 +51,7 @@ test("deciding round: finish prompt, dazed loser, then the winner's finisher", (
   place(m, -40, 40);
   m.point(1).health = 10;
   tap(m, 0, BTN.LP);
-  hold(m, 4);
+  hold(m, 6);
   assert.equal(m.phase, "finish");
   assert.equal(events(m, "finish")[0].side, 0);
   const loser = m.point(1);
@@ -59,10 +59,11 @@ test("deciding round: finish prompt, dazed loser, then the winner's finisher", (
   assert.equal(loser.state, "dazed");
   place(m, -60, 60);
   hold(m, 2);
-  play(m, 0, [{ dir: 6 }, { dir: 5 }, { dir: 4 }, { dir: 5 }, { dir: 6, buttons: BTN.HP }, { frames: 2 }]);
+  play(m, 0, [{ dir: 6 }, { dir: 5 }, { dir: 2 }, { dir: 5 }, { dir: 6, buttons: BTN.HP }, { frames: 2 }]);
   assert.equal(m.phase, "finisher");
+  assert.ok(events(m, "announce").some((a) => a.text === "FINAL COMMIT!"));
   const fin = events(m, "finisher")[0];
-  assert.equal(fin.id, "ship_it");
+  assert.equal(fin.id, "gentle_singularity");
   assert.equal(fin.victim, "dario");
   until(m, () => m.phase === "matchEnd", 600);
   assert.equal(events(m, "roundEnd")[0].reason, "finisher");
@@ -86,7 +87,7 @@ test("finish phase times out into a normal KO, and hitting the dazed loser also 
   until(m2, () => m2.point(0).state === "dazed", 120);
   place(m2, -40, 40);
   tap(m2, 1, BTN.HP);
-  hold(m2, 12);
+  hold(m2, 14);
   assert.equal(m2.point(0).state, "ko");
   until(m2, () => m2.phase === "matchEnd", 600);
   assert.equal(m2.winner, 1);
@@ -130,6 +131,8 @@ test("snapshot exposes the contract fields", () => {
   for (const k of ["side", "control", "wins", "meter", "meterMax", "bars", "breakerUsed", "tagCooldown", "assistCooldown", "combo", "active", "members"]) {
     assert.ok(k in side, k);
   }
-  assert.deepEqual(Object.keys(side.members[0]).sort(), ["health", "id", "ko", "maxHealth", "name", "onField", "red"]);
+  assert.deepEqual(Object.keys(side.members[0]).sort(), ["aslLevel", "health", "id", "ko", "maxHealth", "name", "onField", "red"]);
+  for (const k of ["runway", "runwayMax", "lastCheckpoint", "lastStanding"]) assert.ok(k in side, k);
+  assert.ok(Array.isArray(s.barriers));
   assert.equal(s.fighters.length, 2);
 });

@@ -2,7 +2,7 @@ import { BTN, DT, PHYS, RULES } from "./constants.js";
 import { Fighter } from "./fighter.js";
 import { InputBuffer, NEUTRAL_INPUT, isBack, matchMotion } from "./input.js";
 import { anyOverlap, intersectionCenter, overlaps, resolvePush, toWorld } from "./boxes.js";
-import { addMeter, applyDamage, guardBlocks, meterOnBlock, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
+import { addMeter, applyDamage, guardBlocks, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
 import { createRng } from "./rng.js";
 
 const START_X = 230;
@@ -19,9 +19,11 @@ export class Match {
    * @param {Map<string, object>} [opts.atlases]
    * @param {{left:number, right:number}} [opts.bounds]
    */
-  constructor({ mode = "1v1", sides, atlases = new Map(), bounds, roundsToWin = RULES.roundsToWin, timer = RULES.roundSeconds, stage = "default", emit = () => {}, seed = 7, skipIntro = false } = {}) {
+  constructor({ mode = "1v1", sides, atlases = new Map(), bounds, roundsToWin = RULES.roundsToWin, timer = null, stage = "default", emit = () => {}, seed = 7, skipIntro = false, backBlocks = false } = {}) {
     this.mode = mode;
     this.tagMode = mode === "2v2";
+    this.backBlocks = backBlocks;
+    timer = timer ?? (this.tagMode ? RULES.tagRoundSeconds : RULES.roundSeconds);
     this.stage = stage;
     this.bounds = { left: bounds?.left ?? PHYS.stageLeft, right: bounds?.right ?? PHYS.stageRight };
     this.roundsToWin = roundsToWin;
@@ -38,7 +40,14 @@ export class Match {
       active: 0,
       wins: 0,
       meter: 0,
+      runway: RULES.runwayMax,
+      runwaySpentFrame: -9999,
       breakerUsed: false,
+      lastCheckpointUsed: false,
+      lastStanding: false,
+      tagHold: 0,
+      tagHoldBack: false,
+      tagHandled: false,
       tagCooldown: 0,
       assistCooldown: 0,
       forcedTagIn: 0,
@@ -46,6 +55,8 @@ export class Match {
       assist: null,
     }));
     this.projectiles = [];
+    this.barriers = [];
+    this.nextBarrierId = 1;
     this.frame = 0;
     this.round = 0;
     this.phase = "intro";
@@ -115,12 +126,17 @@ export class Match {
   startRound() {
     this.round += 1;
     this.projectiles = [];
+    this.barriers = [];
     this.timerFrames = this.roundSeconds * 60;
     this.roundWinner = null;
     this.finishSide = null;
     for (const s of this.sides) {
       s.active = 0;
       s.breakerUsed = false;
+      s.lastStanding = false;
+      s.runway = RULES.runwayMax;
+      s.runwaySpentFrame = -9999;
+      s.tagHold = 0;
       s.tagCooldown = 0;
       s.assistCooldown = 0;
       s.forcedTagIn = 0;
@@ -197,7 +213,9 @@ export class Match {
     const anyHitstop = this.fighters.some((f) => f.hitstop > 0);
     for (const f of [...this.fighters]) f.update(this.envFor(f));
     this.updateAssists();
+    this.updateRunway();
     this.updateProjectiles();
+    this.updateBarriers();
     this.resolvePushboxes();
     this.resolveThrows();
     this.resolveHits();
@@ -246,7 +264,7 @@ export class Match {
             break;
           }
         }
-        if (this.phaseFrame >= 330) {
+        if (this.phaseFrame >= RULES.finishWindow + 30) {
           if (loser.state !== "ko") this.koFighter(loser, winner);
           this.setPhase("ko");
           this.phaseFrame = 90;
@@ -308,6 +326,8 @@ export class Match {
         threat: (self) => this.threatNear(self),
         benched: (fighter) => this.bench(fighter),
         endAssist: (fighter) => this.endAssist(fighter),
+        spawnBarrier: (owner, move) => this.spawnBarrier(owner, move),
+        guardrail: (defender) => this.guardrail(defender),
       };
       this.envs.set(f.uid, env);
     }
@@ -317,6 +337,9 @@ export class Match {
     env.opponent = this.point(1 - f.side);
     env.input = isPoint ? s.input : null;
     env.canAct = isPoint ? this.canAct(f.side) : f.assistMode;
+    env.frame = this.frame;
+    env.bounds = this.bounds;
+    env.backBlocks = this.backBlocks;
     return env;
   }
 
@@ -338,29 +361,35 @@ export class Match {
 
   spawnProjectile(owner, move) {
     const p = move.projectile;
-    const proj = {
-      id: this.nextProjectileId++,
-      ownerUid: owner.uid,
-      ownerId: owner.id,
-      owner,
-      side: owner.side,
-      category: move.category,
-      moveId: move.id,
-      def: p,
-      x: owner.x + owner.facing * p.offset.x,
-      y: owner.y + p.offset.y,
-      vx: owner.facing * p.speed,
-      facing: owner.facing,
-      age: 0,
-      hits: 0,
-      durability: p.durability,
-      lastHit: new Map(),
-      vfx: p.vfx,
-      palette: owner.def.palette,
-      dead: false,
-    };
-    this.projectiles.push(proj);
-    return proj;
+    const out = [];
+    for (const vy of p.spread) {
+      const proj = {
+        id: this.nextProjectileId++,
+        ownerUid: owner.uid,
+        ownerId: owner.id,
+        owner,
+        side: owner.side,
+        category: move.category,
+        moveId: move.id,
+        def: p,
+        x: owner.x + owner.facing * p.offset.x,
+        y: owner.y + p.offset.y,
+        vx: owner.facing * p.speed,
+        vy,
+        facing: owner.facing,
+        age: 0,
+        hits: 0,
+        durability: p.durability,
+        damageMul: owner.damageMul,
+        lastHit: new Map(),
+        vfx: p.vfx,
+        palette: owner.def.palette,
+        dead: false,
+      };
+      this.projectiles.push(proj);
+      out.push(proj);
+    }
+    return out;
   }
 
   projectileBox(p) {
@@ -373,11 +402,14 @@ export class Match {
         p.hitstop -= 1;
         continue;
       }
+      if (p.def.gravity) p.vy += p.def.gravity * DT;
       p.x += p.vx * DT;
+      p.y += p.vy * DT;
       p.age += 1;
-      if (p.age > p.def.lifetime || p.x < this.bounds.left - 200 || p.x > this.bounds.right + 200) {
+      const grounded = p.def.gravity && p.y > -8;
+      if (grounded || p.age > p.def.lifetime || p.x < this.bounds.left - 200 || p.x > this.bounds.right + 200) {
         p.dead = true;
-        this.vfx("projectile_fizzle", p.x, p.y, { facing: p.facing, side: p.side, vfx: p.vfx });
+        this.vfx("projectile_fizzle", p.x, Math.min(p.y, -8), { facing: p.facing, side: p.side, vfx: p.vfx });
       }
     }
     for (let i = 0; i < this.projectiles.length; i += 1) {
@@ -398,7 +430,87 @@ export class Match {
         this.vfx("clash", c.x, c.y, { facing: a.facing, side: a.side });
       }
     }
+    for (const p of this.projectiles) {
+      if (p.dead) continue;
+      const box = this.projectileBox(p);
+      for (const w of this.barriers) {
+        if (w.side === p.side || w.dead || !overlaps(box, this.barrierBox(w))) continue;
+        p.dead = true;
+        w.projectiles -= 1;
+        this.vfx("projectile_hit", p.x, p.y, { facing: p.facing, side: p.side, vfx: p.vfx });
+        if (w.projectiles <= 0) this.breakBarrier(w);
+        break;
+      }
+    }
     this.projectiles = this.projectiles.filter((p) => !p.dead);
+  }
+
+  // ------------------------------------------------------------------ barriers
+
+  spawnBarrier(owner, move) {
+    const b = move.barrier;
+    this.barriers = this.barriers.filter((w) => w.ownerUid !== owner.uid);
+    const w = {
+      id: this.nextBarrierId++,
+      ownerUid: owner.uid,
+      ownerId: owner.id,
+      side: owner.side,
+      facing: owner.facing,
+      x: Math.max(this.bounds.left, Math.min(this.bounds.right, owner.x + owner.facing * b.offset)),
+      w: b.width,
+      h: b.height,
+      life: b.lifetime,
+      maxLife: b.lifetime,
+      strikes: b.strikes,
+      projectiles: b.projectiles,
+      palette: owner.def.palette,
+      labId: owner.def.labId,
+      vfx: b.vfx,
+      hitBy: new Set(),
+      dead: false,
+    };
+    this.barriers.push(w);
+    this.emit("barrier", { fighter: owner.id, side: owner.side, x: w.x });
+    this.vfx(b.vfx, w.x, -w.h / 2, { facing: owner.facing, side: owner.side, height: w.h });
+    if (b.pulse) {
+      const box = this.barrierBox(w);
+      for (const d of this.fighters) {
+        if (d.side === owner.side || d.invulnTo("strike")) continue;
+        const pair = anyOverlap([{ x: box.x - 30, y: box.y, w: box.w + 60, h: box.h }], d.hurtboxes());
+        if (!pair) continue;
+        const props = { id: `${move.id}_pulse`, kind: "special", category: "special", damage: b.pulse.damage, chip: 4, hitstun: 18, blockstun: 14, hitstop: 8, knockback: b.pulse.knockback, level: "mid", knockdown: false, meterGain: 4, juggle: 1 };
+        this.applyContact(owner, d, props, intersectionCenter(pair[0], pair[1]), { projectile: { x: w.x, vx: 0 }, dir: owner.facing });
+      }
+    }
+    return w;
+  }
+
+  barrierBox(w) {
+    return { x: w.x - w.w / 2, y: -w.h, w: w.w, h: w.h };
+  }
+
+  breakBarrier(w) {
+    w.dead = true;
+    this.vfx("barrier_break", w.x, -w.h / 2, { facing: w.facing, side: w.side });
+  }
+
+  updateBarriers() {
+    for (const w of this.barriers) {
+      w.life -= 1;
+      if (w.life <= 0 && !w.dead) this.breakBarrier(w);
+    }
+    this.barriers = this.barriers.filter((w) => !w.dead);
+  }
+
+  // ------------------------------------------------------------------ runway
+
+  updateRunway() {
+    for (const s of this.sides) {
+      const p = s.members[s.active];
+      const busy = p.state === "run" || p.state === "block" || p.state === "crouch_block" || p.state === "blockstun";
+      if (busy || this.frame - s.runwaySpentFrame < RULES.runwayDelay) continue;
+      s.runway = Math.min(RULES.runwayMax, s.runway + RULES.runwayRegen * DT);
+    }
   }
 
   // ------------------------------------------------------------------ space
@@ -517,6 +629,7 @@ export class Match {
       const idx = a.activeHitIndex();
       if (idx < 0 || a.hitstop > 0) continue;
       const boxes = a.hitboxes();
+      if (this.strikeBarrier(a, idx, boxes)) continue;
       for (const d of fighters) {
         if (d.side === a.side || d.invulnTo("strike")) continue;
         const log = a.hitLog.get(d.uid);
@@ -540,8 +653,28 @@ export class Match {
     }
     for (const h of hits) {
       if (h.p) this.applyProjectileHit(h.p, h.d, h.at);
-      else this.applyStrike(h.a, h.d, h.move, h.idx, h.at);
+      else if (h.a.parriedFrame !== this.frame) this.applyStrike(h.a, h.d, h.move, h.idx, h.at);
     }
+  }
+
+  /** An enemy barrier in the way soaks the strike. Returns true when absorbed. */
+  strikeBarrier(a, idx, boxes) {
+    for (const w of this.barriers) {
+      if (w.side === a.side || w.dead) continue;
+      const key = `${a.uid}:${a.move.id}:${a.moveFrame - idx}:${idx}`;
+      if (w.hitBy.has(key)) continue;
+      const box = this.barrierBox(w);
+      if (!boxes.some((b) => overlaps(b, box))) continue;
+      w.hitBy.add(key);
+      w.strikes -= 1;
+      for (const d of this.allFighters) if (d.side !== a.side) a.hitLog.set(d.uid, idx);
+      a.connected = true;
+      a.hitstop = 7;
+      this.vfx("block", w.x, -120, { facing: a.facing, side: w.side, chip: 0 });
+      if (w.strikes <= 0) this.breakBarrier(w);
+      return true;
+    }
+    return false;
   }
 
   applyProjectileHit(p, d, at) {
@@ -553,7 +686,7 @@ export class Match {
       id: p.moveId,
       kind: p.category === "super" ? "super" : "projectile",
       category: p.category,
-      damage: p.def.damage,
+      damage: p.def.damage * (p.damageMul ?? 1),
       chip: p.def.chip,
       hitstun: p.def.hitstun,
       blockstun: p.def.blockstun,
@@ -562,10 +695,10 @@ export class Match {
       level: p.def.level,
       knockdown: isLast && p.def.knockdown,
       meterGain: p.def.meterGain,
-      juggle: 1,
+      juggle: 2,
+      special: p.category === "special",
     };
-    const owner = p.owner;
-    this.applyContact(owner, d, props, at, { projectile: p, dir: p.facing });
+    this.applyContact(p.owner, d, props, at, { projectile: p, dir: p.facing });
     if (isLast) {
       p.dead = true;
       this.vfx("projectile_hit", at.x, at.y, { facing: p.facing, side: p.side, vfx: p.vfx });
@@ -582,7 +715,7 @@ export class Match {
       id: move.id,
       kind: move.kind,
       category: move.category,
-      damage: move.damage,
+      damage: move.damage * (a.damageMul ?? 1),
       chip: move.chip,
       hitstun: move.hitstun,
       blockstun: move.blockstun,
@@ -591,10 +724,18 @@ export class Match {
       level: move.level,
       knockdown: over?.knockdown ?? (isLast && move.knockdown),
       meterGain: move.meterGain,
-      juggle: move.juggle,
+      juggle: idx === 0 ? move.juggle : 0,
+      special: move.category === "special",
     };
     const dir = d.x === a.x ? a.facing : Math.sign(d.x - a.x);
     this.applyContact(a, d, props, at, { dir });
+  }
+
+  /** Damage multiplier from passives and team state for an attacker. */
+  attackMultiplier(a) {
+    let mul = a.passiveDef?.damageMul?.(a) ?? 1;
+    if (this.sides[a.side].lastStanding) mul *= RULES.lastStandingDamage;
+    return mul;
   }
 
   /** Shared hit/block logic for strikes and projectiles. */
@@ -602,40 +743,51 @@ export class Match {
     const as = this.sides[a.side];
     const ds = this.sides[d.side];
     const dEnv = this.envFor(d);
-    const fromX = projectile ? projectile.x - projectile.vx : a.x;
+    const fromX = projectile ? projectile.x - projectile.vx * DT * 4 : a.x;
     const payloadBase = { attacker: a.id, defender: d.id, side: a.side, moveId: props.id, x: at.x, y: at.y };
+    const meterMul = as.lastStanding ? RULES.lastStandingMeter : 1;
 
     if (d.state === "dazed" || (d.dazedPending && d.health <= 0)) {
       this.koFighter(d, a, dir);
       this.setPhase("ko");
       this.phaseFrame = 60;
-      a.connected = projectile ? a.connected : true;
-      this.emit("hit", { ...payloadBase, kind: props.kind, damage: 0, combo: d.combo.hits + 1, comboDamage: d.combo.damage, counter: false, level: props.level });
+      if (!projectile) a.connected = true;
+      this.emit("hit", { ...payloadBase, kind: props.kind, damage: 0, combo: d.combo.hits + 1, comboDamage: d.combo.damage, counter: false, punish: false, level: props.level });
       this.vfx(`hit_${props.kind === "light" ? "light" : "heavy"}`, at.x, at.y, { facing: dir, side: a.side, damage: 0, palette: a.def.palette });
+      return;
+    }
+
+    const airAttack = !projectile && a.airborne;
+    const level = airAttack && props.level !== "low" ? "overhead" : props.level;
+
+    if (!projectile && d.inParry && d.move.parry.levels.includes(level) && a.canFight) {
+      this.parry(a, d, at);
       return;
     }
 
     if (d.hasArmor()) {
       d.armorHits += 1;
-      const dealt = applyDamage(d, Math.round(props.damage * 0.5), { redRatio: this.tagMode ? RULES.redRatio : 0 });
+      const dealt = applyDamage(d, Math.round(props.damage * 0.5), { redRatio: this.tagMode ? RULES.redRatio : 0, floor: 1 });
       d.hitstop = 6;
       if (!projectile) {
         a.hitstop = 6;
         a.connected = true;
       }
-      this.emit("hit", { ...payloadBase, kind: props.kind, damage: dealt, combo: 0, comboDamage: 0, counter: false, level: props.level, armor: true });
-      this.vfx("block", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
+      this.emit("hit", { ...payloadBase, kind: props.kind, damage: dealt, combo: 0, comboDamage: 0, counter: false, punish: false, level, armor: true });
+      this.vfx("armor", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
       return;
     }
 
     const guard = d.assistMode ? null : d.guardAgainst(fromX, dEnv);
-    const airAttack = !projectile && a.airborne;
-    const level = airAttack && props.level !== "low" ? "overhead" : props.level;
     if (guard && guardBlocks(level, guard === "low")) {
-      const chip = props.chip || 0;
-      const dealt = chip > 0 ? applyDamage(d, chip, { redRatio: 0, floor: this.chipFloor(d) }) : 0;
+      const window = d.passiveDef?.alignmentWindow?.(d) ?? RULES.alignmentWindow;
+      const aligned = Boolean(dEnv.input?.pressedWithin(BTN.BLOCK, window + 1)) && d.state !== "blockstun";
+      const chipMul = d.passiveDef?.chipTakenMul?.(d) ?? 1;
+      const chip = aligned ? 0 : Math.round((props.chip || 0) * chipMul);
+      const floor = props.category === "super" ? 0 : 1;
+      const dealt = chip > 0 ? applyDamage(d, chip, { redRatio: 0, floor: Math.min(floor, d.health) }) : 0;
       d.setState("blockstun", { keepAnim: true });
-      d.stun = props.blockstun;
+      d.stun = Math.max(1, props.blockstun - (aligned ? RULES.alignmentBlockstunCut : 0));
       d.stunAnim = guard === "low" ? "crouch_block" : "block";
       d.setAnim(d.stunAnim, false);
       d.facing = fromX >= d.x ? 1 : -1;
@@ -647,11 +799,11 @@ export class Match {
         a.connected = true;
         if (this.atWall(d) && !a.airborne) a.vx = -a.facing * props.knockback.x * 0.7;
       }
-      const m = meterOnBlock(props);
-      addMeter(as, m.attacker);
-      addMeter(ds, m.defender);
-      this.emit("block", { ...payloadBase, chip: dealt });
-      this.vfx("block", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
+      addMeter(as, RULES.blockMeterAttacker * meterMul);
+      addMeter(ds, RULES.blockMeterDefender + (aligned ? RULES.alignmentMeter : 0));
+      this.emit("block", { ...payloadBase, chip: dealt, aligned });
+      this.vfx(aligned ? "alignment_block" : "block", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
+      if (aligned) this.emit("alignmentBlock", { fighter: d.id, side: d.side });
       return;
     }
 
@@ -659,53 +811,95 @@ export class Match {
     if (freshCombo) d.combo = { hits: 0, damage: 0 };
     d.combo.hits += 1;
     const counter = freshCombo && d.isAttacking;
-    const damage = scaledDamage(props.damage, d.combo.hits, { isSuper: props.category === "super", counter });
-    const dealt = applyDamage(d, damage, { redRatio: this.tagMode ? RULES.redRatio : 0, floor: d.assistMode ? 1 : 0 });
+    const punish = freshCombo && !counter && d.isRecovering;
+    const isSuper = props.category === "super";
+    let damage = scaledDamage(props.damage * this.attackMultiplier(a), d.combo.hits, { isSuper, counter });
+    if (punish && d.combo.hits === 1) damage = Math.round(damage * RULES.punishBonus);
+    if (d.assistMode) damage = Math.round(damage * RULES.assistDamageTaken);
+    const dealt = d.assistMode
+      ? applyDamage(d, damage, { redRatio: 1, floor: 1 })
+      : applyDamage(d, damage, { redRatio: this.tagMode ? RULES.redRatio : 0, replaceRed: this.tagMode });
     d.combo.damage += dealt;
+    if (props.special && !projectile?.owner?.assistMode && !a.assistMode) a.passiveDef?.onSpecialHit?.(a, props.id);
     const meter = meterOnHit(props, dealt);
-    addMeter(as, props.category === "super" ? 0 : meter.attacker);
+    addMeter(as, isSuper ? 0 : meter.attacker * meterMul);
     addMeter(ds, meter.defender);
-    const stop = props.hitstop + (counter ? 3 : 0);
+    const stop = props.hitstop + (counter || punish ? 3 : 0);
     d.hitstop = stop;
     d.shake = stop;
     if (!projectile) {
       a.hitstop = stop;
       a.connected = true;
     }
-    if (props.category === "super" || props.kind === "heavy" || counter) this.shakeFrames = Math.max(this.shakeFrames, props.category === "super" ? 8 : 4);
+    if (isSuper || props.kind === "heavy" || counter || punish) this.shakeFrames = Math.max(this.shakeFrames, isSuper ? 8 : 4);
 
     const wasCrouching = d.crouching;
     const wasAirborne = d.airborne || d.state === "juggle";
     if (d.assistMode) {
       d.hitstop = 0;
+      d.regenPause = RULES.redRegenPause;
       this.sendAssistHome(d);
     } else {
       const launch = props.knockback.y > 0 || wasAirborne || props.knockdown;
       if (launch) {
         d.juggleCount += props.juggle;
+        if (wasAirborne) d.juggleHits += 1;
         if (wasAirborne && d.juggleCount > RULES.maxJuggle) d.juggleLocked = true;
         d.setState("juggle", { keepAnim: true });
         d.setAnim("knockdown", !wasAirborne);
         const w = Math.sqrt(d.def.stats.weight || 1);
         const lift = props.knockback.y > 0 ? props.knockback.y : wasAirborne ? 520 : 320;
         d.vy = -lift / w;
-        d.vx = dir * Math.max(90, props.knockback.x * 0.55);
+        d.vx = dir * Math.max(90, props.knockback.x * 0.55) / w;
         d.y = Math.min(d.y, -2);
       } else {
         d.setState("hitstun", { keepAnim: true });
-        d.stun = props.hitstun + (counter ? RULES.counterHitstun : 0);
+        d.stun = props.hitstun + (counter ? RULES.counterHitstun : 0) + (punish ? RULES.punishHitstun : 0);
         d.stunAnim = wasCrouching || level === "low" ? "hit_low" : "hit_high";
         d.setAnim(d.stunAnim, true);
-        d.vx = dir * props.knockback.x;
+        d.vx = dir * props.knockback.x / Math.sqrt(d.def.stats.weight || 1);
         if (!projectile && this.atWall(d) && !a.airborne) a.vx = -a.facing * props.knockback.x * 0.75;
       }
       if (!d.airborne || d.state === "hitstun") d.facing = -dir;
     }
 
-    this.emit("hit", { ...payloadBase, kind: props.kind, damage: dealt, combo: d.combo.hits, comboDamage: d.combo.damage, counter, level });
-    const type = props.category === "super" ? "hit_super" : props.category === "special" || props.kind === "projectile" ? "hit_special" : props.kind === "light" ? "hit_light" : "hit_heavy";
-    this.vfx(type, at.x, at.y, { facing: dir, side: a.side, damage: dealt, counter, level, combo: d.combo.hits, palette: a.def.palette });
-    if (counter) this.vfx("counter", at.x, at.y - 30, { facing: dir, side: a.side });
+    this.emit("hit", { ...payloadBase, kind: props.kind, damage: dealt, combo: d.combo.hits, comboDamage: d.combo.damage, counter, punish, level });
+    const type = isSuper ? "hit_super" : props.category === "special" || props.kind === "projectile" ? "hit_special" : props.kind === "light" ? "hit_light" : "hit_heavy";
+    this.vfx(type, at.x, at.y, { facing: dir, side: a.side, damage: dealt, counter, punish, level, combo: d.combo.hits, palette: a.def.palette });
+    if (counter || punish) this.vfx("counter", at.x, at.y - 30, { facing: dir, side: a.side, punish });
+  }
+
+  parry(a, d, at) {
+    const p = d.move.parry;
+    d.aslLevel = Math.min(p.maxLevel, d.aslLevel + 1);
+    a.parriedFrame = this.frame;
+    a.pendingMove = null;
+    a.setState("hitstun", { keepAnim: true });
+    a.stun = p.lock;
+    a.stunAnim = "hit_high";
+    a.setAnim("hit_high", true);
+    a.vx = 0;
+    a.combo = { hits: 0, damage: 0 };
+    d.faceToward(a);
+    d.startMove(p.counter, this.envFor(d));
+    d.damageMul = 1 + p.levelBonus * d.aslLevel;
+    a.hitstop = 10;
+    d.hitstop = 10;
+    this.emit("parry", { fighter: d.id, side: d.side, attacker: a.id, level: d.aslLevel });
+    this.vfx("parry", at.x, at.y, { facing: d.facing, side: d.side, level: d.aslLevel });
+  }
+
+  guardrail(defender) {
+    const attacker = this.point(1 - defender.side);
+    const dir = Math.sign(attacker.x - defender.x) || -defender.facing;
+    if (attacker.canFight && !attacker.airborne) {
+      attacker.vx = dir * RULES.guardrailPush;
+      if (attacker.state === "attack") attacker.pendingMove = null;
+    }
+    defender.stun = Math.min(defender.stun, 2);
+    defender.vx = -dir * 60;
+    this.emit("guardrail", { fighter: defender.id, side: defender.side });
+    this.vfx("guardrail", defender.x + dir * 40, defender.y - 110, { facing: dir, side: defender.side });
   }
 
   chipFloor(d) {
@@ -742,6 +936,8 @@ export class Match {
       if (partnerAlive) {
         this.koFighter(f, this.point(1 - f.side));
         s.forcedTagIn = 70;
+        s.lastStanding = true;
+        this.emit("lastStanding", { side: f.side, fighter: s.members.find((m) => m !== f).id });
       } else {
         defeated[f.side] = true;
       }
@@ -765,7 +961,7 @@ export class Match {
       this.finishSide = winnerSide;
       this.projectiles = [];
       this.setPhase("finish");
-      this.say(this.tagMode ? "FINISH THEM!" : "FINISH IT!", `${this.point(winnerSide).def.finisher.input}`, 150);
+      this.say("FINAL COMMIT!", `${this.point(winnerSide).def.finisher.input}`, 150);
       this.emit("finish", { side: winnerSide, fighter: this.point(winnerSide).id });
     } else {
       this.koFighter(loser, this.point(winnerSide));
@@ -834,6 +1030,8 @@ export class Match {
     const s = this.sides[victim.side];
     if (s.breakerUsed || s.meter < RULES.breakerCost) return;
     s.meter -= RULES.breakerCost;
+    s.runway = 0;
+    s.runwaySpentFrame = this.frame;
     s.breakerUsed = true;
     s.input.consume();
     victim.combo = { hits: 0, damage: 0 };
@@ -866,9 +1064,10 @@ export class Match {
   updateTeams() {
     for (const s of this.sides) {
       if (s.tagCooldown > 0) s.tagCooldown -= 1;
-      if (s.assistCooldown > 0) s.assistCooldown -= 1;
+      if (s.assistCooldown > 0 && !s.assist) s.assistCooldown -= 1;
       for (const m of s.members) {
-        if (!m.onField && !m.ko) regenRed(m, DT);
+        if (m.regenPause > 0) m.regenPause -= 1;
+        else if (!m.onField && !m.ko) regenRed(m, DT);
       }
       if (!this.tagMode) continue;
       if (s.forcedTagIn > 0) {
@@ -876,24 +1075,58 @@ export class Match {
         if (s.forcedTagIn === 0) this.forceTag(s);
         continue;
       }
-      if (this.phase !== "fight") continue;
-      const point = s.members[s.active];
-      const partner = s.members[1 - s.active];
-      if (!partner || partner.ko || partner.health <= 0) continue;
-      const b = s.input;
-      if (b.pressedNow(BTN.TAG) && s.tagCooldown === 0 && !partner.onField) {
-        const cancel = point.state === "attack" && point.connected && s.meter >= RULES.tagCancelCost;
-        if (point.isNeutral || point.state === "run" || cancel) {
-          if (cancel && !point.isNeutral) s.meter -= RULES.tagCancelCost;
-          b.consume();
-          this.tag(s, false);
-          continue;
-        }
+      if (this.phase !== "fight") {
+        s.tagHold = 0;
+        continue;
       }
-      if (b.pressedNow(BTN.ASSIST) && s.assistCooldown === 0 && !partner.onField && point.canFight) {
-        b.consume();
-        this.callAssist(s);
+      this.tagInput(s);
+    }
+  }
+
+  partnerReady(s) {
+    const partner = s.members[1 - s.active];
+    return Boolean(partner && !partner.ko && partner.health > 0 && !partner.onField);
+  }
+
+  /** TAG tap = assist (B+TAG = assist B), TAG held 10 f = hand-off, TAG+BLK in blockstun = Swap Guard. */
+  tagInput(s) {
+    const b = s.input;
+    const point = s.members[s.active];
+    const ready = this.partnerReady(s);
+    const canAssist = ready && s.assistCooldown === 0 && !s.lastStanding && point.canFight;
+    if (b.pressedNow(BTN.ASSIST) && canAssist) {
+      this.callAssist(s, isBack(b.dir(point.facing)) ? "b" : "a");
+      return;
+    }
+    if (b.pressedNow(BTN.TAG)) {
+      s.tagHold = 1;
+      s.tagHoldBack = isBack(b.dir(point.facing));
+      s.tagHandled = false;
+      if (point.state === "blockstun" && b.held(BTN.BLOCK) && ready && !s.lastStanding && s.meter >= RULES.swapGuardCost && s.runway >= RULES.swapGuardRunway) {
+        s.meter -= RULES.swapGuardCost;
+        s.runway -= RULES.swapGuardRunway;
+        s.runwaySpentFrame = this.frame;
+        s.tagHandled = true;
+        this.tag(s, false, { swapGuard: true });
+      } else if (point.state === "attack" && point.move?.category === "special" && point.connected && ready && s.meter >= RULES.handoffCancelCost) {
+        s.meter -= RULES.handoffCancelCost;
+        s.tagHandled = true;
+        this.tag(s, false, { cancel: true });
       }
+      return;
+    }
+    if (s.tagHold > 0 && b.held(BTN.TAG)) {
+      s.tagHold += 1;
+      const free = point.isNeutral || point.state === "run";
+      if (!s.tagHandled && s.tagHold >= RULES.tagHoldFrames && free && ready && s.tagCooldown === 0) {
+        s.tagHandled = true;
+        this.tag(s, false);
+      }
+      return;
+    }
+    if (s.tagHold > 0) {
+      if (!s.tagHandled && s.tagHold < RULES.tagHoldFrames && canAssist) this.callAssist(s, s.tagHoldBack ? "b" : "a");
+      s.tagHold = 0;
     }
   }
 
@@ -903,7 +1136,7 @@ export class Match {
     return behindOf.x + away * 700;
   }
 
-  tag(s, forced) {
+  tag(s, forced, { swapGuard = false, cancel = false } = {}) {
     const out = s.members[s.active];
     const incoming = s.members[1 - s.active];
     const enemy = this.point(1 - s.side);
@@ -912,17 +1145,19 @@ export class Match {
     s.active = 1 - s.active;
     s.tagCooldown = RULES.tagCooldown;
     if (!out.ko) {
+      out.pendingMove = null;
       out.script = { fromX: out.x, toX: fromX, frames: 22, arc: 60 };
       out.setState("tag_out");
     }
     const { health, red } = incoming;
     incoming.reset(fromX, enemy.x >= toX ? 1 : -1);
     incoming.health = health;
-    incoming.red = red;
+    incoming.red = swapGuard ? red / 2 : red;
     incoming.onField = true;
-    incoming.script = { fromX, toX, frames: 26, arc: 170 };
+    incoming.script = { fromX, toX, frames: cancel ? 14 : swapGuard ? 18 : 24, arc: 170 };
+    incoming.entryMove = swapGuard ? incoming.def.moves.get(incoming.def.assists.a) : null;
     incoming.setState("tag_in");
-    this.emit("tag", { side: s.side, out: out.id, in: incoming.id, forced });
+    this.emit("tag", { side: s.side, out: out.id, in: incoming.id, forced, swapGuard, cancel });
     this.vfx("tag_flash", toX, -120, { facing: incoming.facing, side: s.side, characterId: incoming.id });
   }
 
@@ -935,24 +1170,24 @@ export class Match {
     this.tag(s, true);
   }
 
-  callAssist(s) {
+  callAssist(s, which = "a") {
     const point = s.members[s.active];
     const partner = s.members[1 - s.active];
     const enemy = this.point(1 - s.side);
     const facing = enemy.x >= point.x ? 1 : -1;
     const fromX = this.offscreenX(s, point);
-    const health = partner.health;
-    const red = partner.red;
+    const { health, red } = partner;
     partner.reset(fromX, facing);
     partner.health = health;
     partner.red = red;
     partner.assistMode = true;
+    partner.assistMove = partner.def.assists[which] || partner.def.assists.a;
     partner.onField = true;
     partner.script = { fromX, toX: point.x - facing * 70, frames: 20, arc: 130 };
     partner.setState("assist_in");
     s.assist = partner;
     s.assistCooldown = RULES.assistCooldown;
-    this.emit("assist", { side: s.side, fighter: partner.id });
+    this.emit("assist", { side: s.side, fighter: partner.id, assist: which, moveId: partner.assistMove });
     this.vfx("assist_flash", point.x - facing * 70, -120, { facing, side: s.side, characterId: partner.id });
   }
 
@@ -987,7 +1222,10 @@ export class Match {
     f.assistMode = false;
     f.script = null;
     f.setState("bench");
-    if (s.assist === f) s.assist = null;
+    if (s.assist === f) {
+      s.assist = null;
+      s.assistCooldown = RULES.assistCooldown;
+    }
   }
 
   updateCombos() {
@@ -1021,7 +1259,11 @@ export class Match {
           meter: s.meter,
           meterMax: RULES.meterMax,
           bars: Math.floor(s.meter / RULES.meterBar),
+          runway: Math.round(s.runway),
+          runwayMax: RULES.runwayMax,
           breakerUsed: s.breakerUsed,
+          lastCheckpoint: !s.lastCheckpointUsed,
+          lastStanding: s.lastStanding,
           tagCooldown: s.tagCooldown,
           assistCooldown: s.assistCooldown,
           combo: { hits: enemy.combo.hits, damage: Math.round(enemy.combo.damage) },
@@ -1034,6 +1276,7 @@ export class Match {
             red: Math.round(m.red),
             ko: m.ko,
             onField: m.onField,
+            aslLevel: m.aslLevel,
           })),
         };
       }),
@@ -1050,7 +1293,11 @@ export class Match {
         airborne: f.airborne,
         hitstun: f.isStunned,
         invuln: f.invulnTo("strike"),
+        hidden: f.hidden,
+        assist: f.assistMode,
+        moveId: f.state === "attack" ? f.move?.id ?? null : null,
       })),
+      barriers: this.barriers.map((w) => ({ id: w.id, side: w.side, owner: w.ownerId, x: w.x, w: w.w, h: w.h, life: w.life, maxLife: w.maxLife })),
       winner: this.winner,
     };
   }
