@@ -834,6 +834,7 @@ export class Fighter {
         this.airAttackUsed = true;
       } else {
         this.toNeutral(env);
+        if (this.isNeutral) this.neutral(env);
       }
     }
   }
@@ -914,6 +915,7 @@ export class Fighter {
       this.throwInvuln = RULES.throwInvulnAfterStun;
       this.faceToward(env.opponent);
       this.toNeutral(env);
+      if (this.isNeutral) this.neutral(env);
     }
   }
 
