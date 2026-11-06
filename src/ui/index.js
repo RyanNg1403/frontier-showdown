@@ -267,7 +267,7 @@ export function mountUI(rootEl, game, options = {}) {
     listen(game, "tag", (e) => { const st = ui.session.stats.sides[e.side ?? 0]; if (st) st.tags++; }),
     listen(game, "roundEnd", (e) => { if (e.perfect) { const st = ui.session.stats.sides[e.winner]; if (st) st.perfects++; } }),
   ];
-  for (const type of ["hit", "block", "ko", "roundStart", "roundEnd", "tag", "special", "super", "fightStart", "finishThem", "comboEnd", "matchEnd"]) {
+  for (const type of ["hit", "block", "ko", "lastStanding", "roundStart", "roundEnd", "tag", "special", "super", "fightStart", "finishThem", "comboEnd", "matchEnd"]) {
     offs.push(listen(game, type, (e) => ui.hud.onEvent(type, e || {})));
   }
   offs.push(listen(game, "matchEnd", (e) => screens.fight?.matchEnded?.(e || {})));

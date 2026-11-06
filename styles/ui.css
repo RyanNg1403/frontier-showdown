@@ -823,6 +823,9 @@
 .fs-callout__item { font-family: var(--fs-display); font-size: 32px; line-height: 1; letter-spacing: 0.04em; text-transform: uppercase; text-shadow: 0 2px 0 #000; }
 .fs-callout__item.is-tag { border-color: var(--fs-gold); }
 .fs-callout__item.is-tag small { color: var(--fs-gold); }
+.fs-callout__item.is-partner { border-color: var(--fs-gold); }
+.fs-callout__item.is-partner small { color: var(--fs-gold); }
+.fs-callout__item em { display: block; font-family: var(--fs-body); font-size: 15px; font-style: normal; font-weight: 600; letter-spacing: 0.06em; color: var(--fs-ink-dim); padding-bottom: 2px; }
 @keyframes fs-callout { 0% { opacity: 0; transform: translateY(-10px); } 12%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
 .fs-super-band { position: absolute; left: 0; right: 0; top: 50%; height: 170px; margin-top: -85px; opacity: 0; pointer-events: none; }
@@ -1384,6 +1387,9 @@ body { box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-i
 .fs-ui.is-compact .fs-meter__label { font-size: 16px; }
 .fs-ui.is-compact .fs-runway__label { font-size: 14px; }
 .fs-ui.is-compact .fs-hud-timer__round { font-size: 15px; }
+.fs-ui.is-compact .fs-callout__item { font-size: 40px; }
+.fs-ui.is-compact .fs-callout__item small { font-size: 16px; }
+.fs-ui.is-compact .fs-callout__item em { font-size: 21px; }
 
 /* Lite: phones and tablets skip effects that repaint every frame or force big offscreen layers. */
 .fs-ui.is-lite .fs-embers, .fs-ui.is-lite .fs-title__fog, .fs-ui.is-lite .fs-results__rays { display: none; }
