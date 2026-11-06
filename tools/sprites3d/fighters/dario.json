@@ -61,6 +61,7 @@
     }
   ],
   "head": {
+    "by_anim": {"intro": "threequarter", "victory": "threequarter", "finisher": "threequarter", "special_1": "threequarter", "special_2": "threequarter", "special_3": "threequarter"},
     "image": "heads/dario_tq.png",
     "heads_tall": 7.2,
     "colors": 18,

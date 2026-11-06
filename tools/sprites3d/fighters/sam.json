@@ -68,6 +68,7 @@
     }
   ],
   "head": {
+    "by_anim": {"intro": "threequarter", "victory": "threequarter", "finisher": "threequarter"},
     "image": "heads/sam_tq.png",
     "heads_tall": 7.0,
     "colors": 18,
