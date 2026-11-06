@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { InputBuffer, matchDoubleTap, matchMotion, mirrorDir, parseMotion, relDir } from "../src/combat/input.js";
+import { InputBuffer, dirFromAxes, matchDoubleTap, matchMotion, mirrorDir, parseMotion, relDir } from "../src/combat/input.js";
 import { BTN, RULES } from "../src/combat/constants.js";
 
 function feed(buffer, steps) {
@@ -23,6 +23,18 @@ test("parseMotion understands named, numeric, MK-style and charge notation", () 
   assert.deepEqual([...charge.seq], [6]);
   assert.throws(() => parseMotion("XYZ+P"));
   assert.throws(() => parseMotion("QCF+Q"));
+});
+
+test("dirFromAxes maps up/down/left/right onto numpad notation", () => {
+  assert.equal(dirFromAxes(0, 0), 5);
+  assert.equal(dirFromAxes(0, 1), 8);
+  assert.equal(dirFromAxes(0, -1), 2);
+  assert.equal(dirFromAxes(-1, 0), 4);
+  assert.equal(dirFromAxes(1, 0), 6);
+  assert.equal(dirFromAxes(1, -1), 3);
+  assert.equal(dirFromAxes(-1, -1), 1);
+  assert.equal(dirFromAxes(1, 1), 9);
+  assert.equal(dirFromAxes(-1, 1), 7);
 });
 
 test("relDir mirrors left/right only", () => {

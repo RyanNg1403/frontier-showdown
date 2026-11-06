@@ -10,10 +10,11 @@ export function relDir(dir, facing) {
   return facing < 0 ? mirrorDir(dir) : dir;
 }
 
+/** Numpad direction from axes where x > 0 is right and y > 0 is up. */
 export function dirFromAxes(x, y) {
   const col = x < 0 ? 0 : x > 0 ? 2 : 1;
-  const row = y > 0 ? 0 : y < 0 ? 2 : 1;
-  return [1, 2, 3, 4, 5, 6, 7, 8, 9][row * 3 + col];
+  const row = y < 0 ? 0 : y > 0 ? 2 : 1;
+  return row * 3 + col + 1;
 }
 
 export const isDown = (d) => d === 1 || d === 2 || d === 3;
