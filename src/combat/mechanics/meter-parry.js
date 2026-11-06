@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { addMeter } from "../rules.js";
 import { currentMove, mechMove } from "./core.js";
 
@@ -51,3 +52,5 @@ export const meterParryModule = {
     return true;
   },
 };
+
+registerSystem("meter-parry", meterParryModule, { order: 70 });

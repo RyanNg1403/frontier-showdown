@@ -26,6 +26,8 @@ export default defineCharacter({
   title: "The Containment Specialist",
   lab: "Microsoft AI",
   labId: "microsoft-ai",
+  archetype: "trap",
+  difficulty: 2,
   bio: "Calm, measured, never flustered. Locks the opponent in a Containment Field, covers the exits with The Coming Wave and lets the Copilot orb fill the gaps.",
   quotes: {
     intro: "We must build AI for people; not to be a person.",

@@ -1,10 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { characterIds, loadCharacter } from "../src/characters/index.js";
+import { ROSTER_ORDER, discoverCharacters, loadCharacter } from "../src/characters/index.js";
 import { NORMAL_KEYS, defineCharacter, describeCharacter } from "../src/characters/schema.js";
 import { ANIM_FALLBACKS, REQUIRED_ANIMS } from "../src/combat/constants.js";
 
 const KNOWN_ANIMS = new Set([...REQUIRED_ANIMS, ...Object.keys(ANIM_FALLBACKS)]);
+
+const { ids: characterIds } = await discoverCharacters();
+
+test("character discovery finds the implemented fighters in roster order", () => {
+  assert.ok(characterIds.includes("sam") && characterIds.includes("dario"));
+  const ranked = characterIds.filter((id) => ROSTER_ORDER.includes(id));
+  assert.deepEqual(ranked, [...ranked].sort((a, b) => ROSTER_ORDER.indexOf(a) - ROSTER_ORDER.indexOf(b)));
+});
 
 for (const id of characterIds) {
   test(`${id}: data is complete and consistent`, async () => {
@@ -23,11 +31,11 @@ for (const id of characterIds) {
         assert.ok(target === "special" || target === "super" || c.moves.has(target), `${id}.${key} cancels into unknown ${target}`);
       }
     }
-    assert.equal(c.specials.length, 3, "three specials");
-    c.specials.forEach((s, i) => {
-      assert.equal(s.anim, `special_${i + 1}`);
+    assert.ok(c.specials.length >= 3, "at least three specials");
+    c.specials.slice(0, 3).forEach((s, i) => assert.equal(s.anim, `special_${i + 1}`, `${id}.${s.id} uses special_${i + 1}`));
+    c.specials.forEach((s) => {
       assert.ok(s.motion && s.motion.buttonMask, `${id}.${s.id} input`);
-      assert.ok(s.hitbox || s.projectile || s.grab || s.barrier || s.parry || s.mech, `${id}.${s.id} does something`);
+      assert.ok(s.hitbox || s.projectile || s.grab || s.barrier || s.parry || s.teleport || s.mechanic || s.mech, `${id}.${s.id} does something`);
       assert.ok(s.description);
     });
     assert.ok(c.super && c.super.meterCost === (c.passive === "Cheap Training" ? 200 : 300) && c.super.motion);
@@ -42,7 +50,7 @@ for (const id of characterIds) {
       assert.equal(m.total, m.startup + m.active + m.recovery - 1);
     }
     const d = describeCharacter(c, false);
-    assert.equal(d.specials.length, 3);
+    assert.equal(d.specials.length, c.specials.length);
     assert.equal(d.hasAtlas, false);
   });
 }

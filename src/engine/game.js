@@ -2,17 +2,18 @@ import { DT } from "../combat/constants.js";
 import { Match } from "../combat/match.js";
 import { createCpu } from "../combat/ai.js";
 import { describeCharacter } from "../characters/schema.js";
-import { loadAllCharacters } from "../characters/index.js";
+import { discoverCharacters, loadAllCharacters } from "../characters/index.js";
 import { createEmitter } from "./emitter.js";
 import { Camera, VIEW_H, VIEW_W } from "./camera.js";
 import { InputDevices } from "./input.js";
 import { createLoop } from "./loop.js";
 import { assetApi, loadAtlas } from "./assets.js";
-import { loadModules } from "./modules.js";
+import { loadManifest, loadModules } from "./modules.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { drawMechanics, drawMechProjectile } from "./mechanics-render.js";
 import { adaptVfx } from "./vfx-adapter.js";
+import { SCREEN_MUSIC, applyUiSettings, decorateEvent, decorateSnapshot, normalizeMatchConfig, uiRoster, uiStages } from "./ui-adapter.js";
 import { adaptStageDef, listModuleStages, stageCamera } from "./stage-adapter.js";
 
 const DEFAULT_STAGES = [{ id: "default", name: "Training Lab" }];
@@ -43,18 +44,26 @@ function guarded(label, onFail) {
   };
 }
 
-export async function createGame({ canvas, uiRoot, modules: preloaded = null } = {}) {
+export async function createGame({ canvas, uiRoot, modules: preloaded = null, manifest = undefined } = {}) {
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   const events = createEmitter();
   const devices = new InputDevices(window);
-  const modules = preloaded || (await loadModules());
-  const characters = await loadAllCharacters();
+  const info = manifest === undefined ? await loadManifest() : manifest;
+  const modules = preloaded || (await loadModules(info));
+  const roster = await discoverCharacters();
+  const characters = await loadAllCharacters(roster.ids);
   const charMap = new Map(characters.map((c) => [c.id, c]));
   const atlasReady = new Map();
-  await Promise.all(characters.map((c) => loadAtlas(c.id).then((a) => atlasReady.set(c.id, Boolean(a)))));
+  const hasAtlasFile = (id) => !roster.atlases || roster.atlases.has(id);
+  const fetchAtlas = (id) => (hasAtlasFile(id) ? loadAtlas(id) : Promise.resolve(null));
+  const atlases = {};
+  await Promise.all(characters.map((c) => fetchAtlas(c.id).then((a) => {
+    atlasReady.set(c.id, Boolean(a));
+    if (a) atlases[c.id] = a;
+  })));
 
   const fallbackVfx = createFallbackVfx();
   let vfx = fallbackVfx;
@@ -79,7 +88,28 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     stageFailed = true;
     return undefined;
   });
+  let audio = null;
+  if (modules.audio) {
+    try {
+      audio = modules.audio.createAudio();
+    } catch (error) {
+      console.error("[engine] createAudio failed; continuing without sound.", error);
+    }
+  }
+  const audioCall = guarded("audio", () => {
+    audio = null;
+    return undefined;
+  });
+  /** VFX timing helpers (hitstop, freeze, shake, slow-mo) when the VFX module provides them. */
+  const fx = () => (vfx !== fallbackVfx ? vfx.module : null);
+  let holdFrames = 0;
+  const uiOptions = { screenShake: true, gameplay: null };
+  let uiInstance = null;
+  let sidePlayers = [0, 1];
+  let lastShake = 0;
   let hudFailed = !modules.ui?.drawHud;
+  let uiMounted = false;
+  let domHud = false;
   const hudCall = guarded("ui", () => {
     hudFailed = true;
     return undefined;
@@ -105,14 +135,21 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       vfxCall(() => vfx.update(payload.dt));
       return;
     }
-    events.emit(name, payload);
+    if (name === "slowmo" && payload.active && fx()?.slowmo) vfxCall(() => fx().slowmo(payload.rate, payload.seconds));
+    events.emit(name, decorateEvent(name, payload));
+    if (name === "finishThem" && uiInstance?.hud?.announce) {
+      setTimeout(() => {
+        uiInstance.hud.clearAnnouncer?.();
+        uiInstance.hud.announce("Final Commit!", "finish");
+      }, 0);
+    }
   }
 
   function buildSnapshot() {
     if (!match) {
       return { phase: loading ? "loading" : "menu", paused: false, sides: [], fighters: [], announce: null, winner: null, stage: stageDef.id, camera: camera.toJSON() };
     }
-    return { ...match.snapshot(), paused, camera: camera.toJSON() };
+    return decorateSnapshot({ ...match.snapshot(), paused, camera: camera.toJSON() }, charMap);
   }
 
   function refreshSnapshot() {
@@ -131,7 +168,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
 
   function playMusic(url) {
     stopMusic();
-    if (!url) return;
+    if (!url || audio) return;
     try {
       music = new Audio(url);
       music.loop = true;
@@ -149,7 +186,8 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     }
   }
 
-  async function startMatch(config = {}) {
+  async function startMatch(rawConfig = {}) {
+    const config = normalizeMatchConfig(rawConfig);
     const mode = config.mode === "2v2" ? "2v2" : "1v1";
     const fallbackIds = characters.map((c) => c.id);
     const sides = [0, 1].map((i) => {
@@ -158,9 +196,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       const need = mode === "2v2" ? 2 : 1;
       while (team.length < need) team.push(fallbackIds[(i + team.length) % fallbackIds.length]);
       team = team.slice(0, need);
-      return { team, control: s.control === "cpu" ? "cpu" : s.control === "human" ? "human" : i === 0 ? "human" : "cpu", difficulty: s.difficulty || "normal" };
+      return { team, control: s.control === "cpu" ? "cpu" : s.control === "human" ? "human" : i === 0 ? "human" : "cpu", difficulty: s.difficulty || "normal", player: Number.isInteger(s.player) ? s.player : i };
     });
     lastConfig = { ...config, mode, sides };
+    sidePlayers = sides.map((s) => s.player);
     loading = true;
     paused = false;
     match = null;
@@ -169,7 +208,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     const stageId = config.stage || listStages()[0]?.id || "default";
     const [stage, atlases] = await Promise.all([
       loadStageDef(stageId),
-      Promise.all(sides.flatMap((s) => s.team).map(async (id) => [id, await loadAtlas(id)])),
+      Promise.all(sides.flatMap((s) => s.team).map(async (id) => [id, await fetchAtlas(id)])),
     ]);
     stageDef = stage;
     loading = false;
@@ -246,23 +285,36 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     stopMusic();
     refreshSnapshot();
     events.emit("menu", {});
+    if (audio) audioCall(() => audio.music("menu"));
   }
 
   devices.onKey((code) => {
-    if (code === "Escape") togglePause();
+    if (code === "Escape" && !uiMounted) togglePause();
     if (code === "F1") debug = !debug;
   });
 
   function step() {
-    if (devices.startPressed(0) || devices.startPressed(1)) togglePause();
-    if (!match || paused) return;
-    const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(s.side) : null));
-    match.step(inputs);
+    if ((devices.startPressed(0) || devices.startPressed(1)) && !uiMounted) togglePause();
+    if (!match || paused) {
+      loop.timeScale = 1;
+      return;
+    }
+    const inputs = match.sides.map((s) => (s.control === "human" ? devices.read(sidePlayers[s.side] ?? s.side) : null));
+    const helpers = fx();
+    const vfxHold = Boolean(helpers && vfxCall(() => helpers.isHitstopped?.() || helpers.isFrozen?.()));
+    holdFrames = vfxHold ? holdFrames + 1 : 0;
+    match.step(inputs, { hold: vfxHold && holdFrames <= 90 });
+    if (helpers?.timeScale) loop.timeScale = vfxCall(() => helpers.timeScale()) ?? 1;
+    else loop.timeScale = match.slowmo ? match.slowmo.rate : 1;
+    if (match.shakeFrames > lastShake && helpers?.shake && uiOptions.screenShake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
+    lastShake = match.shakeFrames;
     if (vfx.syncProjectiles) {
       vfxCall(() => vfx.syncProjectiles(match.projectiles.filter((p) => !p.def.mech?.look).map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
     }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
-    camera.update(targets, match.bounds, match.shakeFrames);
+    const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
+    if (uiOptions.screenShake) camera.update(targets, match.bounds, match.shakeFrames, Math.random, offset || null);
+    else camera.update(targets, match.bounds, 0, Math.random, { x: 0, y: 0 });
     if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, snapshot));
     refreshSnapshot();
   }
@@ -327,6 +379,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       ctx.restore();
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (domHud) return;
     if (!hudFailed) {
       ctx.save();
       hudCall(() => modules.ui.drawHud(ctx, snapshot));
@@ -337,8 +390,27 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
 
   const loop = createLoop({ step, render });
 
+  function endMatch() {
+    match = null;
+    paused = false;
+    loop.timeScale = 1;
+    vfx.clearProjectiles?.();
+    refreshSnapshot();
+    events.emit("matchClosed", {});
+  }
+
   const game = {
     events,
+    getRoster: () => uiRoster(listCharacters()),
+    get roster() {
+      return uiRoster(listCharacters());
+    },
+    getStages: () => uiStages(listStages()),
+    get stages() {
+      return uiStages(listStages());
+    },
+    endMatch,
+    applySettings: (settings) => applyUiSettings(settings, { devices, audio, options: uiOptions }),
     get state() {
       return snapshot;
     },
@@ -346,10 +418,16 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
       return match;
     },
     get modules() {
-      return { stage: Boolean(modules.stage) && !stageFailed, vfx: vfx !== fallbackVfx, ui: Boolean(modules.ui) };
+      return { stage: Boolean(modules.stage) && !stageFailed, vfx: vfx !== fallbackVfx, ui: Boolean(modules.ui), audio: Boolean(audio) };
     },
     camera,
     canvas,
+    get audio() {
+      return audio;
+    },
+    get ui() {
+      return uiInstance;
+    },
     bindings: devices.bindings,
     refreshBindings: () => devices.refreshBound(),
     listCharacters,
@@ -366,14 +444,23 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null } =
     loop,
   };
 
-  let uiMounted = false;
   if (modules.ui?.mountUI) {
     try {
-      await modules.ui.mountUI(uiRoot, game);
+      uiInstance = await modules.ui.mountUI(uiRoot, game);
       uiMounted = true;
+      domHud = Boolean(uiInstance?.hud);
+      if (audio && typeof uiInstance?.on === "function") {
+        uiInstance.on("screen", ({ id }) => {
+          if (SCREEN_MUSIC[id]) audioCall(() => audio.music(SCREEN_MUSIC[id]));
+        });
+      }
     } catch (error) {
       console.error("[engine] mountUI failed; using the built-in menu.", error);
     }
+  }
+  if (audio) {
+    audioCall(() => audio.attach(game, { atlases }));
+    audioCall(() => audio.music("menu"));
   }
   if (!uiMounted) mountFallbackUI(uiRoot, game);
   const firstStage = listStages()[0]?.id;

@@ -30,6 +30,8 @@ export default defineCharacter({
   title: "The Quiet Whale",
   lab: "DeepSeek",
   labId: "deepseek",
+  archetype: "glass cannon",
+  difficulty: 3,
   bio: "Very still, then suddenly precise. Banks Compute with Aha Moment parries and cheap Scale Ups, then cashes out with 2-bar Whale Breach supers more often than anyone else. The lowest health and weight on the roster.",
   quotes: {
     intro: "Innovation isn't entirely business-driven; it also requires curiosity and a desire to create.",

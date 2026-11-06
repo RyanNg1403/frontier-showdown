@@ -182,7 +182,7 @@ test("micrograd target combo: F+LP (low), LP, HP", () => {
   const m = makeMatch({ p1: [andrej], p2: [dario] });
   place(m, -60, 60);
   assert.equal(andrej.normals.f_lp.level, "low");
-  play(m, 0, [{ dir: 6, buttons: BTN.LP }, { frames: 11 }, { buttons: BTN.LP }, { frames: 9 }, { buttons: BTN.HP }, { frames: 30 }]);
+  play(m, 0, [{ dir: 6, buttons: BTN.LP }, { frames: 11 }, { buttons: BTN.LP }, { frames: 13 }, { buttons: BTN.HP }, { frames: 30 }]);
   const ids = events(m, "hit").filter((h) => h.side === 0).map((h) => h.moveId);
   assert.deepEqual(ids, ["f_lp", "lp", "hp"]);
 });

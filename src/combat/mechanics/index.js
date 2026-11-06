@@ -1,24 +1,19 @@
 import { normalizeProjectile } from "../../characters/schema.js";
+import { systems } from "../mechanics.js";
 import { fighterData } from "./core.js";
 import { combineMods, NO_MODS } from "./mods.js";
-import { statusModule } from "./status.js";
-import { projectilesModule } from "./projectiles.js";
-import { placedModule } from "./placed.js";
-import { companionModule } from "./companion.js";
-import { strikesModule } from "./strikes.js";
-import { passiveHooksModule } from "./passive-hooks.js";
-import { meterParryModule } from "./meter-parry.js";
+import "./strikes.js";
+import "./status.js";
+import "./projectiles.js";
+import "./placed.js";
+import "./companion.js";
+import "./meter-parry.js";
 
 /**
- * Order matters for `beforeContact`: modules that adjust the hit (levels, damage) run before
- * the meter parry, which may consume it.
- */
-const MODULES = [strikesModule, statusModule, passiveHooksModule, projectilesModule, placedModule, companionModule, meterParryModule];
-
-/**
- * Extension layer for move mechanics beyond the engine core (roster doc group C primitives).
- * The match calls these hooks; every behaviour is driven by `mech` fields in character data,
- * so fighters without them are unaffected.
+ * Runtime for match-level systems registered with `registerSystem` (see `../mechanics.js`).
+ * The match calls these hooks; behaviour is driven by `mech` fields in character data, so
+ * fighters without them are unaffected. Core systems (orders 10-70): strikes, status,
+ * projectiles, placed, companion, meter-parry; fighter mechanics default to order 100.
  */
 export function createMechanics(match) {
   const ctx = {
@@ -78,7 +73,7 @@ export function createMechanics(match) {
   };
 
   const run = (hook, ...args) => {
-    for (const m of MODULES) m[hook]?.(ctx, ...args);
+    for (const m of systems()) m[hook]?.(ctx, ...args);
   };
 
   const api = {
@@ -109,7 +104,7 @@ export function createMechanics(match) {
       run("preStep");
       for (const f of match.allFighters) {
         const list = [];
-        for (const m of MODULES) if (m.modsFor) list.push(...m.modsFor(ctx, f));
+        for (const m of systems()) if (m.modsFor) list.push(...m.modsFor(ctx, f));
         f.mods = combineMods(list);
       }
     },
@@ -137,13 +132,13 @@ export function createMechanics(match) {
 
     /** Returns true when the projectile was consumed (for example it split). */
     projectileTick(p) {
-      for (const m of MODULES) if (m.projectileTick?.(ctx, p)) return true;
+      for (const m of systems()) if (m.projectileTick?.(ctx, p)) return true;
       return false;
     },
 
     /** Returns true when a mechanic consumed the contact (a meter parry). May adjust `props`. */
     beforeContact(a, d, props, at, info) {
-      for (const m of MODULES) if (m.beforeContact?.(ctx, a, d, props, at, info)) return true;
+      for (const m of systems()) if (m.beforeContact?.(ctx, a, d, props, at, info)) return true;
       return false;
     },
 

@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { BTN } from "../constants.js";
 import { boxesOverlap, contactProps, currentMove, fireOnce } from "./core.js";
 
@@ -126,3 +127,5 @@ function strike(ctx, o) {
     match.applyContact(o.owner, d, props, { x: d.x, y: Math.max(hurt.y + 10, o.y + 20) }, { projectile: { x: o.x, vx: 0 }, dir });
   }
 }
+
+registerSystem("companion", companionModule, { order: 60 });

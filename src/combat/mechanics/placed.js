@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { DT } from "../constants.js";
 import { contactProps, currentMove, fireOnce } from "./core.js";
 
@@ -168,3 +169,5 @@ function updateZone(ctx, o) {
     }
   }
 }
+
+registerSystem("placed", placedModule, { order: 50 });

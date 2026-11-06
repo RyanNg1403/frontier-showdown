@@ -24,6 +24,8 @@ export default defineCharacter({
   title: "The Contrarian",
   lab: "AMI Labs",
   labId: "ami-labs",
+  archetype: "zoner",
+  difficulty: 2,
   bio: "Keeps the opponent grounded and at mid range: Convolution on the floor, the RC plane overhead and a cake for anyone who walks in. Jumping at him is, in his words, doomed.",
   quotes: {
     intro: "A house cat has way more common sense and understanding of the world than any LLM.",

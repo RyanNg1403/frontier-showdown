@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { currentMove, fighterData, fireOnce } from "./core.js";
 
 /**
@@ -77,3 +78,5 @@ export const statusModule = {
       .filter((e) => Object.keys(e).length > 2);
   },
 };
+
+registerSystem("status", statusModule, { order: 20 });

@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { DT } from "../constants.js";
 
 /**
@@ -155,3 +156,5 @@ function nearestEnemy(match, p) {
   }
   return best;
 }
+
+registerSystem("projectiles", projectilesModule, { order: 40 });

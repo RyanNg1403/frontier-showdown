@@ -5,6 +5,7 @@ import { anyOverlap, intersectionCenter, overlaps, resolvePush, toWorld } from "
 import { addMeter, applyDamage, guardBlocks, meterOnHit, regenRed, scaledDamage, timeUpWinner } from "./rules.js";
 import { createRng } from "./rng.js";
 import { createMechanics } from "./mechanics/index.js";
+import { fighterMechanics, moveMechanic } from "./mechanics.js";
 
 const START_X = 230;
 
@@ -57,6 +58,8 @@ export class Match {
     }));
     this.projectiles = [];
     this.barriers = [];
+    this.entities = [];
+    this.slowmo = null;
     this.nextBarrierId = 1;
     this.frame = 0;
     this.round = 0;
@@ -130,6 +133,7 @@ export class Match {
     this.projectiles = [];
     this.barriers = [];
     this.mech.reset();
+    this.entities = [];
     this.timerFrames = this.roundSeconds * 60;
     this.roundWinner = null;
     this.finishSide = null;
@@ -152,10 +156,17 @@ export class Match {
         m.onField = i === 0;
         if (i !== 0) m.setState("bench");
         else m.setState(this.skipIntro ? "idle" : "intro");
+        for (const h of m.mechanicHooks) h.init?.(m);
       });
     }
     this.setPhase("intro");
-    this.emit("roundStart", { round: this.round });
+    this.emit("roundStart", {
+      round: this.round,
+      final: this.isFinalRound(),
+      maxRounds: this.roundsToWin * 2 - 1,
+      fightDelay: this.skipIntro ? 0 : (this.introLength() - 45) / 60,
+      announceFight: false,
+    });
     if (this.skipIntro) this.beginFight();
     else this.say(this.round === 1 && this.sides.every((s) => s.wins === 0) ? `ROUND ${this.round}` : this.isFinalRound() ? "FINAL ROUND" : `ROUND ${this.round}`, "", 70);
   }
@@ -191,12 +202,21 @@ export class Match {
   // ------------------------------------------------------------------ main step
 
   /** Advance one 60 Hz frame. `inputs[i]` is `{dir, buttons}` or null to ask the side's CPU. */
-  step(inputs = []) {
+  step(inputs = [], { hold = false } = {}) {
     if (this.round === 0) this.start();
+    if (hold) {
+      for (const s of this.sides) s.input.push(inputs[s.side] || (s.cpu ? s.cpu.think(this, s.side) : null) || NEUTRAL_INPUT);
+      this.vfxTick(DT, true);
+      return;
+    }
     this.frame += 1;
     this.phaseFrame += 1;
     if (this.announce && --this.announce.frames <= 0) this.announce = null;
     if (this.shakeFrames > 0) this.shakeFrames -= 1;
+    if (this.slowmo && --this.slowmo.frames <= 0) {
+      this.slowmo = null;
+      this.emit("slowmo", { active: false, rate: 1 });
+    }
 
     for (const s of this.sides) {
       let input = inputs[s.side];
@@ -220,6 +240,7 @@ export class Match {
     this.updateRunway();
     this.updateProjectiles();
     this.updateBarriers();
+    this.updateEntities();
     this.resolvePushboxes();
     this.resolveThrows();
     this.resolveHits();
@@ -227,6 +248,7 @@ export class Match {
     this.checkKOs();
     this.updateTeams();
     this.updateCombos();
+    this.emitFrameEvents();
     this.vfxTick(DT, hitstop);
   }
 
@@ -344,6 +366,7 @@ export class Match {
     env.input = isPoint ? s.input : null;
     env.canAct = isPoint ? this.canAct(f.side) : f.assistMode;
     env.frame = this.frame;
+    env.match = this;
     env.bounds = this.bounds;
     env.backBlocks = this.backBlocks;
     return env;
@@ -467,8 +490,8 @@ export class Match {
       x: Math.max(this.bounds.left, Math.min(this.bounds.right, owner.x + owner.facing * b.offset)),
       w: b.width,
       h: b.height,
-      life: b.lifetime,
-      maxLife: b.lifetime,
+      life: Math.round(b.lifetime * (owner.passiveDef?.objectLifetimeMul ?? 1)),
+      maxLife: Math.round(b.lifetime * (owner.passiveDef?.objectLifetimeMul ?? 1)),
       strikes: b.strikes,
       projectiles: b.projectiles,
       palette: owner.def.palette,
@@ -516,8 +539,11 @@ export class Match {
     for (const s of this.sides) {
       const p = s.members[s.active];
       const busy = p.state === "run" || p.state === "block" || p.state === "crouch_block" || p.state === "blockstun";
-      if (busy || this.frame - s.runwaySpentFrame < RULES.runwayDelay) continue;
-      s.runway = Math.min(RULES.runwayMax, s.runway + RULES.runwayRegen * DT);
+      const enemy = this.point(1 - s.side);
+      const underSuper = enemy.state === "attack" && enemy.move?.category === "super";
+      if (busy || underSuper || this.frame - s.runwaySpentFrame < RULES.runwayDelay) continue;
+      const mul = p.passiveDef?.runwayRegenMul ?? 1;
+      s.runway = Math.min(RULES.runwayMax, s.runway + RULES.runwayRegen * mul * DT);
     }
   }
 
@@ -569,6 +595,12 @@ export class Match {
     }
     for (const { a, d, m } of attempts) {
       if (d.state === "throwing" || d.state === "thrown" || a.state !== "attack") continue;
+      const auto = d.passiveDef?.autoTechThrows ?? 0;
+      if (m.grab.techable && (d.passive.autoTeched ?? 0) < auto) {
+        d.passive.autoTeched = (d.passive.autoTeched ?? 0) + 1;
+        this.techThrow(a, d);
+        continue;
+      }
       const back = this.sides[a.side].input && isBack(this.sides[a.side].input.dir(a.facing));
       a.setState("throwing", { keepAnim: true });
       a.anim = { name: m.anim, t: 0 };
@@ -584,7 +616,7 @@ export class Match {
         knockback: m.grab.knockback,
         back,
       };
-      this.emit("throw", { attacker: a.id, defender: d.id, side: a.side, moveId: m.id });
+      this.emit("throw", { attacker: a.id, defender: d.id, side: a.side, moveId: m.id, x: (a.x + d.x) / 2 });
       this.vfx("throw", (a.x + d.x) / 2, -110, { facing: a.facing, side: a.side, tech: false });
     }
   }
@@ -599,7 +631,8 @@ export class Match {
       f.vy = 0;
       f.hitstop = 6;
     }
-    this.emit("tech", { fighter: d.id, side: d.side });
+    this.emit("tech", { fighter: d.id, side: d.side, x: (a.x + d.x) / 2 });
+    this.emit("throwBreak", { fighter: d.id, side: d.side, x: (a.x + d.x) / 2 });
     this.vfx("tech", (a.x + d.x) / 2, -120, { facing: a.facing, side: d.side });
   }
 
@@ -624,7 +657,7 @@ export class Match {
     d.hitstop = 10;
     a.hitstop = 10;
     this.shakeFrames = Math.max(this.shakeFrames, 8);
-    this.emit("hit", { attacker: a.id, defender: d.id, side: a.side, moveId: g.move.id, kind: "throw", damage: dealt, combo: 1, comboDamage: dealt, counter: false, level: "unblockable", x: d.x, y: -100 });
+    this.emit("hit", { attacker: a.id, defender: d.id, side: a.side, moveId: g.move.id, kind: "throw", weight: "heavy", throw: true, damage: dealt, combo: 1, comboDamage: dealt, counter: false, level: "unblockable", x: d.x, y: -100 });
     this.vfx("hit_heavy", d.x, -100, { facing: a.facing, side: a.side, damage: dealt, combo: 1, palette: a.def.palette });
   }
 
@@ -740,10 +773,23 @@ export class Match {
   }
 
   /** Damage multiplier from passives and team state for an attacker. */
-  attackMultiplier(a) {
-    let mul = a.passiveDef?.damageMul?.(a) ?? 1;
-    if (this.sides[a.side].lastStanding) mul *= RULES.lastStandingDamage;
+  attackMultiplier(a, d, props, antiAir) {
+    const team = this.sides[a.side];
+    const ctx = { match: this, attacker: a, defender: d, props, team, antiAir };
+    let mul = a.passiveDef?.damageMul?.(a, ctx) ?? 1;
+    if (antiAir && a.passiveDef?.antiAir) mul *= a.passiveDef.antiAir.damage;
+    if (team.lastStanding) mul *= RULES.lastStandingDamage;
+    for (const h of a.mechanicHooks) mul *= h.damageMul?.(a, ctx) ?? 1;
+    for (const h of d.mechanicHooks) mul *= h.damageTakenMul?.(d, ctx) ?? 1;
     return mul;
+  }
+
+  runHitHooks(a, d, props, blocked, damage) {
+    const ctx = { match: this, attacker: a, defender: d, props, blocked, damage };
+    const move = a.state === "attack" && a.move?.id === props.id ? a.move : null;
+    moveMechanic(move)?.onHit?.(ctx);
+    for (const h of a.mechanicHooks) h.onHit?.(ctx);
+    for (const h of d.mechanicHooks) h.onHurt?.(ctx);
   }
 
   /** Shared hit/block logic for strikes and projectiles. */
@@ -811,6 +857,8 @@ export class Match {
       }
       addMeter(as, RULES.blockMeterAttacker * meterMul);
       addMeter(ds, RULES.blockMeterDefender + (aligned ? RULES.alignmentMeter : 0));
+      if (props.category === "special" || props.category === "super") d.passiveDef?.onBlockedSpecial?.(d, props.id);
+      this.runHitHooks(a, d, props, true, dealt);
       this.emit("block", { ...payloadBase, chip: dealt, aligned });
       this.vfx(aligned ? "alignment_block" : "block", at.x, at.y, { facing: dir, side: a.side, chip: dealt });
       if (aligned) this.emit("alignmentBlock", { fighter: d.id, side: d.side });
@@ -823,7 +871,9 @@ export class Match {
     const counter = freshCombo && d.isAttacking;
     const punish = freshCombo && !counter && d.isRecovering;
     const isSuper = props.category === "super";
-    let damage = scaledDamage(props.damage * this.attackMultiplier(a), d.combo.hits, { isSuper, counter });
+    const antiAir = !projectile && !a.airborne && (d.airborne || d.state === "juggle") && freshCombo;
+    const scaleIndex = Math.max(1, d.combo.hits - (a.passiveDef?.scalingOffset ?? 0));
+    let damage = scaledDamage(props.damage * this.attackMultiplier(a, d, props, antiAir), scaleIndex, { isSuper, counter });
     if (punish && d.combo.hits === 1) damage = Math.round(damage * RULES.punishBonus);
     if (d.assistMode) damage = Math.round(damage * RULES.assistDamageTaken);
     const dealt = d.assistMode
@@ -832,7 +882,8 @@ export class Match {
     d.combo.damage += dealt;
     if (props.special && !projectile?.owner?.assistMode && !a.assistMode) a.passiveDef?.onSpecialHit?.(a, props.id);
     const meter = meterOnHit(props, dealt);
-    addMeter(as, isSuper ? 0 : meter.attacker * meterMul);
+    addMeter(as, isSuper ? 0 : meter.attacker * meterMul * (a.passiveDef?.meterGainMul?.(a, as) ?? 1));
+    a.passiveDef?.onHitLanded?.(a, { defender: d, props });
     addMeter(ds, meter.defender);
     const stop = props.hitstop + (counter || punish ? 3 : 0);
     d.hitstop = stop;
@@ -864,7 +915,7 @@ export class Match {
         d.y = Math.min(d.y, -2);
       } else {
         d.setState("hitstun", { keepAnim: true });
-        d.stun = props.hitstun + (counter ? RULES.counterHitstun : 0) + (punish ? RULES.punishHitstun : 0);
+        d.stun = props.hitstun + (counter ? RULES.counterHitstun : 0) + (punish ? RULES.punishHitstun : 0) + (antiAir ? a.passiveDef?.antiAir?.hitstun ?? 0 : 0);
         d.stunAnim = wasCrouching || level === "low" ? "hit_low" : "hit_high";
         d.setAnim(d.stunAnim, true);
         d.vx = dir * props.knockback.x / Math.sqrt(d.def.stats.weight || 1);
@@ -873,7 +924,9 @@ export class Match {
       if (!d.airborne || d.state === "hitstun") d.facing = -dir;
     }
 
-    this.emit("hit", { ...payloadBase, kind: props.kind, damage: dealt, combo: d.combo.hits, comboDamage: d.combo.damage, counter, punish, level });
+    this.runHitHooks(a, d, props, false, dealt);
+    const weight = props.kind === "light" ? "light" : props.category === "normal" || props.category === "throw" ? "heavy" : props.category === "super" ? "super" : "special";
+    this.emit("hit", { ...payloadBase, kind: props.kind, weight, damage: dealt, combo: d.combo.hits, comboDamage: d.combo.damage, counter, punish, level, maxHealth: d.maxHealth });
     const type = isSuper ? "hit_super" : props.category === "special" || props.kind === "projectile" ? "hit_special" : props.kind === "light" ? "hit_light" : "hit_heavy";
     this.vfx(type, at.x, at.y, { facing: dir, side: a.side, damage: dealt, counter, punish, level, combo: d.combo.hits, palette: a.def.palette });
     if (counter || punish) this.vfx("counter", at.x, at.y - 30, { facing: dir, side: a.side, punish });
@@ -919,7 +972,7 @@ export class Match {
 
   // ------------------------------------------------------------------ KO, finish, round end
 
-  koFighter(f, by, dir = null) {
+  koFighter(f, by, dir = null, double = false) {
     if (f.ko) return;
     f.ko = true;
     f.health = 0;
@@ -932,7 +985,7 @@ export class Match {
     f.y = Math.min(f.y, -2);
     f.facing = -d;
     this.shakeFrames = Math.max(this.shakeFrames, 12);
-    this.emit("ko", { fighter: f.id, side: f.side, by: by?.id ?? null, round: this.round });
+    this.emit("ko", { fighter: f.id, side: f.side, by: by?.id ?? null, round: this.round, x: f.x, double });
     this.vfx("ko", f.x, f.y - 100, { facing: d, side: f.side, characterId: f.id });
   }
 
@@ -954,7 +1007,8 @@ export class Match {
       }
     }
     if (defeated[0] && defeated[1]) {
-      for (const f of downed) this.koFighter(f, this.point(1 - f.side));
+      this.startSlowmo(0.35, 45);
+      for (const f of downed) this.koFighter(f, this.point(1 - f.side), null, true);
       this.roundWinner = null;
       this.say("DOUBLE K.O.", "", 120);
       this.setPhase("ko");
@@ -973,12 +1027,20 @@ export class Match {
       this.projectiles = [];
       this.setPhase("finish");
       this.say("FINAL COMMIT!", `${this.point(winnerSide).def.finisher.input}`, 150);
-      this.emit("finish", { side: winnerSide, fighter: this.point(winnerSide).id });
+      this.startSlowmo(0.4, 40);
+      this.emit("finishThem", { side: winnerSide, fighter: this.point(winnerSide).id, x: loser.x });
     } else {
+      this.startSlowmo(0.35, 45);
       this.koFighter(loser, this.point(winnerSide));
       this.say("K.O.", "", 120);
       this.setPhase("ko");
     }
+  }
+
+  /** Engine-owned slow motion: `rate` is the game-time multiplier for `frames` simulated frames. */
+  startSlowmo(rate, frames) {
+    this.slowmo = { rate, frames, seconds: frames / 60 / rate };
+    this.emit("slowmo", { active: true, rate, seconds: this.slowmo.seconds });
   }
 
   startFinisher(winner, loser) {
@@ -1019,7 +1081,9 @@ export class Match {
     } else if (reason !== "draw") {
       this.say("DRAW", "", 150);
     }
-    this.emit("roundEnd", { round: this.round, winner, reason: winner === null ? "draw" : reason, wins: this.sides.map((s) => s.wins), perfect });
+    const matchOver = this.sides.some((s) => s.wins >= this.roundsToWin) || this.round >= 9;
+    const winnerLab = winner !== null ? this.point(winner).def.labId : null;
+    this.emit("roundEnd", { round: this.round, winner, reason: winner === null ? "draw" : reason, wins: this.sides.map((s) => s.wins), perfect, matchOver, matchWinner: matchOver ? winner : null, winnerLab });
   }
 
   endMatch() {
@@ -1032,15 +1096,16 @@ export class Match {
     } else {
       this.say("DRAW GAME", "", 600);
     }
-    this.emit("matchEnd", { winner: this.winner, wins: this.sides.map((s) => s.wins) });
+    this.emit("matchEnd", { winner: this.winner, wins: this.sides.map((s) => s.wins), winnerLab: this.winner !== null ? this.point(this.winner).def.labId : null });
   }
 
   // ------------------------------------------------------------------ combo breaker
 
   comboBreaker(victim) {
     const s = this.sides[victim.side];
-    if (s.breakerUsed || s.meter < RULES.breakerCost) return;
-    s.meter -= RULES.breakerCost;
+    const cost = victim.passiveDef?.breakerCost ?? RULES.breakerCost;
+    if (s.breakerUsed || s.meter < cost) return;
+    s.meter -= cost;
     s.runway = 0;
     s.runwaySpentFrame = this.frame;
     s.breakerUsed = true;
@@ -1056,10 +1121,10 @@ export class Match {
       const dir = Math.sign(attacker.x - victim.x) || attacker.facing * -1;
       attacker.pendingMove = null;
       attacker.setState("hitstun", { keepAnim: true });
-      attacker.stun = 24;
+      attacker.stun = 14;
       attacker.stunAnim = "hit_high";
       attacker.setAnim("hit_high", true);
-      attacker.vx = dir * 560;
+      attacker.vx = dir * RULES.breakerPush;
       if (attacker.airborne) {
         attacker.setState("juggle", { keepAnim: true });
         attacker.juggleLocked = true;
@@ -1165,10 +1230,19 @@ export class Match {
     incoming.health = health;
     incoming.red = swapGuard ? red / 2 : red;
     incoming.onField = true;
-    incoming.script = { fromX, toX, frames: cancel ? 14 : swapGuard ? 18 : 24, arc: 170 };
+    const cut = incoming.passiveDef?.tagEntryCut ?? 0;
+    incoming.script = { fromX, toX, frames: (cancel ? 14 : swapGuard ? 18 : 24) - cut, arc: 170 };
     incoming.entryMove = swapGuard ? incoming.def.moves.get(incoming.def.assists.a) : null;
+    incoming.entryInvuln = forced || swapGuard;
     incoming.setState("tag_in");
-    this.emit("tag", { side: s.side, out: out.id, in: incoming.id, forced, swapGuard, cancel });
+    if (!incoming.entryInvuln && incoming.def.tagEntry) {
+      incoming.move = incoming.def.tagEntry;
+      incoming.moveFrame = 0;
+      incoming.hitLog = new Map();
+      incoming.connected = false;
+      incoming.damageMul = 1;
+    }
+    this.emit("tag", { side: s.side, out: out.id, in: incoming.id, forced, swapGuard, cancel, x: toX });
     this.vfx("tag_flash", toX, -120, { facing: incoming.facing, side: s.side, characterId: incoming.id });
   }
 
@@ -1235,7 +1309,52 @@ export class Match {
     f.setState("bench");
     if (s.assist === f) {
       s.assist = null;
-      s.assistCooldown = RULES.assistCooldown;
+      const p = f.passiveDef;
+      s.assistCooldown = Math.round(RULES.assistCooldown * (p?.assistCooldownMul ?? 1) + (p?.assistCooldownAdd ?? 0));
+    }
+  }
+
+  // ------------------------------------------------------------------ entities (mechanics)
+
+  /** Generic entity for character mechanics: `{ side, update(match) -> false to remove, draw?(ctx) }`. */
+  spawnEntity(entity) {
+    const e = { id: this.nextBarrierId++, dead: false, ...entity };
+    this.entities.push(e);
+    return e;
+  }
+
+  updateEntities() {
+    for (const e of this.entities) {
+      if (e.dead) continue;
+      if (e.update?.(this) === false) e.dead = true;
+    }
+    this.entities = this.entities.filter((e) => !e.dead);
+  }
+
+  /**
+   * Forward atlas frame events as `animEvent { type, anim, x, fighter, side, frame }` when a
+   * fighter's displayed frame changes. Fighters without atlas events get footsteps on the
+   * contact frames (0 and n/2) of walk and run cycles.
+   */
+  emitFrameEvents() {
+    for (const f of this.fighters) {
+      const anim = f.drawAnim;
+      const def = f.atlas?.animations?.[anim];
+      const idx = def ? f.frameIndex() : Math.floor(f.anim.t) % 8;
+      const key = `${anim}:${idx}`;
+      if (f.lastFrameKey === key) continue;
+      const entered = !f.lastFrameKey || !f.lastFrameKey.startsWith(`${anim}:`);
+      f.lastFrameKey = key;
+      const types = [];
+      if (def) {
+        for (const e of def.events || []) if (e.frame === idx && e.type !== "hit" && e.type !== "active") types.push(e.type);
+        for (const e of def.frames?.[idx]?.events || []) if (e.type !== "hit" && e.type !== "active") types.push(e.type);
+      }
+      const locomotion = anim === "walk_fwd" || anim === "walk_back" || anim === "run";
+      const n = def?.frames?.length || 8;
+      const hasEvents = def && ((def.events || []).length || (def.frames || []).some((fr) => fr.events?.length));
+      if (locomotion && !hasEvents && (idx === 0 || idx === Math.floor(n / 2)) && !entered) types.push("step");
+      for (const type of types) this.emit("animEvent", { type, anim, x: f.x, fighter: f.id, side: f.side, frame: idx, run: anim === "run" });
     }
   }
 
@@ -1298,7 +1417,9 @@ export class Match {
         y: Math.round(f.y * 10) / 10,
         facing: f.facing,
         state: f.state,
-        anim: f.anim.name,
+        anim: f.drawAnim,
+        frame: f.frameIndex(),
+        character: f.id,
         health: Math.max(0, Math.round(f.health)),
         maxHealth: f.maxHealth,
         airborne: f.airborne,
@@ -1309,6 +1430,8 @@ export class Match {
         moveId: f.state === "attack" ? f.move?.id ?? null : null,
       })),
       mechanics: this.mech.snapshot(),
+      entities: this.entities.length,
+      slowmo: this.slowmo ? { rate: this.slowmo.rate } : null,
       barriers: this.barriers.map((w) => ({ id: w.id, side: w.side, owner: w.ownerId, x: w.x, w: w.w, h: w.h, life: w.life, maxLife: w.maxLife })),
       winner: this.winner,
     };

@@ -1,3 +1,4 @@
+import { registerSystem } from "../mechanics.js";
 import { toWorld } from "../boxes.js";
 import { boxesOverlap, currentMove, fighterData, fireOnce, mechMove } from "./core.js";
 
@@ -97,3 +98,5 @@ function objectBox(o) {
   if (o.type === "companion") return { x: o.x - 24, y: o.y - 24, w: 48, h: 48 };
   return { x: o.x - o.w / 2, y: -Math.min(o.h, 70), w: o.w, h: Math.min(o.h, 70) };
 }
+
+registerSystem("strikes", strikesModule, { order: 10 });

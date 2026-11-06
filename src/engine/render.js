@@ -320,7 +320,7 @@ export function drawFallbackHud(ctx, state) {
   ctx.fillRect(VIEW_W / 2 - 42, 22, 84, 56);
   ctx.font = "bold 40px system-ui, sans-serif";
   ctx.fillStyle = state.timer <= 10 ? "#ff6b6b" : "#fff";
-  ctx.fillText(String(state.timer), VIEW_W / 2, 51);
+  ctx.fillText(Number.isFinite(state.timer) ? String(state.timer) : "∞", VIEW_W / 2, 51);
   if (state.announce) {
     ctx.font = "900 84px system-ui, sans-serif";
     ctx.lineWidth = 10;

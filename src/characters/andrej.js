@@ -17,6 +17,8 @@ export default defineCharacter({
   title: "The Vibe Coder",
   lab: "Anthropic",
   labId: "anthropic",
+  archetype: "technical all-rounder",
+  difficulty: 2,
   bio: "Builds his own routes from scratch. Controls mid range with Tokenizer, gives in to the vibes with a life lead, and keeps Rubik's Rotation as the honest reversal.",
   quotes: {
     intro: "The hottest new programming language is English.",

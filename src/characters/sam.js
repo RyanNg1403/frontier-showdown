@@ -11,6 +11,8 @@ export default defineCharacter({
   title: "The Iterative Deployer",
   lab: "OpenAI",
   labId: "openai",
+  archetype: "all-rounder",
+  difficulty: 1,
   bio: "The learn-the-game character. Plays neutral with Prompt Burst, anti-airs with Event Horizon and closes distance through a Stargate when the fireball gets respected.",
   quotes: {
     intro: "we are past the event horizon; the takeoff has started.",
@@ -38,7 +40,7 @@ export default defineCharacter({
       velocity: [{ from: 4, to: 12, vx: 110 }], cancelInto: ["special", "super"],
     },
     lk: {
-      name: "Sneaker Poke", startup: 9, active: 3, recovery: 15, damage: 30, hitstun: 16, blockstun: 13,
+      name: "Sneaker Poke", startup: 9, active: 3, recovery: 13, damage: 30, hitstun: 16, blockstun: 13,
       hitbox: { x: 20, y: -98, w: 96, h: 26 }, knockback: { x: 190 }, level: "mid", meterGain: 4,
       cancelInto: ["hk", "special", "super"],
     },
@@ -53,12 +55,12 @@ export default defineCharacter({
       cancelInto: ["c_lp", "c_lk", "special", "super"],
     },
     c_lk: {
-      name: "Ankle Ping", startup: 8, active: 2, recovery: 14, damage: 22, hitstun: 15, blockstun: 12,
+      name: "Ankle Ping", startup: 8, active: 2, recovery: 13, damage: 22, hitstun: 15, blockstun: 12,
       hitbox: { x: 20, y: -28, w: 104, h: 24 }, knockback: { x: 150 }, level: "low", meterGain: 3,
       cancelInto: ["c_lp", "special", "super"],
     },
     c_hp: {
-      name: "Takeoff", startup: 10, active: 3, recovery: 28, damage: 100, hitstun: 30, blockstun: 18,
+      name: "Takeoff", startup: 10, active: 3, recovery: 32, damage: 100, hitstun: 30, blockstun: 18,
       hitbox: { x: 8, y: -216, w: 76, h: 134 }, knockback: { x: 110, y: 1180 }, level: "mid", meterGain: 6,
       hitstop: 13, cancelInto: ["special", "super"],
     },
@@ -96,7 +98,7 @@ export default defineCharacter({
     {
       id: "event_horizon", name: "Event Horizon", input: "DP+P", priority: 1,
       description: "Rising uppercut wrapped in a teal singularity ring, invincible on frames 1-5. Scale Up: two hits.",
-      startup: 5, active: 8, recovery: 36, damage: 100, chip: 10, hitstun: 30, blockstun: 22,
+      startup: 5, active: 8, recovery: 36, damage: 100, chip: 10, hitstun: 30, blockstun: 16,
       hitbox: { x: 10, y: -236, w: 74, h: 158 }, knockback: { x: 140, y: 1250 }, level: "mid", meterGain: 8,
       invuln: { from: 1, to: 5, type: "all" }, velocity: [{ from: 3, to: 10, vx: 150, vy: -720 }],
       hitstop: 12, landingRecovery: 12, vfx: "special_openai", cancelInto: ["super"],
@@ -105,7 +107,7 @@ export default defineCharacter({
     {
       id: "stargate_rush", name: "Stargate Rush", input: "QCB+K",
       description: "Steps through a gate and reappears with a knee. LK lands in front, HK lands behind for a cross-up.",
-      startup: 16, active: 4, recovery: 26, damage: 75, chip: 8, hitstun: 22, blockstun: 18,
+      startup: 16, active: 4, recovery: 26, damage: 75, chip: 8, hitstun: 22, blockstun: 23,
       hitbox: { x: 10, y: -150, w: 84, h: 100 }, knockback: { x: 300, y: 0 }, level: "mid", meterGain: 8,
       teleport: { vanish: 5, frame: 12, to: "front", distance: 78 }, vfx: "lab_vortex",
       variants: { LK: { teleport: { to: "front" } }, HK: { teleport: { to: "behind" } } },
