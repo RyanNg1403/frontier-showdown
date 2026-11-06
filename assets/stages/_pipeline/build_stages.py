@@ -36,14 +36,18 @@ GLOW_TILE = 32
 
 # Per-stage tuning: prop heights are native px for the tallest prop in a sheet.
 STAGES = {
-    "openai-glass-atrium": dict(mid=dict(h=150, gap=86), near=dict(h=44, gap=54), floor_crop=(0.07, 0.62), floor_cols=(0.3, 0.7), fg=0),
-    "openai-compute-studio": dict(mid=dict(h=150, gap=70), near=dict(h=46, gap=46), floor_crop=(0.25, 1.0), fg=3),
-    "anthropic-reading-room": dict(mid=dict(h=150, gap=80), near=dict(h=52, gap=50), floor_crop=(0.38, 1.0), fg=1),
-    "anthropic-living-studio": dict(mid=dict(h=150, gap=80), near=dict(h=44, gap=48), floor_crop=(0.25, 1.0), fg=1),
-    "paris-action-hall": dict(mid=dict(h=150, gap=96), near=dict(h=62, strip=True), floor_crop=(0.28, 1.0), fg=0),
-    "ai-impact-expo": dict(mid=dict(h=140, gap=90), near=dict(h=60, strip=True), floor_crop=(0.25, 1.0), fg=1),
-    "gpu-datacenter": dict(mid=dict(h=146, gap=60, despeckle=True), near=dict(h=44, gap=46), floor_crop=(0.25, 1.0), fg=2),
-    "deepmind-lab": dict(mid=dict(h=140, gap=84), near=dict(h=48, gap=50), floor_crop=(0.25, 1.0), fg=0),
+    "grand-palais-ai-action-summit": dict(mid=dict(h=150, gap=96), near=dict(h=62, strip=True), floor_crop=(0.28, 1.0), fg=0),
+    "bharat-mandapam-ai-impact-summit": dict(mid=dict(h=140, gap=90), near=dict(h=60, strip=True), floor_crop=(0.25, 1.0), fg=1),
+    "musk-v-openai-oakland": dict(mid=dict(h=150, gap=118), near=dict(h=58, strip=True), floor_crop=(0.22, 1.0), fg=0),
+    "openai-mission-bay": dict(mid=dict(h=150, gap=86), near=dict(h=44, gap=54), floor_crop=(0.07, 0.62), floor_cols=(0.3, 0.7), fg=0),
+    "anthropic-500-howard": dict(mid=dict(h=150, gap=80), near=dict(h=52, gap=50), floor_crop=(0.38, 1.0), fg=1),
+    "deepmind-kings-cross": dict(mid=dict(h=140, gap=84), near=dict(h=48, gap=50), floor_crop=(0.25, 1.0), fg=0),
+    "meta-hacker-square": dict(mid=dict(h=150, gap=84), near=dict(h=40, gap=52), floor_crop=(0.25, 1.0), fg=0),
+    "nvidia-voyager": dict(mid=dict(h=150, gap=80), near=dict(h=40, gap=50), floor_crop=(0.25, 1.0), fg=0),
+    "xai-colossus-memphis": dict(mid=dict(h=150, gap=66), near=dict(h=44, gap=48), floor_crop=(0.25, 1.0), fg=0),
+    "microsoft-fairwater": dict(mid=dict(h=146, gap=60, despeckle=True), near=dict(h=44, gap=46), floor_crop=(0.25, 1.0), fg=2),
+    "deepseek-hangzhou": dict(mid=dict(h=146, gap=84), near=dict(h=42, gap=52), floor_crop=(0.25, 1.0), fg=3),
+    "ami-labs-paris": dict(mid=dict(h=150, gap=104), near=dict(h=42, gap=50), floor_crop=(0.25, 1.0), fg=0),
 }
 
 

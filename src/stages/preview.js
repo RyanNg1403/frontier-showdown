@@ -12,6 +12,8 @@ const ui = {
   name: document.getElementById("stage-name"),
   loc: document.getElementById("stage-loc"),
   notes: document.getElementById("stage-notes"),
+  real: document.getElementById("stage-real"),
+  sources: document.getElementById("stage-sources"),
   swatches: document.getElementById("swatches"),
   paletteNote: document.getElementById("palette-note"),
   autoPan: document.getElementById("auto-pan"),
@@ -62,6 +64,18 @@ function renderInfo(meta) {
   ui.name.textContent = meta.name;
   ui.loc.textContent = meta.location;
   ui.notes.textContent = meta.fieldNotes;
+  const rw = meta.realWorld;
+  ui.real.textContent = `${rw.event} · ${rw.venue}, ${rw.city} · ${rw.dateLabel} · labs: ${meta.labs.join(", ")}`;
+  ui.sources.replaceChildren(...meta.sources.map((src) => {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = src.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = src.label;
+    li.append(a);
+    return li;
+  }));
   ui.paletteNote.textContent = meta.palette.note;
   ui.swatches.replaceChildren(...meta.palette.swatches.map((hex) => {
     const s = document.createElement("span");
@@ -156,7 +170,11 @@ addEventListener("keydown", (e) => {
     state.camX += e.key === "ArrowLeft" ? -24 : 24;
   }
   const n = Number(e.key);
-  if (n >= 1 && n <= STAGES.length) selectStage(STAGES[n - 1].id);
+  if (n >= 1 && n <= Math.min(9, STAGES.length)) selectStage(STAGES[n - 1].id);
+  if (e.key === "[" || e.key === "]") {
+    const i = STAGES.findIndex((s) => s.id === state.meta.id);
+    selectStage(STAGES[(i + (e.key === "]" ? 1 : -1) + STAGES.length) % STAGES.length].id);
+  }
 });
 
 await selectStage(params.get("stage") ?? STAGES[0].id);

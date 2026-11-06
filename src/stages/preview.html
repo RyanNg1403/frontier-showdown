@@ -25,6 +25,8 @@
     .swatches span { flex: 1; height: 22px; }
     .toggles { display: grid; grid-template-columns: 1fr 1fr; }
     kbd { border: 1px solid var(--line); padding: 0 4px; }
+    .sources { margin: 0 0 10px; padding-left: 16px; }
+    .sources a { color: var(--accent, #e8c27a); }
     body.capture main { display: block; padding: 0; }
     body.capture aside { display: none; }
     body.capture .stage-wrap { width: 1280px; height: 720px; border: 0; }
@@ -43,6 +45,9 @@
         <h1 id="stage-name"></h1>
         <p class="loc" id="stage-loc"></p>
         <p id="stage-notes"></p>
+        <h2>Real world</h2>
+        <p class="loc" id="stage-real"></p>
+        <ul class="sources" id="stage-sources"></ul>
         <h2>Palette</h2>
         <div class="swatches" id="swatches"></div>
         <p id="palette-note"></p>
@@ -54,7 +59,7 @@
         <h2>Layers</h2>
         <div class="toggles" id="layer-toggles"></div>
         <label><input type="checkbox" id="show-guides" checked /> ground line &amp; scale dummies</label>
-        <p class="loc"><kbd>←</kbd>/<kbd>→</kbd> pan · <kbd>1</kbd>–<kbd>8</kbd> stage</p>
+        <p class="loc"><kbd>←</kbd>/<kbd>→</kbd> pan · <kbd>1</kbd>–<kbd>9</kbd>, <kbd>[</kbd>/<kbd>]</kbd> stage</p>
       </section>
     </aside>
   </main>
