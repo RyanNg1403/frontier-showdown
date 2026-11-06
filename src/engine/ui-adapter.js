@@ -90,11 +90,15 @@ export function uiStages(list) {
 export function applyUiSettings(settings, { devices, audio, options }) {
   const controls = settings?.controls;
   if (controls) {
+    const primaries = new Set(["p1", "p2"].flatMap((p) => Object.values(controls[p]?.keyboard || {})));
     for (const p of ["p1", "p2"]) {
       const kb = controls[p]?.keyboard;
+      const alt = controls[p]?.keyboardAlt || {};
       if (kb) {
         for (const [action, key] of Object.entries(UI_ACTIONS)) {
-          if (kb[action]) devices.bindings[p][key] = [kb[action]];
+          if (!kb[action]) continue;
+          const extra = alt[action] && !primaries.has(alt[action]) ? [alt[action]] : [];
+          devices.bindings[p][key] = [kb[action], ...extra];
         }
       }
       const pad = controls[p]?.gamepad;

@@ -27,6 +27,10 @@ export const DEFAULT_BINDINGS = {
       up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight",
       lightPunch: "Numpad4", heavyPunch: "Numpad5", lightKick: "Numpad1", heavyKick: "Numpad2", block: "Numpad6", tag: "Numpad8",
     },
+    // Laptop alternates from the contract, for keyboards without a numpad.
+    keyboardAlt: {
+      lightPunch: "Comma", heavyPunch: "Period", lightKick: "KeyM", heavyKick: "Slash", block: "ShiftRight", tag: "Semicolon",
+    },
     gamepad: { up: 12, down: 13, left: 14, right: 15, lightPunch: 2, heavyPunch: 3, lightKick: 0, heavyKick: 1, block: 7, tag: 4 },
   },
 };
