@@ -13,7 +13,7 @@ CREAM = "#f3e7cf"
 
 def make_props(k):
     k.prop("hex_shield", hexagon("hex_shield", 0.17, 0.018, axis="Y"), TERRACOTTA, "hand_l",
-           offset=(0.0, 0.07, 0.0), rot=(0, 0, 90), part="hand_far", contrast=0.5)
+           offset=(0.0, 0.07, 0.0), rot=(0, 0, 90), part="prop_back", contrast=0.5)
     k.prop("hex_shield_r", hexagon("hex_shield_r", 0.15, 0.018, axis="Y"), TERRACOTTA, "hand_r",
            offset=(0.0, 0.07, 0.0), rot=(0, 0, 90), contrast=0.5)
     k.prop("scroll", merge("scroll", cylinder("roll", 0.03, 0.26, axis="X"),
@@ -21,7 +21,7 @@ def make_props(k):
            CREAM, "hand_r", offset=(0.0, 0.06, 0.02), rot=(0, 0, 0), contrast=0.6)
     k.prop("rack", merge("rack", box("rack", 0.16, 0.12, 0.24),
                          box("lights", 0.13, 0.13, 0.02, at=(0, 0, 0.06))),
-           "#2d313a", "hand_l", offset=(0.0, 0.12, 0.0), part="hand_far")
+           "#2d313a", "hand_l", offset=(0.0, 0.12, 0.0), part="prop_back")
 
 
 def palm(S, fd, side, target, lean=6.0, vfx=None, extra=None):
@@ -122,12 +122,10 @@ def moves(k):
     return m
 
 
-HEADS = {"super": "shout", "victory": "victory"}
-
 
 def animations(fighter_id, sk, cfg, ctx=None):
     if fighter_id != "dario":
         return {}
     k = Kit(sk, cfg, ctx)
     make_props(k)
-    return {name: k.anim(m, head=HEADS.get(name, "threequarter")) for name, m in moves(k).items()}
+    return {name: k.anim(m) for name, m in moves(k).items()}

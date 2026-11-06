@@ -15,14 +15,14 @@ def make_props(k):
     k.prop("badge", merge("badge", box("card", 0.075, 0.006, 0.1, at=(0, 0, 0)),
                           box("strap_l", 0.012, 0.004, 0.2, at=(-0.05, 0.02, 0.13)),
                           box("strap_r", 0.012, 0.004, 0.2, at=(0.05, 0.02, 0.13))),
-           "#f2f2ee", "spine_03", offset=(0.0, -0.215, 0.03), space="armature", part="torso")
+           "#f2f2ee", "spine_03", offset=(0.0, -0.215, 0.03), space="armature", part="prop_front")
     k.prop("badge_hand", merge("badge_hand", box("card", 0.075, 0.006, 0.1),
                                box("loop", 0.012, 0.004, 0.32, at=(0.0, 0.0, 0.2))),
            "#f2f2ee", "hand_r", offset=(0.0, 0.06, 0.0), rot=(90, 0, 0))
     k.prop("deploy_plinth", box("plinth", 0.2, 0.2, 0.84, at=(0, 0, 0.42)), "#4a4f5c", "Root",
-           offset=(0.0, -0.62, 0.0), space="armature", part="torso")
+           offset=(0.0, -0.62, 0.0), space="armature", part="prop_front")
     k.prop("deploy_button", cylinder("button", 0.09, 0.07, axis="Z", at=(0, 0, 0.875)), TEAL, "Root",
-           offset=(0.0, -0.62, 0.0), space="armature", part="torso", contrast=0.6)
+           offset=(0.0, -0.62, 0.0), space="armature", part="prop_front", contrast=0.6)
 
 
 def moves(k):
@@ -116,12 +116,10 @@ def moves(k):
     return m
 
 
-HEADS = {"super": "shout", "victory": "victory"}
-
 
 def animations(fighter_id, sk, cfg, ctx=None):
     if fighter_id != "sam":
         return {}
     k = Kit(sk, cfg, ctx)
     make_props(k)
-    return {name: k.anim(m, head=HEADS.get(name, "threequarter")) for name, m in moves(k).items()}
+    return {name: k.anim(m) for name, m in moves(k).items()}

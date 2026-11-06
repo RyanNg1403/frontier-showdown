@@ -11,14 +11,14 @@ META_BLUE = "#1877f2"
 
 def make_props(k):
     k.prop("hydrofoil", box("deck", 0.5, 1.15, 0.05), META_BLUE, "Root", offset=(0.0, -0.02, 0.36),
-           space="armature", part="shoe_near", contrast=0.7)
+           space="armature", part="prop_front", contrast=0.7)
     foil = merge("foil", box("mast", 0.03, 0.07, 0.34, at=(0, 0.1, -0.19)),
                  box("wing", 0.5, 0.16, 0.02, at=(0, 0.04, -0.36)))
-    k.prop("foil", foil, "#30343c", "Root", offset=(0.0, -0.02, 0.36), space="armature", part="shoe_far")
+    k.prop("foil", foil, "#30343c", "Root", offset=(0.0, -0.02, 0.36), space="armature", part="prop_back")
     k.prop("board_hand", box("board_hand", 0.42, 0.04, 0.8), META_BLUE, "hand_r", offset=(0.0, 0.08, 0.04),
            contrast=0.7)
     k.prop("sunscreen", cylinder("sunscreen", 0.022, 0.12, axis="Y"), "#f4f4f0", "hand_l",
-           offset=(0.0, 0.06, 0.0), part="hand_far", contrast=0.5)
+           offset=(0.0, 0.06, 0.0), part="prop_back", contrast=0.5)
     k.prop("phone", box("phone", 0.08, 0.014, 0.16), "#d5d8de", "hand_r", offset=(0.0, 0.05, 0.035),
            rot=(10, 0, 0), contrast=0.6)
 
@@ -150,12 +150,10 @@ def moves(k):
     return m
 
 
-HEADS = {"super": "shout", "victory": "victory"}
-
 
 def animations(fighter_id, sk, cfg, ctx=None):
     if fighter_id != "mark":
         return {}
     k = Kit(sk, cfg, ctx)
     make_props(k)
-    return {name: k.anim(m, head=HEADS.get(name, "threequarter")) for name, m in moves(k).items()}
+    return {name: k.anim(m) for name, m in moves(k).items()}

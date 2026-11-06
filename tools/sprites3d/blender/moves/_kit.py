@@ -13,7 +13,7 @@ fighter's feet anchor, in armature space (forward, up, out), lengths in leg leng
     lko, rko              knee-out bias for the leg IK pole
     lh, rh                hands: (forward, up, out) target relative to the shoulder, in arm lengths
     lfist, rfist          finger curl 0 (open) .. 1 (fist); guard fists also get the shared wrist twist
-    props                 {prop name: True} for props visible on that frame
+    props                 {prop name: True | transform} for props visible on that frame (shared `props` hook)
 
 "l" is the rig's left (far side, the lead side in the orthodox guard), "r" the right (near, camera side).
 `seq` builds frames by easing from pose to pose and records the `hit` frame and VFX hook events.
@@ -27,8 +27,8 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
+import props
 import shared
-import toon
 from gait import FWD, LAT, UP, Pose, foot_on_ground, rx, ry, rz
 
 GUARD_TWIST = shared.GUARD["twist"]
@@ -220,46 +220,21 @@ class Kit:
         return pose
 
     def anim(self, move, head="threequarter"):
+        """`head` "threequarter" lets the renderer pick the view (post/process.py HEAD_RULES, config by_anim)."""
         events = ([{"frame": move.hit, "type": "hit"}] if move.hit is not None else []) + move.events
         return shared.Anim([self.pose(s) for s in move.frames], move.fps, loop=move.loop, events=events, head=head)
 
     # ------------------------------------------------------------------------------------------ props
 
-    def prop(self, name, mesh, color, bone, offset=(0, 0, 0), rot=(0, 0, 0), part="hand_near", contrast=1.0,
+    def prop(self, name, mesh, color, bone, offset=(0, 0, 0), rot=(0, 0, 0), part="prop_front", contrast=1.0,
              space="bone"):
-        """Attach a prop mesh to a bone. With space="bone", `offset`/`rot` (deg) are in the bone's rest frame
-        at its head (Y runs along the bone); with space="armature" they are armature axes (forward is -Y)
-        relative to the bone head. The prop is hidden unless a frame's spec lists it in `props`."""
-        import _props
-        import outfit
+        """Attach a prop through the shared props hook (`props.add`): hidden unless a frame's spec lists it in
+        `props`. `part` is prop_front (in front of the body and head), prop_back, or an outfit part name."""
         if self.rig is None:
             return None
-        b = self.rig.data.bones[bone]
-        if space == "armature":
-            Rb = b.matrix_local.to_3x3()
-            Ra = Matrix.Identity(3)
-            for axis, deg in zip("XYZ", rot):
-                Ra = Ra @ Matrix.Rotation(math.radians(deg), 3, axis)
-            offset = tuple(Rb.inverted() @ Vector(offset))
-            rot = tuple(math.degrees(a) for a in (Rb.inverted() @ Ra).to_euler("XYZ"))
-        obj = bpy.data.objects.new("prop_" + name, mesh)
-        bpy.context.scene.collection.objects.link(obj)
-        toon.assign(obj, toon.make_toon_material("prop_" + name, color, contrast=contrast))
-        pid = mesh.attributes.new("pid", "FLOAT_COLOR", "FACE")
-        for p in mesh.polygons:
-            pid.data[p.index].color = outfit.part_color(part)
-        R = Matrix.Identity(4)
-        for axis, deg in zip("XYZ", rot):
-            R = R @ Matrix.Rotation(math.radians(deg), 4, axis)
-        obj.parent = self.rig
-        obj.parent_type = "BONE"
-        obj.parent_bone = bone
-        tail = b.matrix_local @ Matrix.Translation((0.0, b.length, 0.0))
-        obj.matrix_parent_inverse = tail.inverted()
-        obj.matrix_basis = b.matrix_local @ Matrix.Translation(offset) @ R
-        obj.hide_render = True
+        obj = props.add(name, mesh, color, bone, offset=offset, rot=rot, part=part, contrast=contrast, space=space,
+                        rig=self.rig)
         self.props[name] = obj
-        _props.register(name, obj)
         return obj
 
 

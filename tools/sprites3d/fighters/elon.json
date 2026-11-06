@@ -78,6 +78,7 @@
     }
   ],
   "head": {
+    "by_anim": {"intro": "threequarter"},
     "image": "heads/elon_tq.png",
     "heads_tall": 7.2,
     "colors": 18,

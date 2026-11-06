@@ -22,7 +22,7 @@ def make_props(k):
     k.prop("stone", sphere("stone", 0.03, squash=(1, 1, 0.5)), "#f4f1ea", "hand_r", offset=(0.0, 0.085, 0.02),
            contrast=0.5)
     k.prop("bowl", cylinder("bowl", 0.08, 0.06, axis="Z", radius2=0.06), "#9a6a3c", "hand_l",
-           offset=(0.0, 0.06, -0.03), part="hand_far")
+           offset=(0.0, 0.06, -0.03), part="prop_back")
     k.prop("medal", cylinder("medal", 0.04, 0.008, axis="Y"), "#d4af37", "hand_r", offset=(0.0, 0.08, 0.02),
            rot=(0, 0, 90), contrast=0.6)
 
@@ -123,12 +123,10 @@ def moves(k):
     return m
 
 
-HEADS = {"super": "shout", "victory": "victory"}
-
 
 def animations(fighter_id, sk, cfg, ctx=None):
     if fighter_id != "demis":
         return {}
     k = Kit(sk, cfg, ctx)
     make_props(k)
-    return {name: k.anim(m, head=HEADS.get(name, "threequarter")) for name, m in moves(k).items()}
+    return {name: k.anim(m) for name, m in moves(k).items()}

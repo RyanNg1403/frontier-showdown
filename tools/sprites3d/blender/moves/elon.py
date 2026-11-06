@@ -145,12 +145,10 @@ def moves(k):
     return m
 
 
-HEADS = {"super": "shout", "victory": "victory"}
-
 
 def animations(fighter_id, sk, cfg, ctx=None):
     if fighter_id != "elon":
         return {}
     k = Kit(sk, cfg, ctx)
     make_props(k)
-    return {name: k.anim(m, head=HEADS.get(name, "threequarter")) for name, m in moves(k).items()}
+    return {name: k.anim(m) for name, m in moves(k).items()}
