@@ -1,0 +1,48 @@
+async (page) => {
+  const mode = globalThis.__flowMode || "1v1";
+  page.__logs = [];
+  page.removeAllListeners("console");
+  page.removeAllListeners("pageerror");
+  page.removeAllListeners("response");
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") page.__logs.push(m.type() + ": " + m.text()); });
+  page.on("pageerror", (e) => page.__logs.push("pageerror: " + e.message));
+  page.on("response", (r) => { if (r.status() >= 400) page.__logs.push("http " + r.status() + " " + r.url()); });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("http://127.0.0.1:4190/");
+  await page.waitForFunction(() => window.frontierShowdown && window.frontierShowdown.ui, null, { timeout: 15000 });
+  await page.evaluate(() => {
+    const g = window.frontierShowdown;
+    window.__audio = { play: 0, announce: [], music: [] };
+    const a = g.audio;
+    const p = a.play.bind(a), an = a.announce.bind(a), mu = a.music.bind(a);
+    a.play = (id, o) => { window.__audio.play += 1; return p(id, o); };
+    a.announce = (id, o) => { window.__audio.announce.push(id); return an(id, o); };
+    a.music = (id, o) => { window.__audio.music.push(id); return mu(id, o); };
+  });
+  const scr = () => page.evaluate(() => window.frontierShowdown.ui.screen);
+  const key = async (k, wait = 200) => { await page.keyboard.press(k); await page.waitForTimeout(wait); };
+  const shots = [];
+  const shot = async (name) => { await page.screenshot({ path: `/tmp/flow-${mode}-${name}.png` }); shots.push(`${name}:${await scr()}`); };
+  await page.waitForTimeout(1200);
+  await shot("1-title");
+  await key("Enter", 900);
+  if (mode === "2v2") await key("KeyE", 250);
+  await key("ArrowRight", 150);
+  await key("ArrowRight", 150);
+  await shot("2-mode");
+  await key("Enter", 1000);
+  const picks = mode === "2v2" ? ["Enter", "ArrowRight", "Enter", "Enter", "ArrowLeft", "Enter"] : ["Enter", "ArrowRight", "Enter"];
+  for (let i = 0; i < picks.length; i += 1) await key(picks[i], 450);
+  await page.waitForTimeout(500);
+  if ((await scr()) === "select") await key("Enter", 1000);
+  await shot("3-select-done");
+  for (let i = 0; i < 3; i += 1) await key("ArrowRight", 250);
+  await shot("4-stage");
+  await key("Enter", 1200);
+  await shot("5-versus");
+  await page.waitForFunction(() => window.frontierShowdown.ui.screen === "fight", null, { timeout: 15000 });
+  await page.waitForFunction(() => window.frontierShowdown.state.phase === "fight", null, { timeout: 15000 });
+  await page.waitForTimeout(2500);
+  await shot("6-fight");
+  return JSON.stringify({ shots, session: await page.evaluate(() => window.frontierShowdown.ui.session.sides), logs: page.__logs });
+}

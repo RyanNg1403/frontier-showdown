@@ -422,6 +422,9 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     get audio() {
       return audio;
     },
+    get ui() {
+      return uiInstance;
+    },
     bindings: devices.bindings,
     refreshBindings: () => devices.refreshBound(),
     listCharacters,

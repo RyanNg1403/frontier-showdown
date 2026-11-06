@@ -61,7 +61,16 @@ export function listModuleStages(module) {
     if (Array.isArray(list) && list.length) return list;
   }
   if (Array.isArray(module.STAGES) && module.STAGES.length) {
-    return module.STAGES.map((s) => ({ id: s.id, name: s.name, lab: s.lab, location: s.location, fieldNotes: s.fieldNotes, thumbnail: s.thumbnail }));
+    const asUrl = (src) => (src && !/^(\/|https?:)/.test(src) ? `/${src}` : src);
+    return module.STAGES.map((s) => ({
+      id: s.id,
+      name: s.name,
+      lab: s.lab ?? s.labs?.[0],
+      labs: s.labs ?? (s.lab ? [s.lab] : []),
+      location: s.location,
+      fieldNotes: s.fieldNotes,
+      thumbnail: asUrl(s.thumbnail ?? s.preview ?? s.layers?.far?.src ?? s.layers?.mid?.src),
+    }));
   }
   return null;
 }

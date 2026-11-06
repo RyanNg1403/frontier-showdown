@@ -77,7 +77,13 @@ export function uiRoster(list) {
 }
 
 export function uiStages(list) {
-  return list.map((s) => ({ ...s, description: s.description ?? s.fieldNotes ?? s.location, preview: s.preview ?? s.thumbnail }));
+  return list.map((s) => {
+    const out = { ...s, description: s.description ?? s.fieldNotes ?? s.location };
+    const preview = s.preview ?? s.thumbnail;
+    if (preview) out.preview = preview;
+    else delete out.preview;
+    return out;
+  });
 }
 
 /** Apply the UI's settings object to the input devices and the audio module. */
