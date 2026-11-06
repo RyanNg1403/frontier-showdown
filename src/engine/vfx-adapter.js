@@ -87,7 +87,7 @@ export function adaptVfx(module, instance) {
         if (!h) {
           const type = projectileType(vfxLab(p.labId));
           if (!type) continue;
-          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: vfxLab(p.labId), manual: true, life: 30, scale: p.scale ?? 1 });
+          h = instance.spawn(type, p.x, p.y, { dir: p.facing, lab: vfxLab(p.labId), manual: true, life: 30, scale: p.scale ?? 1, hitbox: p.hitbox });
           if (!h) continue;
           tracked.set(p.id, h);
         }

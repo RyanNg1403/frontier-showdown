@@ -408,7 +408,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     if (match.shakeFrames > lastShake && helpers?.shake && uiOptions.screenShake) vfxCall(() => helpers.shake(Math.min(12, match.shakeFrames), match.shakeFrames));
     lastShake = match.shakeFrames;
     if (vfx.syncProjectiles) {
-      vfxCall(() => vfx.syncProjectiles(match.projectiles.filter((p) => !p.def.mech?.look).map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1 }))));
+      vfxCall(() => vfx.syncProjectiles(match.projectiles.filter((p) => !p.def.mech?.look).map((p) => ({ id: p.id, x: p.x, y: p.y, facing: p.facing, labId: p.owner.def.labId, scale: p.category === "super" ? 1.6 : 1, hitbox: p.def.hitbox }))));
     }
     const targets = [match.point(0), match.point(1)].filter((f) => f.onField && f.state !== "bench");
     const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
