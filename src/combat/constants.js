@@ -122,4 +122,13 @@ export const ANIM_FALLBACKS = Object.freeze({
   crouch_block: ["block"],
   jump_start: ["crouch"],
   jump_land: ["crouch"],
+  // Kick variants and dedicated move animations (PR #13/#14) fall back to the shared states.
+  crouch_light_kick: ["crouch_light"],
+  crouch_heavy_kick: ["crouch_heavy"],
+  air_kick: ["air_attack"],
+  air_dive: ["air_attack"],
+  ship_it: ["heavy_punch"],
+  safeguard_palm: ["heavy_punch"],
+  cybertruck_charge: ["heavy_punch"],
+  knights_move: ["heavy_kick"],
 });
