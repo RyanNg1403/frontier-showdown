@@ -56,7 +56,8 @@ function fighterFrame(f) {
 
 function fighterSprite(f) {
   const fr = fighterFrame(f);
-  return { image: f.atlas.image, sx: fr.x, sy: fr.y, sw: fr.w, sh: fr.h, anchorX: ANCHOR.x, anchorY: ANCHOR.y, scale: FIGHTER_SCALE, flip: f.facing < 0, x: f.x, y: f.y };
+  const an = fr.anchor || ANCHOR;
+  return { image: f.atlas.image, sx: fr.x, sy: fr.y, sw: fr.w, sh: fr.h, anchorX: an.x, anchorY: an.y, scale: FIGHTER_SCALE, flip: f.facing < 0, x: f.x, y: f.y };
 }
 
 function drawFighter(c, f, cam) {
@@ -66,7 +67,8 @@ function drawFighter(c, f, cam) {
   c.save();
   c.translate(Math.round(f.x - cam.x + jitter), Math.round(f.y - cam.y));
   c.scale(f.facing * FIGHTER_SCALE, FIGHTER_SCALE);
-  c.drawImage(f.atlas.image, fr.x, fr.y, fr.w, fr.h, -ANCHOR.x, -ANCHOR.y, fr.w, fr.h);
+  const an = fr.anchor || ANCHOR;
+  c.drawImage(f.atlas.image, fr.x, fr.y, fr.w, fr.h, -an.x, -an.y, fr.w, fr.h);
   c.restore();
 }
 

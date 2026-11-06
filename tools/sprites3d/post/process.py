@@ -12,8 +12,9 @@ Per frame:
      Near the neck cut the 3D neck and collar win, so the joint shows no seam.
   3. Inner lines where a nearer limb overlaps a farther part, a 1 px outer outline, one shared palette.
 Then the atlas: every animation in `build.json` (shared states and move-module animations), plus derived
-entries (walk_back = walk_fwd reversed at 80% speed), packed into a 12-column grid, with `strideSpeed`
-measured from the planted foot and footstep events on contact frames of locomotion cycles.
+entries (walk_back = walk_fwd reversed at 80% speed). Frames are trimmed to their pixels, de-duplicated and
+shelf-packed into the smallest sheet (each rect carries its own feet `anchor`), with `strideSpeed` measured
+from the planted foot and footstep events on contact frames of locomotion cycles. PNG plus lossless WebP.
 
 Requires: numpy, pillow.
 """
@@ -43,7 +44,6 @@ TORSO_PARTS = (4, 14)
 FRONT_PARTS = tuple(k for k, r in PART_RANK.items() if r > 5)
 CELL = 256
 ANCHOR = (128, 244)
-COLS = 12
 OUTLINE = np.array([24, 22, 30], dtype=np.uint8)
 
 
@@ -439,30 +439,87 @@ def contact_sheet(entries, path, title, crop=(208, 244)):
     sheet.convert("RGB").save(path, optimize=True)
 
 
-def build_atlas(fighter_id, entries, out_dir):
-    total = sum(len(e["frames"]) for e in entries)
-    rows = (total + COLS - 1) // COLS
-    atlas = np.zeros((rows * CELL, COLS * CELL, 4), dtype=np.uint8)
-    anims, k = {}, 0
+def trim(frame):
+    """(crop, left, top) of a 256 px cell cut to its opaque pixels."""
+    ys, xs = np.nonzero(frame[..., 3])
+    if len(ys) == 0:
+        return frame[:1, :1], 0, 0
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    return frame[y0:y1, x0:x1], int(x0), int(y0)
+
+
+def shelf_pack(sizes, width, gap):
+    """Shelf packing of (w, h) boxes, tallest first. Returns ({index: (x, y)}, height) or None if a box is
+    wider than the sheet."""
+    order = sorted(range(len(sizes)), key=lambda i: (-sizes[i][1], -sizes[i][0]))
+    pos, x, y, shelf = {}, 0, 0, 0
+    for i in order:
+        w, h = sizes[i]
+        if w > width:
+            return None
+        if x + w > width:
+            x, y, shelf = 0, y + shelf + gap, 0
+        pos[i] = (x, y)
+        x += w + gap
+        shelf = max(shelf, h)
+    return pos, y + shelf
+
+
+def build_atlas(fighter_id, entries, out_dir, max_side=4096, gap=1):
+    """Pack trimmed, de-duplicated frames into the smallest sheet (sides at most `max_side`).
+
+    Frame rects keep the contract format ({x, y, w, h}); each also carries `anchor`, the feet anchor inside
+    its rect (the engine draws `frame.anchor || atlas.anchor`). Writes atlas.png and a lossless atlas.webp."""
+    uniq, keys, refs = [], {}, []
     for e in entries:
-        rects = []
+        row = []
         for f in e["frames"]:
-            x, y = (k % COLS) * CELL, (k // COLS) * CELL
-            atlas[y:y + CELL, x:x + CELL] = f
-            rects.append({"x": x, "y": y, "w": CELL, "h": CELL})
-            k += 1
-        entry = {"fps": e["fps"], "loop": e["loop"], "frames": rects}
+            crop, x0, y0 = trim(f)
+            key = (x0, y0, crop.shape, crop.tobytes())
+            if key not in keys:
+                keys[key] = len(uniq)
+                uniq.append((crop, x0, y0))
+            row.append(keys[key])
+        refs.append(row)
+    sizes = [(c.shape[1], c.shape[0]) for c, _, _ in uniq]
+    best = None
+    for width in range(512, max_side + 1, 128):
+        packed = shelf_pack(sizes, width, gap)
+        if not packed:
+            continue
+        pos, height = packed
+        height = (height + 3) // 4 * 4
+        if height > max_side:
+            continue
+        area = width * height
+        if best is None or area < best[0] or (area == best[0] and abs(width - height) < abs(best[1] - best[2])):
+            best = (area, width, height, pos)
+    _, W, H, pos = best
+    atlas = np.zeros((H, W, 4), dtype=np.uint8)
+    rects = []
+    for i, (crop, x0, y0) in enumerate(uniq):
+        x, y = pos[i]
+        atlas[y:y + crop.shape[0], x:x + crop.shape[1]] = crop
+        rects.append({"x": x, "y": y, "w": int(crop.shape[1]), "h": int(crop.shape[0]),
+                      "anchor": {"x": ANCHOR[0] - x0, "y": ANCHOR[1] - y0}})
+    anims = {}
+    for e, row in zip(entries, refs):
+        entry = {"fps": e["fps"], "loop": e["loop"], "frames": [dict(rects[k]) for k in row]}
         if e.get("strideSpeed"):
             entry["strideSpeed"] = round(e["strideSpeed"], 1)
         if e.get("events"):
             entry["events"] = e["events"]
         anims[e["name"]] = entry
-    Image.fromarray(atlas).save(os.path.join(out_dir, "atlas.png"), optimize=True)
+    img = Image.fromarray(atlas)
+    img.save(os.path.join(out_dir, "atlas.png"), optimize=True)
+    img.save(os.path.join(out_dir, "atlas.webp"), lossless=True, quality=100, method=6)
     data = {"id": fighter_id, "cell": {"w": CELL, "h": CELL}, "anchor": {"x": ANCHOR[0], "y": ANCHOR[1]},
+            "image": "atlas.png", "images": {"png": "atlas.png", "webp": "atlas.webp"},
+            "size": {"w": W, "h": H, "decodedBytes": W * H * 4},
             "source": "tools/sprites3d (MPFB/MakeHuman body, Blender toon render, 2D likeness head)",
             "animations": anims}
     with open(os.path.join(out_dir, "atlas.json"), "w") as fh:
-        json.dump(data, fh, indent=1)
+        json.dump(data, fh, separators=(",", ":"))
     return data
 
 
@@ -542,10 +599,16 @@ def main():
     sheet = args.sheet or os.path.join(preview, f"shared-{cfg['id']}.png")
     contact_sheet(entries, sheet, title)
     report["palette_size"] = int(len(palette))
+    report["atlas"] = {"w": data["size"]["w"], "h": data["size"]["h"], "decoded_mb": round(data["size"]["decodedBytes"] / 2**20, 2),
+                       "frames": sum(len(a["frames"]) for a in data["animations"].values()),
+                       "unique_frames": len({(f["x"], f["y"]) for a in data["animations"].values() for f in a["frames"]}),
+                       "png_kb": round(os.path.getsize(os.path.join(args.out, "atlas.png")) / 1024),
+                       "webp_kb": round(os.path.getsize(os.path.join(args.out, "atlas.webp")) / 1024)}
     report["animations"] = {n: len(a["frames"]) for n, a in data["animations"].items()}
     with open(os.path.join(preview, "report.json"), "w") as fh:
         json.dump(report, fh, indent=1)
     print(json.dumps({k: v for k, v in report.items() if k != "animations"}, indent=1))
+    print("atlas:", json.dumps(report["atlas"]))
     print("animations:", ", ".join(f"{k} ({len(v['frames'])}f)" for k, v in data["animations"].items()))
 
 

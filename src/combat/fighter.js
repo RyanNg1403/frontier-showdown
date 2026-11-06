@@ -509,11 +509,11 @@ export class Fighter {
     const def = this.atlas?.animations?.[name];
     const fps = def?.fps || 10;
     if (LOCOMOTION.has(name)) {
-      const speed = this.locomotionSpeed(name);
       const moved = Math.abs(this.lastDx);
-      const expected = speed * DT;
+      const expected = this.locomotionSpeed(name) * DT;
       const pushing = moved < expected * 0.25;
-      const ratio = pushing ? 1 : moved / expected;
+      // Advance by distance over the unmodified stride, so a slow (speedMul) slows the cycle too.
+      const ratio = pushing ? 1 : moved / (this.baseLocomotionSpeed(name) * DT);
       this.anim.t += ratio * fps * DT;
     } else if (this.state !== "attack") {
       this.anim.t += fps * DT;

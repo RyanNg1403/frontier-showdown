@@ -152,6 +152,9 @@ def install(specs):
                 hook.register(f"{name}_{k}", _build_ribbon(f"{name}_{k}", spec, rig, k / spec["ribbon"].get("phases", 4)))
         else:
             hook.register(name, _build_parts(name, spec, rig))
+            rot = Euler([math.radians(a) for a in (spec.get("rot") or (0, 0, 0))]).to_matrix()
+            hook.set_default(name, {"offset": tuple(spec.get("offset") or (0, 0, 0)), "rot": _hook_rot(rot),
+                                    "scale": spec.get("scale") or 1.0})
         _SPECS[name] = spec
 
 
@@ -191,6 +194,11 @@ def pose_props(states, frame_index, pose=None, rest=None):
             continue
         vis = st.get("vis")
         if (1 if vis is None else vis) < 0.5:
+            # Say "hidden" explicitly, so a prop the fighter config makes always-on stays off here.
+            if spec.get("ribbon"):
+                out.update({f"{name}_{k}": False for k in range(spec["ribbon"].get("phases", 4))})
+            else:
+                out[name] = False
             continue
         if spec.get("ribbon"):
             phases = spec["ribbon"].get("phases", 4)

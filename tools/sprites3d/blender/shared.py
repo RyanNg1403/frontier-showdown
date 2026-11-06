@@ -339,7 +339,8 @@ def walk(sk, rest, posing, cfg, ppm):
     gcfg = cfg.get("gait", {})
     p = params_from(WALK, gcfg.get("walk"))
     poses = fit_pelvis(sk, rest, locomotion(sk, p), posing)
-    fps = _cadence(p, sk, ppm, gcfg.get("walk", {}).get("speed", cfg.get("speeds", {}).get("walk", 200)))
+    fps = _cadence(p, sk, ppm, gcfg.get("walk", {}).get("speed", cfg.get("speeds", {}).get("walk", 200)),
+                   cfg.get("view_yaw", 20.0))
     return Anim(poses, fps, locomotion=True, derived=[{"name": "walk_back", "reverse": True, "speed": 0.8}])
 
 
@@ -347,12 +348,15 @@ def run(sk, rest, posing, cfg, ppm):
     gcfg = cfg.get("gait", {})
     p = params_from(RUN, gcfg.get("run"))
     poses = fit_pelvis(sk, rest, locomotion(sk, p), posing)
-    fps = _cadence(p, sk, ppm, gcfg.get("run", {}).get("speed", cfg.get("speeds", {}).get("run", 460)))
+    fps = _cadence(p, sk, ppm, gcfg.get("run", {}).get("speed", cfg.get("speeds", {}).get("run", 460)),
+                   cfg.get("view_yaw", 20.0))
     return Anim(poses, fps, locomotion=True)
 
 
-def _cadence(p, sk, ppm, target_speed):
-    stride_px = 2 * p.step * sk.leg * ppm
+def _cadence(p, sk, ppm, target_speed, view_yaw=20.0):
+    """fps that makes the cycle travel at about `target_speed` on screen (the stride is foreshortened by the
+    fighter's turn toward the viewer). The atlas strideSpeed is measured from the render afterwards."""
+    stride_px = 2 * p.step * sk.leg * ppm * math.cos(math.radians(view_yaw))
     return max(6, round(p.frames * target_speed / stride_px))
 
 

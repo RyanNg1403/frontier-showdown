@@ -29,14 +29,19 @@ which is gitignored.
 
 ## Atlas
 
-`assets/fighters/<id>/atlas.json` follows `internal/fighter-contract.md`: 256 px cells, anchor `{128, 244}`, and
-frames packed into a 12-column grid with one rect per frame.
+`assets/fighters/<id>/atlas.json` follows `internal/fighter-contract.md`: `cell` 256 px, `anchor` `{128, 244}`, one
+rect per frame. Frames are trimmed to their pixels, de-duplicated (for example, `walk_back` reuses `walk_fwd`'s
+frames) and shelf-packed into the smallest sheet with sides of at most 4096 px. Packing reaches about 94%
+efficiency.
 
-| Entry | Contents |
+| Field | Contents |
 | --- | --- |
-| `fps`, `loop` | On every animation; one-shot states have `"loop": false` |
-| `strideSpeed` | On `walk_fwd`, `walk_back` and `run`: the planted heel or ball's median travel between frames × fps, measured from the evaluated rig. Foot slip is under 0.4 px. |
-| `events` | `{"frame", "type": "footstep", "foot"}` on every landing frame of `walk_fwd`, `walk_back` and `run`, plus any events a move module declares (`hit` and so on) |
+| `frames[i]` | `{x, y, w, h, anchor}`. `anchor` is the feet anchor inside that rect; the engine draws `frame.anchor \|\| atlas.anchor`. |
+| `images` | `{"png": "atlas.png", "webp": "atlas.webp"}`. `image` stays `atlas.png`. The WebP is lossless. |
+| `size` | `{w, h, decodedBytes}` |
+| `fps`, `loop` | On every animation |
+| `strideSpeed` | On `walk_fwd`, `walk_back` and `run`, measured from the planted foot |
+| `events` | Footsteps on landing frames, plus move events |
 
 The shared states, the same for every fighter, are: `idle` (breathing orthodox guard), `walk_fwd`, `walk_back` (the
 walk reversed at 80% speed), `run`, `dash_fwd`, `dash_back`, `jump_start`, `jump_air`, `jump_land`, `crouch`,
@@ -67,7 +72,8 @@ degrees.
 Legs default to an analytic two-bone IK on the foot targets. A foot planted with a positive pitch pivots on its
 ball.
 
-**Locomotion (`blender/gait.py`).** The walk and run are cycles generated from `GaitParams`: duty factor, step,
+**Locomotion (`blender/gait.py`).** The cadence (fps) targets the config's `speeds` (or `gait.walk.speed`) on
+screen, allowing for the 20° view turn; the atlas `strideSpeed` is then measured from the render. The walk and run are cycles generated from `GaitParams`: duty factor, step,
 keyed swing path, heel strike, foot roll, toe-off, pelvis bob, yaw and roll, spine counter-rotation and arm swing.
 The run leans 19° forward. During stance the foot pivots on the heel, then lies flat, then pivots on the ball, and
 the pivot never moves relative to the ground. `fit_pelvis` lowers the hips wherever a planted leg could not reach
@@ -147,7 +153,18 @@ shows it through `pose.props`, which a `shared.pose_from` key can also carry as 
 ```
 
 `posing.apply_pose` keys every registered prop on every frame: its visibility, and its transform (reset to the
-attachment when the pose gives none). A prop therefore never leaks into frames or animations that don't list it,
+attachment, or to its `props.set_default` transform, when the pose gives none).
+
+**Always-on props.** A fighter config's `"props": {"always": ["ewi"]}` shows the listed props on every frame,
+the shared states included, at their default transform. A move frame can still hide a prop (`False`) or move
+it. A name whose registered members are `name_0 .. name_k` cycles one member per frame, which is how Arthur's
+scarf flutters. Current always-on props:
+
+| Fighter | Props |
+| --- | --- |
+| Yann | `ewi` |
+| Arthur | `scarf`, `collar` |
+| Andrej | `marker` | A prop therefore never leaks into frames or animations that don't list it,
 the shared states included. The `prop_front` part draws in front of everything, including the 2D head;
 `prop_back` draws behind the body.
 

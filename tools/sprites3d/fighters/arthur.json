@@ -119,5 +119,11 @@
     },
     "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
-  "likeness": "Dark-navy suit, white shirt, dark-blue tie; tall and lean, long limbs."
+  "likeness": "Dark-navy suit, white shirt, dark-blue tie; tall and lean, long limbs.",
+  "props": {
+    "always": [
+      "scarf",
+      "collar"
+    ]
+  }
 }
