@@ -1,0 +1,121 @@
+{
+ "andrej": {
+  "sheet": "source/andrej-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Andrej_Karpathy,_OpenAI.png",
+   "assets/ui/portraits/andrej.png (approved select portrait)"
+  ]
+ },
+ "arthur": {
+  "sheet": "source/arthur-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Arthur_Mensch.png",
+   "assets/ui/portraits/arthur.png (approved select portrait)"
+  ]
+ },
+ "chris": {
+  "sheet": "source/chris-sheet.jpg",
+  "likeness": [
+   "assets/ui/portraits/chris.png (approved select portrait)"
+  ]
+ },
+ "dario": {
+  "sheet": "source/dario-sheet.jpg",
+  "views": {
+   "tq": "source/dario-tq.jpg"
+  },
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Dario_Amodei_at_TechCrunch_Disrupt_2023_01_(cropped).jpg",
+   "assets/ui/portraits/dario.png (approved select portrait)"
+  ]
+ },
+ "demis": {
+  "sheet": "source/demis-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Demis_Hassabis,_2024_Nobel_Prize_Laureate_in_Chemistry_7_(cropped).jpg",
+   "assets/ui/portraits/demis.png (approved select portrait)"
+  ]
+ },
+ "elon": {
+  "sheet": "source/elon-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Elon_Musk_-_54820081119_(3x4_cropped,_Rule_of_thirds).jpg",
+   "assets/ui/portraits/elon.png (approved select portrait)"
+  ]
+ },
+ "feifei": {
+  "sheet": "source/feifei-sheet.jpg",
+  "chin": 437,
+  "long_hair": true,
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Fei-Fei_Li_at_AI_for_Good_2017.jpg",
+   "assets/ui/portraits/feifei.png (approved select portrait)"
+  ]
+ },
+ "geoffrey": {
+  "sheet": "source/geoffrey-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Geoffrey_Hinton_in_2026.jpg",
+   "assets/ui/portraits/geoffrey.png (approved select portrait)"
+  ]
+ },
+ "ilya": {
+  "sheet": "source/ilya-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Ilya_Sutskever_and_Sam_Altman_in_TAU_(cropped).jpg",
+   "assets/ui/portraits/ilya.png (approved select portrait)"
+  ]
+ },
+ "jensen": {
+  "sheet": "source/jensen-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Jensen_Huang_Stanford_2026-04-30_010_(cropped).jpg",
+   "https://commons.wikimedia.org/wiki/File:Jensen_Huang_Nvidia_Keynote_CES_2025.jpg",
+   "assets/ui/portraits/jensen.png (approved select portrait)"
+  ]
+ },
+ "liang": {
+  "sheet": "source/liang-sheet.jpg",
+  "likeness": [
+   "assets/ui/portraits/liang.png (approved select portrait)"
+  ]
+ },
+ "mark": {
+  "sheet": "source/mark-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:P20260929DT-1655_(55561811540)_(cropped_2).jpg",
+   "assets/ui/portraits/mark.png (approved select portrait)"
+  ]
+ },
+ "mustafa": {
+  "sheet": "source/mustafa-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Mustafa_Suleyman_photo_(cropped).jpg",
+   "assets/ui/portraits/mustafa.png (approved select portrait)"
+  ]
+ },
+ "noam": {
+  "sheet": "source/noam-sheet.jpg",
+  "likeness": [
+   "assets/ui/portraits/noam.png (approved select portrait)"
+  ]
+ },
+ "sam": {
+  "sheet": "source/sam-sheet.jpg",
+  "views": {
+   "profile": "source/sam-profile.jpg"
+  },
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Meeting_with_Masayoshi_Son_and_Sam_Altman_(February_3,_2025)_(3x4_cropped_on_Altman).jpg",
+   "https://commons.wikimedia.org/wiki/File:Ilya_Sutskever_and_Sam_Altman_in_TAU.jpg",
+   "assets/ui/portraits/sam.png (approved select portrait)"
+  ]
+ },
+ "yann": {
+  "sheet": "source/yann-sheet.jpg",
+  "likeness": [
+   "https://commons.wikimedia.org/wiki/File:Laura_Chaubard_%26_Yann_Le_Cun_-_2024_(53814052697)_(cropped).jpg",
+   "assets/ui/portraits/yann.png (approved select portrait)"
+  ]
+ }
+}
