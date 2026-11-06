@@ -47,8 +47,9 @@ export const SOUNDS = {
   "ui.lock": ui("lock", { gain: -1 }),
 };
 
-// Labs the announcer recognises. Every lab's win line is the recorded "Winner!"; players 1 and 2
-// have their own "Player one/two... Winner!" lines.
+// Labs the announcer recognises. Every lab's win line is the recorded "Winner!", heard only when
+// the winning fighter's own win clip can't load; players 1 and 2 have their own
+// "Player one/two... Winner!" lines.
 export const LABS = {
   openai: { name: "OpenAI", aliases: ["open-ai"] },
   anthropic: { name: "Anthropic" },
@@ -101,7 +102,38 @@ export const MUSIC = {
 
 export const ALL_SOUNDS = { ...SOUNDS, ...VOICE };
 
+// Character and announcer voice clips, listed in `voices/manifest.json` as { id, character,
+// text, file }. Ids: `announcer.<slug>`, `<fighter>.versus | taunt | win | tag-in`,
+// `<fighter>.special.<moveId>` and `<fighter>.super.<moveId>`. They load per pack (the
+// announcer, and each fighter in the match), never all up front.
+export const VOICE_CLIPS = "voices/manifest.json";
+
+export const clipEntry = ({ id, character, text, file }) => ({
+  bus: "voice", files: [`voices/${file}`], variants: 1, gain: 0, pitchVar: 0, volVar: 0, maxVoices: 1, id, character, text,
+});
+
+// The recorded line that stands in for an announcer clip that failed to load. Fighter win
+// clips fall back to the lab's "Winner!" (`ann.wins.<lab>`).
+export const CLIP_FALLBACK = {
+  "announcer.round-1": "ann.round1",
+  "announcer.round-2": "ann.round2",
+  "announcer.final-round": "ann.final",
+  "announcer.fight": "ann.fight",
+  "announcer.ko": "ann.ko",
+  "announcer.double-ko": "ann.doubleko",
+  "announcer.perfect": "ann.perfect",
+  "announcer.time-up": "ann.time",
+  "announcer.draw": "ann.draw",
+  "announcer.you-win": "ann.winner",
+  "announcer.player-1": "ann.wins.player1",
+  "announcer.player-2": "ann.wins.player2",
+};
+
+// Recorded lines with no clip of their own; they load with the fight sounds.
+export const VOICE_ONLY = ["ann.round3", "ann.finish"];
+
 export function soundFiles(entry) {
+  if (entry.files) return entry.files;
   if (entry.variants <= 1) return [`${entry.dir}/${entry.name}.wav`];
   return Array.from({ length: entry.variants }, (_, i) => `${entry.dir}/${entry.name}-${i + 1}.wav`);
 }

@@ -63,6 +63,16 @@ export function bindGameEvents(audio, game, opts = {}) {
   let engineFrameEvents = false;
   let winnerAnnounced = false;
   let tracker = null;
+  // From matchStart: each side's control and point fighter (updated on tags).
+  let controls = [];
+  let points = [];
+  const say = (fighter, line, o) => (fighter && audio.speak ? audio.speak(`${fighter}.${line}`, o) : null);
+
+  // matchStart: { sides: [{ team: [fighter ids], control: "human"|"cpu" }] }
+  on("matchStart", (e) => {
+    controls = (e.sides ?? []).map((s) => s.control);
+    points = (e.sides ?? []).map((s) => s.team?.[0] ?? null);
+  });
 
   const hitSound = (e) => {
     if (isThrow(e)) return audio.play("throw.slam", xOf(e));
@@ -110,53 +120,79 @@ export function bindGameEvents(audio, game, opts = {}) {
     }
     if (koCalled) return;
     koCalled = true;
-    audio.announce(e.double ? "ann.doubleko" : "ann.ko", { delay: 0.3 });
+    audio.announce(e.double ? "announcer.double-ko" : "announcer.ko", { delay: 0.3 });
   }));
 
   // roundStart: { round (1-based), final?, maxRounds?, announceFight? }
   on("roundStart", (e) => {
     const round = e.round ?? e.index ?? e.number ?? 1;
-    if (round <= 1) winnerAnnounced = false;
+    if (round <= 1) {
+      winnerAnnounced = false;
+      audio.hush?.();
+    }
     koCalled = false;
     fellMidRound.clear();
     awaitingEntry.clear();
     const final = e.final ?? e.isFinal ?? round >= (e.maxRounds ?? 3);
-    audio.announce(final ? "ann.final" : `ann.round${Math.min(3, round)}`, { interrupt: true });
+    const call = final ? "announcer.final-round" : round <= 1 ? "announcer.round-1" : round === 2 ? "announcer.round-2" : "ann.round3";
+    audio.announce(call, { interrupt: true });
     clearTimeout(fightTimer);
-    if (e.announceFight !== false) fightTimer = later(e.fightDelay ?? opts.fightDelay ?? 1.6, () => audio.announce("ann.fight"));
+    if (e.announceFight !== false) fightTimer = later(e.fightDelay ?? opts.fightDelay ?? 1.6, () => audio.announce("announcer.fight"));
     if (opts.music !== false && audio.currentMusic !== "fight") audio.music("fight", { fade: 1.5 });
   });
 
-  // roundEnd: { winner, perfect?, reason: "ko"|"time"|"draw", draw?, matchOver?, matchWinner?, winnerLab? }
+  // roundEnd: { winner, winnerFighter?, perfect?, reason: "ko"|"time"|"draw", draw?, matchOver?, matchWinner?, winnerLab? }
+  // A round won short of the match gets the winner's taunt over the victory pose.
   on("roundEnd", (e) => {
     const reason = lower(e.reason);
-    if (reason === "time" || e.timeout || e.timeUp) audio.announce("ann.time", { interrupt: true });
-    if (reason === "draw" || e.draw) audio.announce("ann.draw");
-    if (e.perfect) audio.announce("ann.perfect", { gap: 0.35 });
-    if ((e.matchOver || e.matchWinner != null) && !winnerAnnounced) announceMatch(e, e.matchWinner ?? e.winner);
+    if (reason === "time" || e.timeout || e.timeUp) audio.announce("announcer.time-up", { interrupt: true });
+    if (reason === "draw" || e.draw) audio.announce("announcer.draw");
+    if (e.perfect) audio.announce("announcer.perfect", { gap: 0.35 });
+    const matchOver = e.matchOver || e.matchWinner != null;
+    if (matchOver && !winnerAnnounced) announceMatch(e, e.matchWinner ?? e.winner);
+    else if (!matchOver && Number.isInteger(e.winner)) say(e.winnerFighter ?? points[e.winner], "taunt", { queue: true, delay: 0.5, gap: 0.3 });
   });
 
+  // Single player (one human side) hears "You win!" or "You lose!", otherwise "Player one/two!";
+  // then the winning fighter's win line, or the lab's recorded "Winner!" if that can't load.
   function announceMatch(e, side) {
     winnerAnnounced = true;
+    const won = Number.isInteger(side);
+    const fighter = won ? e.winnerFighter ?? points[side] : null;
     later(opts.winnerDelay ?? 1.4, () => {
-      audio.announceWinner(labOf(e, side, opts), { side: Number.isInteger(side) ? side : undefined });
+      if (won) {
+        const humans = controls.filter((c) => c === "human").length;
+        const call = humans === 1 ? (controls[side] === "human" ? "announcer.you-win" : "announcer.you-lose") : `announcer.player-${side + 1}`;
+        audio.announce(call);
+      }
+      if (!say(fighter, "win", { queue: true, gap: 0.25 }) && won) audio.announceWinner(labOf(e, side, opts), { side });
       if (opts.music !== false) audio.music("victory", { fade: 0.8 });
     });
   }
 
-  // tag: { side, forced?, x }. A forced tag brings in the partner of a fallen point fighter.
+  // tag: { side, in, forced?, x }. A forced tag brings in the partner of a fallen point fighter.
   on("tag", (e) => {
     audio.play("tag.in", xOf(e));
     if (e.forced || awaitingEntry.has(e.side)) {
       awaitingEntry.delete(e.side);
       audio.play("stinger.tag", { ...xOf(e), delay: 0.08 });
     }
+    const incoming = e.in ?? e.to;
+    if (Number.isInteger(e.side) && typeof incoming === "string") points[e.side] = incoming;
+    say(incoming, "tag-in", { channel: `${e.side}:${incoming}`, delay: 0.1 });
   });
-  on("special", (e) => audio.play("stinger.special", xOf(e)));
-  on("super", (e) => audio.play("stinger.super", xOf(e)));
+  // special / super: { fighter, side, moveId, x }, called out at startup and at the super freeze.
+  on("special", (e) => {
+    audio.play("stinger.special", xOf(e));
+    say(e.fighter, `special.${e.moveId}`, { channel: `${e.side}:${e.fighter}` });
+  });
+  on("super", (e) => {
+    audio.play("stinger.super", xOf(e));
+    say(e.fighter, `super.${e.moveId}`, { channel: `${e.side}:${e.fighter}` });
+  });
 
   // ---- optional extras ------------------------------------------------------------
-  on(["fight", "fightStart", "roundFight"], () => { clearTimeout(fightTimer); audio.announce("ann.fight", { interrupt: true }); });
+  on(["fight", "fightStart", "roundFight"], () => { clearTimeout(fightTimer); audio.announce("announcer.fight", { interrupt: true }); });
   on(["finishThem", "finish"], () => audio.announce("ann.finish", { interrupt: true }));
   on(["matchEnd", "matchOver"], (e) => { if (!winnerAnnounced) announceMatch(e, e.winner ?? e.matchWinner); });
   on(["attack", "whiff", "swing", "attackStart"], (e) => {
@@ -199,4 +235,30 @@ export function bindGameEvents(audio, game, opts = {}) {
     timers.forEach(clearTimeout);
     timers.clear();
   };
+}
+
+// Menu-screen voice cues, called on each UI screen change with `{ from, session }` (the UI's
+// session: `sides[i].picks` are fighter ids, point fighter first). The announcer pack loads on
+// the way to character select, and the picked fighters' packs on the stage screen, so the
+// versus lines are ready when the portraits slide in.
+let screenToken = 0;
+export function screenVoice(audio, id, { from = null, session = null } = {}) {
+  const token = ++screenToken;
+  const picks = (session?.sides ?? []).map((s) => s?.picks ?? []);
+  const current = () => token === screenToken;
+  if (id === "mode") return audio.loadVoices([]);
+  if (id === "select") {
+    if (from === "stage") return undefined;
+    return audio.loadVoices([]).then(() => { if (current()) audio.announce("announcer.choose-your-fighter", { interrupt: true }); });
+  }
+  if (id === "stage") return audio.loadVoices(picks.flat());
+  if (id === "versus") {
+    // One line per side (the point fighters), timed with their portraits sliding in.
+    return audio.loadVoices(picks.flat()).then(() => {
+      if (!current()) return;
+      picks.forEach((team, side) => { if (team[0]) audio.speak(`${team[0]}.versus`, { queue: true, delay: side ? 0 : 0.15, gap: 0.15, channel: `versus${side}` }); });
+    });
+  }
+  if (id !== "fight") audio.hush?.();
+  return undefined;
 }

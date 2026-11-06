@@ -79,8 +79,8 @@ export function mountUI(rootEl, game, options = {}) {
     const voice = game.audio;
     audio.announce = (text, opts) => {
       if (!opts?.test) return;
-      voice.announce("ann.round1", { interrupt: true });
-      voice.announce("ann.fight");
+      voice.announce("announcer.round-1", { interrupt: true });
+      voice.announce("announcer.fight");
     };
   }
   if (game?.audio?.play) {

@@ -1130,7 +1130,8 @@ export class Match {
     }
     const matchOver = this.sides.some((s) => s.wins >= this.roundsToWin) || this.round >= 9;
     const winnerLab = winner !== null ? this.point(winner).def.labId : null;
-    this.emit("roundEnd", { round: this.round, winner, reason: winner === null ? "draw" : reason, wins: this.sides.map((s) => s.wins), perfect, matchOver, matchWinner: matchOver ? winner : null, winnerLab });
+    const winnerFighter = winner !== null ? this.point(winner).id : null;
+    this.emit("roundEnd", { round: this.round, winner, reason: winner === null ? "draw" : reason, wins: this.sides.map((s) => s.wins), perfect, matchOver, matchWinner: matchOver ? winner : null, winnerLab, winnerFighter });
   }
 
   endMatch() {
@@ -1143,7 +1144,7 @@ export class Match {
     } else {
       this.say("DRAW GAME", "", 600);
     }
-    this.emit("matchEnd", { winner: this.winner, wins: this.sides.map((s) => s.wins), winnerLab: this.winner !== null ? this.point(this.winner).def.labId : null });
+    this.emit("matchEnd", { winner: this.winner, wins: this.sides.map((s) => s.wins), winnerLab: this.winner !== null ? this.point(this.winner).def.labId : null, winnerFighter: this.winner !== null ? this.point(this.winner).id : null });
   }
 
   // ------------------------------------------------------------------ combo breaker
