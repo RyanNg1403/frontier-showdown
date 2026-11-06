@@ -1,4 +1,5 @@
 import { VIEW_H, VIEW_W } from "./camera.js";
+import { assetUrl } from "../platform/assets.js";
 
 const DEFAULT_BOUNDS = { left: -900, right: 900 };
 
@@ -61,7 +62,7 @@ export function listModuleStages(module) {
     if (Array.isArray(list) && list.length) return list;
   }
   if (Array.isArray(module.STAGES) && module.STAGES.length) {
-    const asUrl = (src) => (src && !/^(\/|https?:)/.test(src) ? `/${src}` : src);
+    const asUrl = (src) => (src && !/^(\/|https?:|data:)/.test(src) ? assetUrl(src) : src);
     return module.STAGES.map((s) => ({
       id: s.id,
       name: s.name,

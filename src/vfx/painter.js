@@ -21,7 +21,11 @@ export function createPainter(atlas) {
     zoom: 1,
     atlas,
     target: "add",
+    // Buffer-pixel bounds touched since begin(), per buffer, so the caller can clear and
+    // composite only that region instead of the whole screen.
+    dirty: { add: null, norm: null },
   };
+  let cur = "add";
 
   p.begin = (addCtx, normCtx, camera, pixelScale) => {
     p.add = addCtx;
@@ -30,11 +34,34 @@ export function createPainter(atlas) {
     p.zoom = camera.zoom;
     p.ox = camera.x;
     p.oy = camera.y;
+    p.dirty = { add: null, norm: null };
   };
 
-  p.use = (blend) => {
-    p.ctx = blend === "normal" ? p.norm : p.add;
+  const select = (blend) => {
+    cur = blend === "normal" ? "norm" : "add";
+    p.ctx = p[cur];
     return p.ctx;
+  };
+
+  /** Grow the current buffer's dirty box by a buffer-pixel rect (Infinity marks it all). */
+  p.mark = (x, y, w, h) => {
+    const d = p.dirty[cur];
+    const x1 = x + w;
+    const y1 = y + h;
+    if (!d) p.dirty[cur] = { x0: x, y0: y, x1, y1 };
+    else {
+      if (x < d.x0) d.x0 = x;
+      if (y < d.y0) d.y0 = y;
+      if (x1 > d.x1) d.x1 = x1;
+      if (y1 > d.y1) d.y1 = y1;
+    }
+  };
+
+  /** Direct buffer access for custom drawing; marks the whole buffer dirty. */
+  p.use = (blend) => {
+    const c = select(blend);
+    p.mark(-Infinity, -Infinity, Infinity, Infinity);
+    return c;
   };
 
   p.bx = (wx) => ((wx - p.ox) * p.zoom) / p.scale;
@@ -47,24 +74,30 @@ export function createPainter(atlas) {
   };
 
   p.rect = (wx, wy, w, h, color, a = 1, blend = "add") => {
-    const c = p.use(blend);
+    const c = select(blend);
     if (!p.alpha(a)) return;
     c.fillStyle = color;
     const x = Math.round(p.bx(wx));
     const y = Math.round(p.by(wy));
-    c.fillRect(x, y, Math.max(1, Math.round(p.bs(w))), Math.max(1, Math.round(p.bs(h))));
+    const rw = Math.max(1, Math.round(p.bs(w)));
+    const rh = Math.max(1, Math.round(p.bs(h)));
+    c.fillRect(x, y, rw, rh);
+    p.mark(Math.min(x, x + rw), Math.min(y, y + rh), Math.abs(rw), Math.abs(rh));
   };
 
   p.dot = (wx, wy, size, color, a = 1, blend = "add") => {
-    const c = p.use(blend);
+    const c = select(blend);
     if (!p.alpha(a)) return;
     c.fillStyle = color;
     const s = Math.max(1, Math.round(p.bs(size)));
-    c.fillRect(Math.round(p.bx(wx) - s / 2), Math.round(p.by(wy) - s / 2), s, s);
+    const x = Math.round(p.bx(wx) - s / 2);
+    const y = Math.round(p.by(wy) - s / 2);
+    c.fillRect(x, y, s, s);
+    p.mark(x, y, s, s);
   };
 
   p.line = (x0, y0, x1, y1, color, width = 2, a = 1, blend = "add") => {
-    const c = p.use(blend);
+    const c = select(blend);
     if (!p.alpha(a)) return;
     c.fillStyle = color;
     let ax = Math.round(p.bx(x0));
@@ -73,6 +106,7 @@ export function createPainter(atlas) {
     const by = Math.round(p.by(y1));
     const s = Math.max(1, Math.round(p.bs(width)));
     const half = Math.floor(s / 2);
+    p.mark(Math.min(ax, bx) - half, Math.min(ay, by) - half, Math.abs(bx - ax) + s, Math.abs(by - ay) + s);
     const dx = Math.abs(bx - ax);
     const dy = -Math.abs(by - ay);
     const sx = ax < bx ? 1 : -1;
@@ -88,13 +122,15 @@ export function createPainter(atlas) {
   };
 
   p.ring = (wx, wy, r, color, thickness = 2, a = 1, blend = "add", squash = 1) => {
-    const c = p.use(blend);
+    const c = select(blend);
     if (!p.alpha(a)) return;
     c.fillStyle = color;
     const cx = p.bx(wx);
     const cy = p.by(wy);
     const br = p.bs(r);
     const t = Math.max(1, Math.round(p.bs(thickness)));
+    const ry = Math.abs(br * squash);
+    p.mark(Math.floor(cx - br) - t, Math.floor(cy - ry) - t, Math.ceil(br * 2) + t * 2 + 1, Math.ceil(ry * 2) + t * 2 + 1);
     const steps = Math.max(12, Math.ceil(br * 6.3));
     let lx = null;
     let ly = null;
@@ -110,13 +146,14 @@ export function createPainter(atlas) {
   };
 
   p.disc = (wx, wy, r, color, a = 1, blend = "add", squash = 1) => {
-    const c = p.use(blend);
+    const c = select(blend);
     if (!p.alpha(a)) return;
     c.fillStyle = color;
     const cx = Math.round(p.bx(wx));
     const cy = Math.round(p.by(wy));
     const br = Math.max(0.5, p.bs(r));
     const ry = Math.max(0.5, br * squash);
+    p.mark(cx - Math.ceil(br) - 1, cy - Math.ceil(ry) - 1, Math.ceil(br) * 2 + 3, Math.ceil(ry) * 2 + 3);
     for (let y = -Math.ceil(ry); y <= Math.ceil(ry); y += 1) {
       const k = 1 - (y * y) / (ry * ry);
       if (k < 0) continue;
@@ -140,7 +177,7 @@ export function createPainter(atlas) {
     const f = p.atlas && p.atlas.frames[name];
     if (!f || !p.atlas.image) return false;
     const blend = o.blend || f.blend || "add";
-    const c = p.use(blend === "add" ? "add" : "normal");
+    const c = select(blend === "add" ? "add" : "normal");
     if (!p.alpha(o.alpha ?? 1)) return true;
     const sx = (o.scale ?? 1) * (o.scaleX ?? 1) * p.zoom;
     const sy = (o.scale ?? 1) * (o.scaleY ?? 1) * p.zoom;
@@ -148,6 +185,9 @@ export function createPainter(atlas) {
     const h = Math.max(1, Math.round(f.h * sy));
     const cx = Math.round(p.bx(wx));
     const cy = Math.round(p.by(wy));
+    const reach = o.rot ? Math.ceil(Math.hypot(w, h) / 2) + 1 : 0;
+    if (reach) p.mark(cx - reach, cy - reach, reach * 2, reach * 2);
+    else p.mark(cx - (Math.abs(w) >> 1) - 1, cy - (Math.abs(h) >> 1) - 1, Math.abs(w) + 2, Math.abs(h) + 2);
     if (o.rot || o.flipX) {
       c.save();
       c.translate(cx, cy);

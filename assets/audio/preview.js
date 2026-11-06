@@ -9,6 +9,7 @@ const log = (text) => {
 };
 
 const audio = createAudio({
+  preload: "all",
   onPlay: (id, info) => {
     log(`<b>${id}</b> v${info.variant + 1} ×${info.rate.toFixed(2)} ${(20 * Math.log10(info.level)).toFixed(1)}dB${info.pan ? ` pan ${info.pan.toFixed(2)}` : ""}`);
     const card = document.querySelector(`[data-id="${CSS.escape(id)}"]`);

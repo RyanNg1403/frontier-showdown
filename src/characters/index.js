@@ -2,7 +2,7 @@ import { defineCharacter } from "./schema.js";
 
 /**
  * Roster order from docs/roster-and-moves.md section 0. Characters are discovered at runtime
- * (the server's /api/characters, or the folder in node), so adding a fighter only means
+ * (manifest.json from the build or `npm start`, or the folder in node), so adding a fighter only means
  * adding `src/characters/<id>.js`; this list only sorts the select screen.
  */
 export const ROSTER_ORDER = Object.freeze([
@@ -45,12 +45,8 @@ export async function discoverCharacters() {
       entries = null;
     }
   } else {
-    try {
-      const res = await fetch("/api/characters", { cache: "no-store" });
-      if (res.ok) entries = (await res.json()).characters;
-    } catch {
-      entries = null;
-    }
+    const { getManifest, loadManifest } = await import("../platform/assets.js");
+    entries = (getManifest() || (await loadManifest()))?.characters ?? null;
   }
   if (!Array.isArray(entries)) {
     discovered = { ids: [...characterIds], atlases: null };

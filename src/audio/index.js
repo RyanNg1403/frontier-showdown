@@ -3,6 +3,7 @@
 // slow-motion, and a `game.events` binding (see events.js).
 import { SOUNDS, VOICE, MUSIC, LABS, ALL_SOUNDS, soundFiles, labId } from "./catalog.js";
 import { bindGameEvents } from "./events.js";
+import { audioDuration, resolveUrl } from "../platform/assets.js";
 import { createFootstepTracker } from "./footsteps.js";
 
 export { SOUNDS, VOICE, MUSIC, LABS, labId, bindGameEvents, createFootstepTracker };
@@ -79,7 +80,18 @@ export function createAudio(options = {}) {
   // ---- loading ----------------------------------------------------------------
 
   function url(path) {
-    return new URL(path, base).href;
+    return resolveUrl(new URL(path, base).href);
+  }
+
+  // Sounds are fetched by group: UI blips at start-up, everything heard in a fight while the
+  // match loads. A sound requested before its group has loaded is fetched on first use.
+  const GROUPS = {
+    ui: Object.keys(ALL_SOUNDS).filter((id) => id.startsWith("ui.")),
+    fight: [...Object.keys(ALL_SOUNDS).filter((id) => !id.startsWith("ui.")), "fight", "victory"],
+    select: ["select"],
+  };
+  function loadGroup(name) {
+    return load(GROUPS[name] || []);
   }
 
   function decode(data) {
@@ -308,7 +320,8 @@ export function createAudio(options = {}) {
     if (track.stream) {
       const element = new Audio(url(track.file));
       element.loop = track.loop !== false;
-      element.preload = "auto";
+      // Nothing can play before the first gesture, so don't download the stream until then.
+      element.preload = ctx.state === "running" ? "auto" : "none";
       element.preservesPitch = false;
       start(ctx.createMediaElementSource(element), element);
       return Promise.resolve();
@@ -319,7 +332,7 @@ export function createAudio(options = {}) {
       node.buffer = buffer;
       node.loop = track.loop !== false;
       node.loopStart = track.loopStart ?? 0;
-      node.loopEnd = track.loopEnd ?? buffer.duration;
+      node.loopEnd = track.loopEnd ?? Math.min(buffer.duration, audioDuration(`assets/audio/${track.file}`) ?? buffer.duration);
       start(node, null);
     });
   }
@@ -387,8 +400,9 @@ export function createAudio(options = {}) {
     context: ctx,
     buses,
     output: trim,
-    ready: options.preload === false ? Promise.resolve() : load(),
+    ready: options.preload === false ? Promise.resolve() : options.preload === "all" ? load() : loadGroup("ui"),
     load,
+    loadGroup,
     unlock,
     play,
     stopAll,
@@ -418,6 +432,5 @@ export function createAudio(options = {}) {
       if (!options.context) setTimeout(() => ctx.close(), 200);
     },
   };
-  if (options.preload !== false) audio.ready.then(() => load(["select", "fight", "victory"]));
   return audio;
 }

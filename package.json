@@ -8,6 +8,8 @@
   },
   "scripts": {
     "start": "node server.mjs",
+    "build": "node tools/build.mjs",
+    "preview": "node tools/preview-pages.mjs",
     "test": "node --test \"tests/*.test.mjs\"",
     "test:balance": "node test-ai-balance.mjs",
     "test:signal-tether": "node test-signal-tether.mjs",
@@ -16,5 +18,8 @@
   },
   "dependencies": {
     "openai": "^7.30.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }

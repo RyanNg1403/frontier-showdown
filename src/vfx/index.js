@@ -11,7 +11,8 @@
 // 1280x720 view. `{ centerX, centerY, zoom }` is also accepted.
 
 import { createPainter } from "./painter.js";
-import { mulberry32, clamp } from "./util.js";
+import { resolveUrl } from "../platform/assets.js";
+import { mulberry32, clamp, vfxQuality } from "./util.js";
 import { impactEffects } from "./effects/impacts.js";
 import { dustEffects } from "./effects/dust.js";
 import { motionEffects } from "./effects/motion.js";
@@ -45,12 +46,12 @@ export function effectCatalog() {
 
 export async function loadVfxAssets(base = "/assets/vfx/") {
   const root = base.endsWith("/") ? base : `${base}/`;
-  const meta = await fetch(`${root}vfx-atlas.json`).then((r) => {
+  const meta = await fetch(resolveUrl(`${root}vfx-atlas.json`)).then((r) => {
     if (!r.ok) throw new Error(`vfx atlas: ${r.status}`);
     return r.json();
   });
   const image = new Image();
-  image.src = `${root}${meta.image}`;
+  image.src = resolveUrl(`${root}${meta.image}`);
   await image.decode();
   return { atlas: { image, frames: meta.frames } };
 }
@@ -100,6 +101,8 @@ export function createVfx(ctx, assets, options = {}) {
   let slowTotal = 0;
   let backDrawn = false;
   let clock = 0;
+  // Regions of each pixel buffer that hold last pass's drawing (null when clean).
+  const stale = { add: null, norm: null };
 
   const vfx = {
     ctx,
@@ -228,6 +231,10 @@ export function createVfx(ctx, assets, options = {}) {
     isFrozen() {
       return effects.some((e) => e.def.freezes && e.alive && e.t < (e.freezeFor ?? e.life));
     },
+    /** `{ particles }` in 0.1..1 scales particle bursts (automatic quality tier). */
+    setQuality(q = {}) {
+      if (typeof q.particles === "number") vfxQuality.particles = clamp(q.particles, 0.1, 1);
+    },
     flash(color = "#fff", frames = 4, alpha = 0.8) {
       return vfx.spawn("screen_flash", 0, 0, { color, frames, alpha });
     },
@@ -258,12 +265,9 @@ export function createVfx(ctx, assets, options = {}) {
     let any = false;
     for (const fx of effects) if (fx.layer === layer && fx.def.draw) { any = true; break; }
     if (!any) return;
-    addCtx.globalCompositeOperation = "source-over";
-    addCtx.globalAlpha = 1;
-    addCtx.clearRect(0, 0, bw, bh);
+    clearBuffer(addCtx, "add");
     addCtx.globalCompositeOperation = "lighter";
-    normCtx.globalAlpha = 1;
-    normCtx.clearRect(0, 0, bw, bh);
+    clearBuffer(normCtx, "norm");
     // Snap the camera to the art-pixel grid so effects do not shimmer.
     const snap = pixelScale / cam.zoom;
     const camSnapped = { x: Math.floor(cam.x / snap) * snap, y: Math.floor(cam.y / snap) * snap, zoom: cam.zoom };
@@ -278,10 +282,37 @@ export function createVfx(ctx, assets, options = {}) {
     drawCtx.imageSmoothingEnabled = false;
     drawCtx.globalAlpha = 1;
     drawCtx.globalCompositeOperation = "source-over";
-    drawCtx.drawImage(normBuf, -fracX, -fracY, bw * pixelScale, bh * pixelScale);
+    composite(drawCtx, normBuf, "norm", fracX, fracY);
     drawCtx.globalCompositeOperation = "lighter";
-    drawCtx.drawImage(addBuf, -fracX, -fracY, bw * pixelScale, bh * pixelScale);
+    composite(drawCtx, addBuf, "add", fracX, fracY);
     drawCtx.restore();
+  }
+
+  function clip(d) {
+    if (!d) return null;
+    const x0 = Math.max(0, Math.floor(d.x0));
+    const y0 = Math.max(0, Math.floor(d.y0));
+    const x1 = Math.min(bw, Math.ceil(d.x1));
+    const y1 = Math.min(bh, Math.ceil(d.y1));
+    return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  }
+
+  function clearBuffer(c, key) {
+    const r = stale[key];
+    if (!r) return;
+    c.globalCompositeOperation = "source-over";
+    c.globalAlpha = 1;
+    c.clearRect(r.x, r.y, r.w, r.h);
+    stale[key] = null;
+  }
+
+  // Only the painted region of a buffer is composited, which is the same image as drawing the
+  // whole (otherwise transparent) buffer.
+  function composite(drawCtx, buf, key, fracX, fracY) {
+    const r = clip(painter.dirty[key]);
+    stale[key] = r;
+    if (!r) return;
+    drawCtx.drawImage(buf, r.x, r.y, r.w, r.h, r.x * pixelScale - fracX, r.y * pixelScale - fracY, r.w * pixelScale, r.h * pixelScale);
   }
 
   function screenPass(drawCtx, layer) {

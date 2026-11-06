@@ -11,15 +11,8 @@ async function tryImport(url, label) {
   }
 }
 
-/** Server manifest (`/api/manifest`) or null when served statically. */
-export async function loadManifest() {
-  try {
-    const res = await fetch("/api/manifest", { cache: "no-store" });
-    return res.ok ? await res.json() : null;
-  } catch {
-    return null;
-  }
-}
+/** `manifest.json` (static build or `npm start`), or null when absent. */
+export { loadManifest } from "../platform/assets.js";
 
 export async function loadModules(manifest = null) {
   const present = (name) => !manifest?.modules || manifest.modules[name] !== false;

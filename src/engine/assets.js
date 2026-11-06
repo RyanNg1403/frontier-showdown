@@ -1,7 +1,11 @@
-const images = new Map();
-const atlases = new Map();
+import { assetUrl } from "../platform/assets.js";
+import { acquireAtlas } from "./atlas-store.js";
 
-export function loadImage(url) {
+const images = new Map();
+
+/** Load an image by repo-relative path (or absolute URL); cached for the session. */
+export function loadImage(path) {
+  const url = /^(https?:|data:|blob:|\/)/.test(path) ? path : assetUrl(path);
   if (images.has(url)) return images.get(url);
   const p = new Promise((resolve, reject) => {
     const img = new Image();
@@ -15,36 +19,12 @@ export function loadImage(url) {
   return p;
 }
 
-function validAtlas(json) {
-  return json && typeof json === "object" && json.animations && typeof json.animations === "object" && Object.keys(json.animations).length > 0;
-}
-
 /**
- * Load `assets/fighters/<id>/atlas.json` + its image. Resolves to null when missing or broken,
- * so the renderer can fall back to the procedural placeholder.
+ * Packed fighter atlas (see atlas-store.js). Each call takes a reference; pair it with
+ * `releaseAtlas(id)` from atlas-store.js when done.
  */
 export function loadAtlas(id) {
-  if (atlases.has(id)) return atlases.get(id);
-  const base = `/assets/fighters/${id}/`;
-  const p = (async () => {
-    try {
-      const res = await fetch(`${base}atlas.json`, { cache: "no-cache" });
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (!validAtlas(json)) {
-        console.warn(`Atlas for "${id}" has no animations; using placeholder.`);
-        return null;
-      }
-      const image = await loadImage(base + (json.image || "atlas.png"));
-      const anchor = json.anchor || { x: 128, y: 244 };
-      return { ...json, anchor, image };
-    } catch (error) {
-      console.warn(`Atlas for "${id}" unavailable; using placeholder.`, error.message);
-      return null;
-    }
-  })();
-  atlases.set(id, p);
-  return p;
+  return acquireAtlas(id);
 }
 
 export const assetApi = Object.freeze({ loadImage, loadAtlas });

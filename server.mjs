@@ -1,9 +1,10 @@
 import { createServer } from "node:http";
-import { existsSync, readFile, readFileSync, readdirSync } from "node:fs";
+import { readFile, readFileSync } from "node:fs";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
 import { decisionProviders, resolveDecisionProvider } from "./decision-providers.mjs";
+import { baseManifest, listCharacters } from "./tools/manifest.mjs";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 4173);
@@ -522,6 +523,7 @@ const mimeTypes = {
   ".webp": "image/webp",
   ".gif": "image/gif",
   ".ogg": "audio/ogg",
+  ".webmanifest": "application/manifest+json",
   ".wav": "audio/wav",
   ".woff2": "font/woff2",
   ".mjs": "text/javascript; charset=utf-8",
@@ -564,47 +566,23 @@ function serveFile(request, response) {
   });
 }
 
-const NON_CHARACTER_FILES = new Set(["index.js", "schema.js"]);
-
-/** Character modules present in src/characters, with whether their atlas exists. */
-function listCharacters() {
-  const dir = join(projectRoot, "src", "characters");
-  let files = [];
-  try {
-    files = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return files
-    .filter((f) => /^[a-z0-9-]+\.js$/.test(f) && !NON_CHARACTER_FILES.has(f))
-    .map((f) => {
-      const id = f.slice(0, -3);
-      return { id, atlas: existsSync(join(projectRoot, "assets", "fighters", id, "atlas.json")) };
-    });
-}
-
-/** Which optional sibling modules exist, so the client never requests missing files. */
+/**
+ * Live manifest for the working tree. A static build (`npm run build`) writes the same fields to
+ * dist/manifest.json; the decision proxy below only exists under `npm start`.
+ */
 function manifest() {
-  const has = (...parts) => existsSync(join(projectRoot, ...parts));
-  return {
-    modules: {
-      stage: has("src", "stages", "index.js"),
-      vfx: has("src", "vfx", "index.js"),
-      ui: has("src", "ui", "index.js"),
-      audio: has("src", "audio", "index.js"),
-    },
-    styles: { ui: has("styles", "ui.css") },
-    characters: listCharacters(),
-  };
+  const provider = getDecisionProvider();
+  return { ...baseManifest(projectRoot), features: { decisionProxy: Boolean(getApiKey(provider)) } };
 }
 
 createServer((request, response) => {
-  if (request.method === "GET" && request.url === "/api/manifest") {
+  const route = request.url.split("?")[0];
+  if (request.method === "GET" && (route === "/manifest.json" || route === "/api/manifest")) {
     sendJson(response, 200, manifest());
     return;
   }
-  if (request.method === "GET" && request.url === "/api/characters") {
-    sendJson(response, 200, { characters: listCharacters() });
+  if (request.method === "GET" && route === "/api/characters") {
+    sendJson(response, 200, { characters: listCharacters(projectRoot) });
     return;
   }
   if (request.method === "GET" && request.url === "/api/health") {

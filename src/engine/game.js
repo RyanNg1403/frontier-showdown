@@ -7,8 +7,10 @@ import { createEmitter } from "./emitter.js";
 import { Camera, VIEW_H, VIEW_W } from "./camera.js";
 import { InputDevices } from "./input.js";
 import { createLoop } from "./loop.js";
-import { assetApi, loadAtlas } from "./assets.js";
+import { assetApi } from "./assets.js";
+import { acquireAtlas, atlasStats, releaseAtlas, trimAtlasCache } from "./atlas-store.js";
 import { loadManifest, loadModules } from "./modules.js";
+import { assetUrl } from "../platform/assets.js";
 import { createFallbackVfx, drawBarrier, drawDebug, drawFallbackHud, drawFallbackStage, drawFighter, drawProjectileFallback, drawShadow } from "./render.js";
 import { mountFallbackUI } from "./fallback-ui.js";
 import { drawMechanics, drawMechProjectile } from "./mechanics-render.js";
@@ -44,26 +46,26 @@ function guarded(label, onFail) {
   };
 }
 
-export async function createGame({ canvas, uiRoot, modules: preloaded = null, manifest = undefined } = {}) {
+export async function createGame({ canvas, uiRoot, modules: preloaded = null, manifest = undefined, quality = null, onProgress = () => {} } = {}) {
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: false });
   ctx.imageSmoothingEnabled = false;
   const events = createEmitter();
   const devices = new InputDevices(window);
   const info = manifest === undefined ? await loadManifest() : manifest;
+  onProgress(0.1, "Loading modules");
   const modules = preloaded || (await loadModules(info));
+  onProgress(0.45, "Loading fighters");
   const roster = await discoverCharacters();
   const characters = await loadAllCharacters(roster.ids);
+  onProgress(0.75, "Loading effects");
   const charMap = new Map(characters.map((c) => [c.id, c]));
-  const atlasReady = new Map();
   const hasAtlasFile = (id) => !roster.atlases || roster.atlases.has(id);
-  const fetchAtlas = (id) => (hasAtlasFile(id) ? loadAtlas(id) : Promise.resolve(null));
+  /** Atlas animation data (no images) of the fighters in the current match, for the audio footsteps. */
   const atlases = {};
-  await Promise.all(characters.map((c) => fetchAtlas(c.id).then((a) => {
-    atlasReady.set(c.id, Boolean(a));
-    if (a) atlases[c.id] = a;
-  })));
+  /** Fighter ids whose atlases the current match holds a reference to. */
+  let heldAtlases = [];
 
   const fallbackVfx = createFallbackVfx();
   let vfx = fallbackVfx;
@@ -71,7 +73,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     try {
       let vfxAssets = assetApi;
       if (typeof modules.vfx.loadVfxAssets === "function") {
-        vfxAssets = await modules.vfx.loadVfxAssets("/assets/vfx/").then((a) => ({ ...assetApi, ...a })).catch(() => assetApi);
+        vfxAssets = await modules.vfx.loadVfxAssets(assetUrl("assets/vfx/").split("?")[0]).then((a) => ({ ...assetApi, ...a })).catch(() => assetApi);
       }
       const instance = modules.vfx.createVfx(ctx, vfxAssets);
       vfx = instance ? adaptVfx(modules.vfx, instance) : fallbackVfx;
@@ -118,13 +120,17 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
   const camera = new Camera();
   let match = null;
   let lastConfig = null;
+  let loadToken = 0;
+  const atlasMap = new Map();
   const DEFAULT_STAGE = adaptStageDef("default", { name: "Training Lab" });
   let stageDef = DEFAULT_STAGE;
   let paused = false;
   let debug = false;
   let loading = false;
   let snapshot = deepFreeze({ phase: "menu", paused: false, sides: [], fighters: [], announce: null, winner: null });
+  let snapshotDirty = false;
   let music = null;
+  let loadProgress = null;
 
   function onMatchEvent(name, payload) {
     if (name === "vfx") {
@@ -147,13 +153,22 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
 
   function buildSnapshot() {
     if (!match) {
-      return { phase: loading ? "loading" : "menu", paused: false, sides: [], fighters: [], announce: null, winner: null, stage: stageDef.id, camera: camera.toJSON() };
+      return { phase: loading ? "loading" : "menu", paused: false, sides: [], fighters: [], announce: null, winner: null, stage: stageDef.id, camera: camera.toJSON(), loading: loadProgress };
     }
     return decorateSnapshot({ ...match.snapshot(), paused, camera: camera.toJSON() }, charMap);
   }
 
+  /** The snapshot is rebuilt on first read after a change, not on every simulation step. */
   function refreshSnapshot() {
-    snapshot = deepFreeze(buildSnapshot());
+    snapshotDirty = true;
+  }
+
+  function currentSnapshot() {
+    if (snapshotDirty) {
+      snapshotDirty = false;
+      snapshot = deepFreeze(buildSnapshot());
+    }
+    return snapshot;
   }
 
   async function loadStageDef(id) {
@@ -198,20 +213,58 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       team = team.slice(0, need);
       return { team, control: s.control === "cpu" ? "cpu" : s.control === "human" ? "human" : i === 0 ? "human" : "cpu", difficulty: s.difficulty || "normal", player: Number.isInteger(s.player) ? s.player : i };
     });
-    lastConfig = { ...config, mode, sides };
+    const { resume: _resume, ...persistent } = config;
+    lastConfig = { ...persistent, mode, sides };
     sidePlayers = sides.map((s) => s.player);
     loading = true;
     paused = false;
     match = null;
     vfx.clearProjectiles?.();
-    refreshSnapshot();
+    const token = ++loadToken;
     const stageId = config.stage || listStages()[0]?.id || "default";
-    const [stage, atlases] = await Promise.all([
-      loadStageDef(stageId),
-      Promise.all(sides.flatMap((s) => s.team).map(async (id) => [id, await fetchAtlas(id)])),
-    ]);
+    const ids = [...new Set(sides.flatMap((s) => s.team))];
+    const tasks = ids.length + 2;
+    let done = 0;
+    const progress = (label) => {
+      loadProgress = { done, total: tasks, progress: done / tasks, label };
+      refreshSnapshot();
+      events.emit("loading", { ...loadProgress, stage: stageId, fighters: ids });
+    };
+    progress("Preparing the arena");
+    const stagePromise = loadStageDef(stageId).then((def) => {
+      done += 1;
+      progress("Stage ready");
+      return def;
+    });
+    const audioPromise = audio?.loadGroup
+      ? Promise.resolve(audioCall(() => audio.loadGroup("fight"))).catch(() => {}).then(() => {
+        done += 1;
+        progress("Sound ready");
+      })
+      : Promise.resolve().then(() => { done += 1; });
+    const kept = heldAtlases.filter((id) => ids.includes(id));
+    for (const id of heldAtlases) if (!kept.includes(id)) releaseAtlas(id);
+    heldAtlases = kept;
+    const loaded = [];
+    for (const id of ids) {
+      progress(`Loading ${charMap.get(id)?.shortName || charMap.get(id)?.name || id}`);
+      const atlas = hasAtlasFile(id) ? await acquireAtlas(id) : null;
+      loaded.push(id);
+      done += 1;
+      if (atlas) atlases[id] = { id, anchor: atlas.anchor, animations: atlas.animations };
+      atlasMap.set(id, atlas);
+    }
+    const [stage] = await Promise.all([stagePromise, audioPromise]);
+    if (token !== loadToken) {
+      for (const id of loaded) releaseAtlas(id);
+      return currentSnapshot();
+    }
+    swapHeldAtlases(loaded);
+    trimAtlasCache();
+    progress("Fight!");
     stageDef = stage;
     loading = false;
+    loadProgress = null;
     match = new Match({
       mode,
       stage: stage.id,
@@ -219,7 +272,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       roundsToWin: config.roundsToWin ?? 2,
       timer: config.timer ?? null,
       backBlocks: Boolean(config.backBlocks),
-      atlases: new Map(atlases.filter(([, a]) => a)),
+      atlases: new Map(ids.map((id) => [id, atlasMap.get(id)]).filter(([, a]) => a)),
       emit: onMatchEvent,
       seed: (Date.now() & 0xffff) | 1,
       sides: sides.map((s, i) => ({
@@ -229,15 +282,53 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
         cpu: s.control === "cpu" ? createCpu(s.difficulty, 101 + i * 17 + (Date.now() & 0xff)) : null,
       })),
     });
+    if (config.resume) applyResume(match, config.resume);
     match.start();
     camera.snap([match.point(0), match.point(1)], match.bounds);
     playMusic(stage.music);
     refreshSnapshot();
-    return snapshot;
+    events.emit("loaded", { stage: stage.id, fighters: ids });
+    return currentSnapshot();
+  }
+
+  /** Hold the new match's atlases before dropping the old ones, so a rematch never reloads. */
+  function swapHeldAtlases(next) {
+    const previous = heldAtlases;
+    heldAtlases = next;
+    for (const id of previous) releaseAtlas(id);
+    for (const id of Object.keys(atlases)) if (!next.includes(id)) delete atlases[id];
+    for (const id of [...atlasMap.keys()]) if (!next.includes(id)) atlasMap.delete(id);
+  }
+
+  /**
+   * Continue a saved match at a round boundary: `resume = { round, sides: [{ wins, meter,
+   * lastCheckpointUsed }] }` restores the score and the meter carried between rounds.
+   */
+  function applyResume(m, resume) {
+    const round = Math.floor(Number(resume.round) || 0);
+    if (round < 2) return;
+    m.sides.forEach((s, i) => {
+      const saved = resume.sides?.[i];
+      if (!saved) return;
+      s.wins = Math.max(0, Math.min(m.roundsToWin - 1, Math.floor(Number(saved.wins) || 0)));
+      s.meter = Math.max(0, Math.min(300, Number(saved.meter) || 0));
+      s.lastCheckpointUsed = Boolean(saved.lastCheckpointUsed);
+    });
+    m.emit("matchStart", { mode: m.mode, stage: m.stage, resumed: true, sides: m.sides.map((s) => ({ team: s.members.map((f) => f.id), control: s.control })) });
+    m.round = round - 1;
+    m.startRound();
+  }
+
+  /** Free fighter images and stage art once no match is running. */
+  function releaseMatchAssets() {
+    loadToken += 1;
+    swapHeldAtlases([]);
+    trimAtlasCache();
+    if (modules.stage?.releaseStage) stageCall(() => modules.stage.releaseStage());
   }
 
   function listCharacters() {
-    return characters.map((c) => describeCharacter(c, atlasReady.get(c.id) || false));
+    return characters.map((c) => describeCharacter(c, hasAtlasFile(c.id)));
   }
 
   function listStages() {
@@ -275,11 +366,12 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
 
   function rematch() {
     if (lastConfig) return startMatch(lastConfig);
-    return Promise.resolve(snapshot);
+    return Promise.resolve(currentSnapshot());
   }
 
   function quitToMenu() {
     match = null;
+    releaseMatchAssets();
     vfx.clearProjectiles?.();
     paused = false;
     stopMusic();
@@ -315,7 +407,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     const offset = helpers?.getShakeOffset ? vfxCall(() => helpers.getShakeOffset()) : null;
     if (uiOptions.screenShake) camera.update(targets, match.bounds, match.shakeFrames, Math.random, offset || null);
     else camera.update(targets, match.bounds, 0, Math.random, { x: 0, y: 0 });
-    if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, snapshot));
+    if (!stageFailed && modules.stage?.updateStage) stageCall(() => modules.stage.updateStage(DT, currentSnapshot()));
     refreshSnapshot();
   }
 
@@ -351,8 +443,48 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     }
   }
 
+  /**
+   * Backing-store scale from the quality tier: the scene is always drawn in 1280x720 logical
+   * px under a base transform, so modules never see the difference.
+   */
+  let renderScale = 1;
+  let lastFrameAt = 0;
+  function applyQuality() {
+    if (!quality) return;
+    const tier = quality.tier;
+    const cssWidth = canvas.getBoundingClientRect().width || VIEW_W;
+    const scale = Math.round(quality.scaleFor(cssWidth, VIEW_W) * 40) / 40;
+    if (scale !== renderScale) {
+      renderScale = scale;
+      canvas.width = Math.round(VIEW_W * scale);
+      canvas.height = Math.round(VIEW_H * scale);
+    }
+    if (fx()?.setQuality) vfxCall(() => fx().setQuality({ particles: tier.particles }));
+    if (!stageFailed && modules.stage?.setStageQuality) stageCall(() => modules.stage.setStageQuality({ ambient: tier.ambient }));
+  }
+  if (quality) {
+    quality.onChange(applyQuality);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => applyQuality()).observe(canvas);
+  }
+
+  let idleCleared = false;
   function render() {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // The DOM menus cover the canvas whenever no match is running; skip drawing there.
+    if (!match && uiMounted) {
+      if (!idleCleared) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#0d0b18";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        idleCleared = true;
+      }
+      lastFrameAt = 0;
+      return;
+    }
+    idleCleared = false;
+    const now = performance.now();
+    if (quality && match && !paused && lastFrameAt) quality.sample(now - lastFrameAt);
+    lastFrameAt = now;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     drawStage("back");
@@ -402,20 +534,21 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
       drawDebug(ctx, match);
       ctx.restore();
     }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
     if (domHud) return;
     if (!hudFailed) {
       ctx.save();
-      hudCall(() => modules.ui.drawHud(ctx, snapshot));
+      hudCall(() => modules.ui.drawHud(ctx, currentSnapshot()));
       ctx.restore();
     }
-    if (hudFailed) drawFallbackHud(ctx, snapshot);
+    if (hudFailed) drawFallbackHud(ctx, currentSnapshot());
   }
 
   const loop = createLoop({ step, render });
 
   function endMatch() {
     match = null;
+    releaseMatchAssets();
     paused = false;
     loop.timeScale = 1;
     vfx.clearProjectiles?.();
@@ -436,10 +569,18 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     endMatch,
     applySettings: (settings) => applyUiSettings(settings, { devices, audio, options: uiOptions }),
     get state() {
-      return snapshot;
+      return currentSnapshot();
     },
     get match() {
       return match;
+    },
+    /** Normalized config of the current or last match (what `rematch()` replays). */
+    get lastConfig() {
+      return lastConfig;
+    },
+    atlasStats,
+    get quality() {
+      return quality ? { tier: quality.tier.id, pinned: quality.pinned, downgrades: quality.downgrades, renderScale, canvas: [canvas.width, canvas.height] } : null;
     },
     get modules() {
       return { stage: Boolean(modules.stage) && !stageFailed, vfx: vfx !== fallbackVfx, ui: Boolean(modules.ui), audio: Boolean(audio) };
@@ -468,6 +609,7 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
     loop,
   };
 
+  onProgress(0.9, "Building menus");
   if (modules.ui?.mountUI) {
     try {
       uiInstance = await modules.ui.mountUI(uiRoot, game);
@@ -488,9 +630,10 @@ export async function createGame({ canvas, uiRoot, modules: preloaded = null, ma
   }
   if (!uiMounted) mountFallbackUI(uiRoot, game);
   const firstStage = listStages()[0]?.id;
-  if (firstStage && modules.stage) loadStageDef(firstStage).then((def) => {
+  if (firstStage && modules.stage && !uiMounted) loadStageDef(firstStage).then((def) => {
     if (!match) stageDef = def;
   });
+  applyQuality();
   loop.start();
   return game;
 }
