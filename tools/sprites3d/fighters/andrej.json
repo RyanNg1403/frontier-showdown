@@ -96,5 +96,10 @@
     },
     "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
-  "likeness": "Untucked dusty-pink button-down, dark jeans, grey sneakers; lean, slightly lanky, long arms."
+  "likeness": "Untucked dusty-pink button-down, dark jeans, grey sneakers; lean, slightly lanky, long arms.",
+  "props": {
+    "always": [
+      "marker"
+    ]
+  }
 }

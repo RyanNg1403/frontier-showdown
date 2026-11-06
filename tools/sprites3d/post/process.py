@@ -12,8 +12,9 @@ Per frame:
      Near the neck cut the 3D neck and collar win, so the joint shows no seam.
   3. Inner lines where a nearer limb overlaps a farther part, a 1 px outer outline, one shared palette.
 Then the atlas: every animation in `build.json` (shared states and move-module animations), plus derived
-entries (walk_back = walk_fwd reversed at 80% speed), packed into a 12-column grid, with `strideSpeed`
-measured from the planted foot and footstep events on contact frames of locomotion cycles.
+entries (walk_back = walk_fwd reversed at 80% speed). Frames are trimmed to their pixels, de-duplicated and
+shelf-packed into the smallest sheet (each rect carries its own feet `anchor`), with `strideSpeed` measured
+from the planted foot and footstep events on contact frames of locomotion cycles. PNG plus lossless WebP.
 
 Requires: numpy, pillow.
 """
@@ -26,6 +27,7 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import headgrade
 import headmeta
 
 key_background = headmeta.key_background  # used by prep_head.py and heads/make_heads.py
@@ -42,7 +44,6 @@ TORSO_PARTS = (4, 14)
 FRONT_PARTS = tuple(k for k, r in PART_RANK.items() if r > 5)
 CELL = 256
 ANCHOR = (128, 244)
-COLS = 12
 OUTLINE = np.array([24, 22, 30], dtype=np.uint8)
 
 
@@ -86,6 +87,29 @@ def quantize_rgba(img, colors):
     return np.dstack([np.asarray(q.convert("RGB")), np.where(alpha, 255, 0).astype(np.uint8)])
 
 
+def quantize_regions(img, region, n_region, n_total, region_palette=None):
+    """Quantize `region` (e.g. the hair) and the rest separately, so they never share palette entries. With
+    `region_palette` the region snaps to those fixed colours instead."""
+    arr = np.asarray(img).copy()
+    alpha = arr[..., 3] > 127
+    out = np.zeros_like(arr)
+    for mask, n in ((region & alpha, n_region), (~region & alpha, max(2, n_total - n_region))):
+        if not mask.any():
+            continue
+        if n == n_region and region_palette is not None:
+            px = arr[mask][:, :3].astype(np.int32)
+            d = ((px[:, None, :] - region_palette[None, :, :]) ** 2).sum(-1)
+            out[mask, :3] = region_palette[d.argmin(1)].astype(np.uint8)
+            continue
+        part = arr.copy()
+        part[~mask, :3] = np.median(arr[mask][:, :3], axis=0).astype(np.uint8)
+        part[..., 3] = 255
+        q = quantize_rgba(Image.fromarray(part), n)
+        out[mask] = q[mask]
+    out[..., 3] = np.where(alpha, 255, 0)
+    return out
+
+
 class HeadView:
     """One 2D head image, cut below the jaw and scaled to 1/`heads_tall` of the fighter's height."""
 
@@ -101,9 +125,15 @@ class HeadView:
         src[rows[:, 0] > m["neck_cut"], :, 3] = 0
         blend = max(2, int(0.06 * (m["chin"] - m["crown"])))
         zone = ((rows >= m["neck_cut"] - blend) & (src[..., 3:4][..., 0] > 127)).astype(np.uint8) * 255
+        hcfg = cfg.get("head") or {}
+        hair = np.zeros(src.shape[:2], bool)
+        if hcfg.get("grade"):
+            src, hair = headgrade.grade(src, m, hcfg["grade"])
         self.src = Image.fromarray(src)
         self.zone = Image.fromarray(zone[..., 0] if zone.ndim == 3 else zone)
-        hcfg = cfg.get("head") or {}
+        self.hair = Image.fromarray(hair.astype(np.uint8) * 255)
+        self.hair_colors = hcfg.get("grade", {}).get("colors", 6) if hair.any() else 0
+        self.hair_palette = headgrade.ramp(hcfg["grade"]) if hair.any() else None
         target = cfg["height_px"] / hcfg.get("heads_tall", 7.2) * view_cfg.get("scale", hcfg.get("scale", 1.0))
         self.scale = target / max(1, m["chin"] - m["crown"])
         self.colors = hcfg.get("colors", 18)
@@ -134,16 +164,23 @@ class HeadView:
             r = int(math.ceil(max(math.hypot(px - x, py - y) for x in (0, w) for y in (0, h)))) + 2
             canvas = Image.new("RGBA", (2 * r, 2 * r), (0, 0, 0, 0))
             zone = Image.new("L", (2 * r, 2 * r), 0)
+            hair = Image.new("L", (2 * r, 2 * r), 0)
             off = (int(round(r - px)), int(round(r - py)))
             canvas.paste(self.src, off)
             zone.paste(self.zone, off)
+            hair.paste(self.hair, off)
             if t:
                 canvas = canvas.rotate(-t, resample=Image.BICUBIC, center=(r, r))
                 zone = zone.rotate(-t, resample=Image.NEAREST, center=(r, r))
+                hair = hair.rotate(-t, resample=Image.NEAREST, center=(r, r))
             size = max(1, round(2 * r * self.scale))
             mid = canvas.resize((size * 4, size * 4), Image.LANCZOS)
             small = mid.resize((size, size), Image.BOX)
-            rgba = quantize_rgba(small, self.colors)
+            if self.hair_colors:
+                hm = np.asarray(hair.resize((size, size), Image.BOX)) > 127
+                rgba = quantize_regions(small, hm, self.hair_colors, self.colors, self.hair_palette)
+            else:
+                rgba = quantize_rgba(small, self.colors)
             z = np.asarray(zone.resize((size, size), Image.NEAREST)) > 0
             self.cache[t] = (rgba, z, (size / 2.0, size / 2.0))
         return self.cache[t]
@@ -252,8 +289,11 @@ def outer_outline(img):
     return out
 
 
-def snap_palette(frames, max_colors):
-    """One shared palette of at most `max_colors` colours (median cut over all opaque pixels, no dither)."""
+def snap_palette(frames, max_colors, reserved=None):
+    """One shared palette of at most `max_colors` colours (median cut over all opaque pixels, no dither).
+    `reserved` colours (e.g. a graded hair ramp) are always kept as they are."""
+    reserved = np.zeros((0, 3), np.int32) if reserved is None else np.asarray(reserved, np.int32)
+    max_colors -= len(reserved)
     stack = np.concatenate([f.reshape(-1, 4) for f in frames])
     opaque = stack[stack[:, 3] > 0][:, :3]
     side = int(math.ceil(math.sqrt(len(opaque))))
@@ -263,6 +303,7 @@ def snap_palette(frames, max_colors):
     q = Image.fromarray(mosaic.reshape(side, side, 3)).quantize(
         colors=max_colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     palette = np.array(q.getpalette()[:max_colors * 3], np.int32).reshape(-1, 3)[np.unique(np.asarray(q))]
+    palette = np.concatenate([palette, reserved]) if len(reserved) else palette
     out = []
     for f in frames:
         g = f.copy()
@@ -398,30 +439,87 @@ def contact_sheet(entries, path, title, crop=(208, 244)):
     sheet.convert("RGB").save(path, optimize=True)
 
 
-def build_atlas(fighter_id, entries, out_dir):
-    total = sum(len(e["frames"]) for e in entries)
-    rows = (total + COLS - 1) // COLS
-    atlas = np.zeros((rows * CELL, COLS * CELL, 4), dtype=np.uint8)
-    anims, k = {}, 0
+def trim(frame):
+    """(crop, left, top) of a 256 px cell cut to its opaque pixels."""
+    ys, xs = np.nonzero(frame[..., 3])
+    if len(ys) == 0:
+        return frame[:1, :1], 0, 0
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    return frame[y0:y1, x0:x1], int(x0), int(y0)
+
+
+def shelf_pack(sizes, width, gap):
+    """Shelf packing of (w, h) boxes, tallest first. Returns ({index: (x, y)}, height) or None if a box is
+    wider than the sheet."""
+    order = sorted(range(len(sizes)), key=lambda i: (-sizes[i][1], -sizes[i][0]))
+    pos, x, y, shelf = {}, 0, 0, 0
+    for i in order:
+        w, h = sizes[i]
+        if w > width:
+            return None
+        if x + w > width:
+            x, y, shelf = 0, y + shelf + gap, 0
+        pos[i] = (x, y)
+        x += w + gap
+        shelf = max(shelf, h)
+    return pos, y + shelf
+
+
+def build_atlas(fighter_id, entries, out_dir, max_side=4096, gap=1):
+    """Pack trimmed, de-duplicated frames into the smallest sheet (sides at most `max_side`).
+
+    Frame rects keep the contract format ({x, y, w, h}); each also carries `anchor`, the feet anchor inside
+    its rect (the engine draws `frame.anchor || atlas.anchor`). Writes atlas.png and a lossless atlas.webp."""
+    uniq, keys, refs = [], {}, []
     for e in entries:
-        rects = []
+        row = []
         for f in e["frames"]:
-            x, y = (k % COLS) * CELL, (k // COLS) * CELL
-            atlas[y:y + CELL, x:x + CELL] = f
-            rects.append({"x": x, "y": y, "w": CELL, "h": CELL})
-            k += 1
-        entry = {"fps": e["fps"], "loop": e["loop"], "frames": rects}
+            crop, x0, y0 = trim(f)
+            key = (x0, y0, crop.shape, crop.tobytes())
+            if key not in keys:
+                keys[key] = len(uniq)
+                uniq.append((crop, x0, y0))
+            row.append(keys[key])
+        refs.append(row)
+    sizes = [(c.shape[1], c.shape[0]) for c, _, _ in uniq]
+    best = None
+    for width in range(512, max_side + 1, 128):
+        packed = shelf_pack(sizes, width, gap)
+        if not packed:
+            continue
+        pos, height = packed
+        height = (height + 3) // 4 * 4
+        if height > max_side:
+            continue
+        area = width * height
+        if best is None or area < best[0] or (area == best[0] and abs(width - height) < abs(best[1] - best[2])):
+            best = (area, width, height, pos)
+    _, W, H, pos = best
+    atlas = np.zeros((H, W, 4), dtype=np.uint8)
+    rects = []
+    for i, (crop, x0, y0) in enumerate(uniq):
+        x, y = pos[i]
+        atlas[y:y + crop.shape[0], x:x + crop.shape[1]] = crop
+        rects.append({"x": x, "y": y, "w": int(crop.shape[1]), "h": int(crop.shape[0]),
+                      "anchor": {"x": ANCHOR[0] - x0, "y": ANCHOR[1] - y0}})
+    anims = {}
+    for e, row in zip(entries, refs):
+        entry = {"fps": e["fps"], "loop": e["loop"], "frames": [dict(rects[k]) for k in row]}
         if e.get("strideSpeed"):
             entry["strideSpeed"] = round(e["strideSpeed"], 1)
         if e.get("events"):
             entry["events"] = e["events"]
         anims[e["name"]] = entry
-    Image.fromarray(atlas).save(os.path.join(out_dir, "atlas.png"), optimize=True)
+    img = Image.fromarray(atlas)
+    img.save(os.path.join(out_dir, "atlas.png"), optimize=True)
+    img.save(os.path.join(out_dir, "atlas.webp"), lossless=True, quality=100, method=6)
     data = {"id": fighter_id, "cell": {"w": CELL, "h": CELL}, "anchor": {"x": ANCHOR[0], "y": ANCHOR[1]},
+            "image": "atlas.png", "images": {"png": "atlas.png", "webp": "atlas.webp"},
+            "size": {"w": W, "h": H, "decodedBytes": W * H * 4},
             "source": "tools/sprites3d (MPFB/MakeHuman body, Blender toon render, 2D likeness head)",
             "animations": anims}
     with open(os.path.join(out_dir, "atlas.json"), "w") as fh:
-        json.dump(data, fh, indent=1)
+        json.dump(data, fh, separators=(",", ":"))
     return data
 
 
@@ -479,7 +577,9 @@ def main():
                             "events": footsteps(dc) if r.get("locomotion") else [],
                             "strideSpeed": speed * scale if speed else None, "source": r.get("source", "shared")})
 
-    snapped, palette = snap_palette([f for e in entries for f in e["frames"]], cfg.get("palette_colors", 64))
+    reserved = [v.hair_palette for v in heads.values() if getattr(v, "hair_palette", None) is not None]
+    reserved = np.unique(np.concatenate(reserved), axis=0) if reserved else None
+    snapped, palette = snap_palette([f for e in entries for f in e["frames"]], cfg.get("palette_colors", 64), reserved)
     k = 0
     for e in entries:
         n = len(e["frames"])
@@ -499,10 +599,16 @@ def main():
     sheet = args.sheet or os.path.join(preview, f"shared-{cfg['id']}.png")
     contact_sheet(entries, sheet, title)
     report["palette_size"] = int(len(palette))
+    report["atlas"] = {"w": data["size"]["w"], "h": data["size"]["h"], "decoded_mb": round(data["size"]["decodedBytes"] / 2**20, 2),
+                       "frames": sum(len(a["frames"]) for a in data["animations"].values()),
+                       "unique_frames": len({(f["x"], f["y"]) for a in data["animations"].values() for f in a["frames"]}),
+                       "png_kb": round(os.path.getsize(os.path.join(args.out, "atlas.png")) / 1024),
+                       "webp_kb": round(os.path.getsize(os.path.join(args.out, "atlas.webp")) / 1024)}
     report["animations"] = {n: len(a["frames"]) for n, a in data["animations"].items()}
     with open(os.path.join(preview, "report.json"), "w") as fh:
         json.dump(report, fh, indent=1)
     print(json.dumps({k: v for k, v in report.items() if k != "animations"}, indent=1))
+    print("atlas:", json.dumps(report["atlas"]))
     print("animations:", ", ".join(f"{k} ({len(v['frames'])}f)" for k, v in data["animations"].items()))
 
 

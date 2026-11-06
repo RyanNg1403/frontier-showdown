@@ -75,7 +75,8 @@ export function createSpritePreview() {
     const f = a.frames[Math.min(frame, a.frames.length - 1)];
     ctx.clearRect(0, 0, 256, 256);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(atlas.img, f.x, f.y, f.w, f.h, 0, 0, 256, 256 * (f.h / f.w));
+    const an = f.anchor || atlas.json.anchor || { x: 128, y: 244 };
+    ctx.drawImage(atlas.img, f.x, f.y, f.w, f.h, 128 - an.x, 244 - an.y, f.w, f.h);
   }
 
   return {

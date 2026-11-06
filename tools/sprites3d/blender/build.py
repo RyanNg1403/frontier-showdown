@@ -271,6 +271,10 @@ def main():
                 print(f"[sprites3d] {src} overrides the shared {name}", flush=True)
             anims[name] = (a, src)
 
+    for name in (cfg.get("props") or {}).get("always", []):
+        if not props.set_always(name):
+            print(f"[sprites3d] always-on prop {name!r} is not defined by any move module for {cfg['id']}", flush=True)
+
     records = []
     for name, (a, src) in anims.items():
         render_animation(name, a.poses, a.fps, rig, rest, sk, cam, ppm, os.path.join(args.out, name), id_mat, feet,

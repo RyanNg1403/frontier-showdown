@@ -110,5 +110,10 @@
     },
     "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
-  "likeness": "Navy blazer over a light grey open-collar shirt, dark trousers, brown shoes; stocky, broad chest. Black frames come from the 2D head."
+  "likeness": "Navy blazer over a light grey open-collar shirt, dark trousers, brown shoes; stocky, broad chest. Black frames come from the 2D head.",
+  "props": {
+    "always": [
+      "ewi"
+    ]
+  }
 }

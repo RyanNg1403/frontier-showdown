@@ -10,15 +10,19 @@
   "body": {
     "gender": 1.0,
     "age": 0.792,
-    "muscle": 0.55,
-    "weight": 0.55,
+    "muscle": 0.58,
+    "weight": 0.72,
     "proportions": 0.5,
     "height": 0.5,
     "race": {
       "asian": 1.0
     },
     "targets": {
-      "measure-shoulder-dist-incr": 0.3
+      "measure-shoulder-dist-incr": 0.5,
+      "torso-scale-horiz-incr": 0.45,
+      "torso-scale-depth-incr": 0.25,
+      "stomach-pregnant-incr": 0.25,
+      "neck-scale-horiz-incr": 0.3
     }
   },
   "skin": "#d9a982",
@@ -111,5 +115,14 @@
     },
     "source": "tools/sprites3d/heads (PR #12): photo-referenced heads, rows from heads.json"
   },
-  "likeness": "Glossy black leather biker jacket over a black tee, black jeans and shoes; solid, square-shouldered."
+  "likeness": "Glossy black leather biker jacket over a black tee, black jeans and shoes; solid, square-shouldered. Heavier build per roster doc 3.6: wider torso and shoulders, shorter stride (walk about 165 px/s).",
+  "gait": {
+    "walk": {
+      "step": 0.62,
+      "speed": 165
+    },
+    "run": {
+      "step": 1.12
+    }
+  }
 }
