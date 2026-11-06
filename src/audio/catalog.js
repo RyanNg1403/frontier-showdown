@@ -39,6 +39,7 @@ export const SOUNDS = {
   "fx.slowmo-in": sfx("sfx/ko", "slowmo-in", 1, { gain: -3, maxVoices: 1 }),
   "fx.slowmo-out": sfx("sfx/ko", "slowmo-out", 1, { gain: -5, maxVoices: 1 }),
   "tag.in": sfx("sfx/tag", "tag-in", 1, { pitchVar: 0.5, gain: -2, maxVoices: 2 }),
+  "stinger.tag": sfx("sfx/stinger", "tag", 1, { gain: -4, maxVoices: 1 }),
 
   "ui.move": ui("move", { pitchVar: 0.3, maxVoices: 3 }),
   "ui.confirm": ui("confirm"),
@@ -58,6 +59,10 @@ export const LABS = {
   microsoft: { name: "Microsoft", say: ["Microsoft"], aliases: ["microsoft-ai"] },
   nvidia: { name: "NVIDIA", say: ["N Vidia", "En vidia", "Nvidia"] },
   qwen: { name: "Qwen", say: ["Kwen", "Qwen", "Kwenn"], aliases: ["alibaba"] },
+  ssi: { name: "Safe Superintelligence", say: ["Safe Superintelligence", "Safe Super-intelligence", "Safe Super Intelligence"], aliases: ["safe-superintelligence"] },
+  "ami-labs": { name: "AMI Labs", say: ["Ah-mee Labs", "Ami Labs", "Ahmee Labs", "Amee Labs", "Ah me Labs", "Ahmi Labs"], aliases: ["ami", "advanced-machine-intelligence"] },
+  uoft: { name: "University of Toronto", say: ["University of Toronto"], aliases: ["university-of-toronto", "u-of-t"] },
+  "world-labs": { name: "World Labs", say: ["World Labs", "World Labs,"], aliases: ["worldlabs"] },
   player1: { name: "Player 1", say: ["Player one"], aliases: ["p1"] },
   player2: { name: "Player 2", say: ["Player two"], aliases: ["p2"] },
 };

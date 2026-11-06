@@ -205,5 +205,41 @@
     "conf": 0.882,
     "exact": true,
     "attempts": 1
+  },
+  "ann.wins.ssi": {
+    "voice": "en_US-norman-medium",
+    "say": "Safe Super-intelligence wins!",
+    "lengthScale": 0.95,
+    "heard": "Safe Superintelligence wins.",
+    "conf": 0.798,
+    "exact": true,
+    "attempts": 30
+  },
+  "ann.wins.ami-labs": {
+    "voice": "en_US-john-medium",
+    "say": "Ahmi Labs wins!",
+    "lengthScale": 1.15,
+    "heard": "Army Labs wins.",
+    "conf": 0.851,
+    "exact": true,
+    "attempts": 6
+  },
+  "ann.wins.uoft": {
+    "voice": "en_US-john-medium",
+    "say": "University of Toronto wins!",
+    "lengthScale": 0.95,
+    "heard": "University of Toronto wins.",
+    "conf": 0.964,
+    "exact": true,
+    "attempts": 1
+  },
+  "ann.wins.world-labs": {
+    "voice": "en_US-john-medium",
+    "say": "World Labs, wins!",
+    "lengthScale": 1.05,
+    "heard": "World Labs wins.",
+    "conf": 0.836,
+    "exact": true,
+    "attempts": 2
   }
 }

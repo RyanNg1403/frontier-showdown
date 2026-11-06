@@ -82,21 +82,44 @@ export function bindGameEvents(audio, game, opts = {}) {
     if (e.guardBreak) audio.play("hit.heavy", { ...xOf(e), pitch: -2 });
   });
 
-  // ko: { double?, slowmo?: seconds, x }
-  on("ko", (e) => {
+  // In 2v2 a point fighter can fall while their partner still stands. The engine follows that
+  // `ko` with `lastStanding` for the same side in the same tick, so the call waits a tick:
+  // only a round-ending KO gets the KO impact, slow motion and one "K.O." per round. A
+  // mid-round fall gets a heavy hit and body fall, and the partner's forced entry gets the tag sting.
+  const fellMidRound = new Set(); // sides that just got `lastStanding`
+  const awaitingEntry = new Set(); // sides whose partner is about to be forced in
+  let koCalled = false;
+
+  on("lastStanding", (e) => { if (e.side != null) fellMidRound.add(e.side); });
+
+  // ko: { side, double?, roundOver?, slowmo?: seconds, x }
+  on("ko", (e) => later(0, () => {
+    const midRound = e.roundOver === false || (e.roundOver !== true && e.side != null && fellMidRound.has(e.side));
+    fellMidRound.delete(e.side);
+    if (midRound) {
+      awaitingEntry.add(e.side);
+      audio.play("hit.heavy", { ...xOf(e), pitch: -2 });
+      audio.play("body.fall", { ...xOf(e), delay: 0.35 });
+      return;
+    }
     audio.play("ko.impact", xOf(e));
-    later(0.18, () => audio.play("body.fall", { ...xOf(e), delay: 0.25 }));
+    audio.play("body.fall", { ...xOf(e), delay: 0.43 });
     if (!engineSlowmo && opts.slowmo !== false) {
       audio.setSlowMotion(true);
       later(typeof e.slowmo === "number" ? e.slowmo : opts.slowmoSeconds ?? 1.8, () => audio.setSlowMotion(false));
     }
+    if (koCalled) return;
+    koCalled = true;
     audio.announce(e.double ? "ann.doubleko" : "ann.ko", { delay: 0.3 });
-  });
+  }));
 
   // roundStart: { round (1-based), final?, maxRounds?, announceFight? }
   on("roundStart", (e) => {
     const round = e.round ?? e.index ?? e.number ?? 1;
     if (round <= 1) winnerAnnounced = false;
+    koCalled = false;
+    fellMidRound.clear();
+    awaitingEntry.clear();
     const final = e.final ?? e.isFinal ?? round >= (e.maxRounds ?? 3);
     audio.announce(final ? "ann.final" : `ann.round${Math.min(3, round)}`, { interrupt: true });
     clearTimeout(fightTimer);
@@ -121,7 +144,14 @@ export function bindGameEvents(audio, game, opts = {}) {
     });
   }
 
-  on("tag", (e) => audio.play("tag.in", xOf(e)));
+  // tag: { side, forced?, x }. A forced tag brings in the partner of a fallen point fighter.
+  on("tag", (e) => {
+    audio.play("tag.in", xOf(e));
+    if (e.forced || awaitingEntry.has(e.side)) {
+      awaitingEntry.delete(e.side);
+      audio.play("stinger.tag", { ...xOf(e), delay: 0.08 });
+    }
+  });
   on("special", (e) => audio.play("stinger.special", xOf(e)));
   on("super", (e) => audio.play("stinger.super", xOf(e)));
 

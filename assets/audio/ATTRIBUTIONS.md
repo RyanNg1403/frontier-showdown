@@ -11,7 +11,7 @@ recordings, sample packs or loops are included. Everything can be rebuilt with
 - Author: written for this repository. License: same as the repository.
 - Covers hits (light, heavy, counter, block), whooshes (light, medium, heavy), footsteps
   (walk, run), dash, jump, land, body fall, throws (grab, slam, break), special and super
-  stingers, KO impact, slow-motion in and out, tag-in, and UI (move, confirm, back, lock-in).
+  stingers, KO impact, slow-motion in and out, tag-in and the forced tag-in sting, and UI (move, confirm, back, lock-in).
 - Format: 32 kHz mono 16-bit WAV. Variants use different random seeds; output is deterministic.
 
 ## Music: `music/select.wav`, `music/fight.wav`, `music/victory.wav`
