@@ -115,7 +115,7 @@ export const groupCKits = {
       return true;
     }
     if (dist > 130 && dist < 310 && cpu.chance(p.aggression * 0.12)) return cast(cpu, k, "group_relative", dist > 220 ? "HK" : "LK", 8);
-    if (dist > 300 && !ownProjectile(k) && cpu.chance(p.zoning * 0.55)) return cast(cpu, k, "latent_attention", cpu.chance(0.5) ? "HP" : "LP", 10);
+    if (dist > 300 && !ownProjectile(k) && cpu.chance(p.zoning * 0.3)) return cast(cpu, k, "latent_attention", cpu.chance(0.5) ? "HP" : "LP", 30);
     return false;
   },
 
