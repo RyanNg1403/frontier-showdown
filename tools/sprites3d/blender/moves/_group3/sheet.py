@@ -17,6 +17,17 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..",
 CELL, CROP, TOP, LABEL = 256, 150, 28, 200
 
 
+def cell_image(atlas, fr, anchor):
+    """A frame back in its 256 px cell. Packed atlases trim frames and give each its own anchor."""
+    cell = Image.new("RGBA", (CELL, CELL))
+    img = atlas.crop((fr["x"], fr["y"], fr["x"] + fr["w"], fr["y"] + fr["h"]))
+    if "anchor" in fr:
+        cell.alpha_composite(img, (anchor["x"] - fr["anchor"]["x"], anchor["y"] - fr["anchor"]["y"]))
+    else:
+        cell.alpha_composite(img)
+    return cell
+
+
 def main():
     fid, out = sys.argv[1], sys.argv[2]
     atlas = Image.open(os.path.join(ROOT, "assets", "fighters", fid, "atlas.png")).convert("RGBA")
@@ -41,7 +52,7 @@ def main():
         d.text((8, y + 28), f"{len(a['frames'])}f @ {a['fps']} fps", fill=(170, 176, 192, 255), font=small)
         hits = {e["frame"] for e in a.get("events", []) if e.get("type") == "hit"}
         for c, fr in enumerate(a["frames"]):
-            cell = atlas.crop((fr["x"] + x0, fr["y"] + TOP, fr["x"] + x0 + CROP, fr["y"] + CELL))
+            cell = cell_image(atlas, fr, data["anchor"]).crop((x0, TOP, x0 + CROP, CELL))
             x = LABEL + c * CROP
             sheet.alpha_composite(cell, (x, y))
             if c in hits:

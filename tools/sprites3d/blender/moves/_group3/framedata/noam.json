@@ -78,7 +78,7 @@
   },
   "c_lk": {
    "name": "Positional Poke",
-   "anim": "crouch_light",
+   "anim": "crouch_light_kick",
    "startup": 8,
    "active": 2,
    "recovery": 14,
@@ -96,7 +96,7 @@
    "anim": "crouch_heavy",
    "startup": 10,
    "active": 3,
-   "recovery": 28,
+   "recovery": 30,
    "hitbox": {
     "x": 8,
     "y": -218,
@@ -108,7 +108,7 @@
   },
   "c_hk": {
    "name": "Sparse Sweep",
-   "anim": "crouch_heavy",
+   "anim": "crouch_heavy_kick",
    "startup": 13,
    "active": 3,
    "recovery": 28,
@@ -138,7 +138,7 @@
   },
   "j_k": {
    "name": "Decoder Kick",
-   "anim": "air_attack",
+   "anim": "air_kick",
    "startup": 7,
    "active": 7,
    "recovery": 8,
@@ -276,7 +276,7 @@
  },
  "source": {
   "ref": "origin/main",
-  "commit": "e106653",
+  "commit": "c94b39e",
   "file": "src/characters/noam.js"
  }
 }

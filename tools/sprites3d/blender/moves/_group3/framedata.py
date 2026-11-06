@@ -26,7 +26,7 @@ const c = m.exports;
 const pick = (mv, anim) => mv && ({ name: mv.name, anim: mv.anim || anim, startup: mv.startup, active: mv.active,
   recovery: mv.recovery, hits: mv.hits, hitbox: mv.hitbox || (mv.projectile && mv.projectile.offset ? { x: mv.projectile.offset.x - 10, y: mv.projectile.offset.y - 10, w: 20, h: 20 } : undefined), projectile: !!mv.projectile, parry: !!(mv.parry || (mv.mech && mv.mech.parry) || mv.mechanic === 'parry') });
 const NORMAL_ANIMS = { lp: 'light_punch', hp: 'heavy_punch', lk: 'light_kick', hk: 'heavy_kick', c_lp: 'crouch_light',
-  c_lk: 'crouch_light', c_hp: 'crouch_heavy', c_hk: 'crouch_heavy', j_p: 'air_attack', j_k: 'air_attack',
+  c_lk: 'crouch_light_kick', c_hp: 'crouch_heavy', c_hk: 'crouch_heavy_kick', j_p: 'air_attack', j_k: 'air_kick',
   f_lp: 'light_punch', f_hp: 'heavy_punch', f_hk: 'heavy_kick', b_hp: 'heavy_punch', b_hk: 'heavy_kick' };
 const out = { id: c.id, normals: {}, specials: [], experts: {} };
 for (const [k, mv] of Object.entries(c.normals || {})) out.normals[k] = pick(mv, NORMAL_ANIMS[k] || k);
