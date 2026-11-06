@@ -1,0 +1,90 @@
+{
+  "id": "elon",
+  "name": "Elon Musk",
+  "height_px": 214,
+  "speeds": {
+    "walk": 225,
+    "run": 520
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.731,
+    "muscle": 0.55,
+    "weight": 0.78,
+    "proportions": 0.5,
+    "height": 0.7,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "measure-shoulder-dist-incr": 0.5,
+      "neck-scale-horiz-incr": 0.45,
+      "stomach-pregnant-incr": 0.3
+    }
+  },
+  "skin": "#e9bc9c",
+  "hair": {
+    "color": "#6a4a33",
+    "thickness": 0.008,
+    "top": 0.03,
+    "forward": -0.01,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#262b3b",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#141416",
+      "thickness": 0.01,
+      "sole": 0.01,
+      "collar": 0.07
+    },
+    {
+      "kind": "top",
+      "name": "tee",
+      "color": "#1e1e22",
+      "thickness": 0.01,
+      "sleeve": 0.35,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "outer",
+      "name": "blazer",
+      "color": "#16161a",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/elon.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Black blazer over a black tee, dark jeans, black boots; tall, broad, heavy-set with a thick neck and slight paunch."
+}

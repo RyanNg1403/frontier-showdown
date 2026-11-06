@@ -1,0 +1,74 @@
+{
+  "id": "dario",
+  "name": "Dario Amodei",
+  "height_px": 198,
+  "speeds": {
+    "walk": 180,
+    "run": 430
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.638,
+    "muscle": 0.38,
+    "weight": 0.58,
+    "proportions": 0.45,
+    "height": 0.5,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "stomach-pregnant-incr": 0.15,
+      "torso-vshape-decr": 0.3
+    }
+  },
+  "skin": "#d9a47c",
+  "hair": {
+    "color": "#3b2a1e",
+    "thickness": 0.012,
+    "top": 0.03,
+    "forward": 0.004,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "chinos",
+      "color": "#4a3b2e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#2a211c",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#5b7fc4",
+      "thickness": 0.011,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.5,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/dario.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Mid-blue open-collar button-down, dark chinos, dark shoes; soft medium build, slightly rounded shoulders. Glasses and curls come from the 2D head."
+}

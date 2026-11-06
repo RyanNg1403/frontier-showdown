@@ -1,0 +1,69 @@
+{
+  "id": "noam",
+  "name": "Noam Shazeer",
+  "height_px": 200,
+  "speeds": {
+    "walk": 200,
+    "run": 460
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.692,
+    "muscle": 0.42,
+    "weight": 0.45,
+    "proportions": 0.5,
+    "height": 0.5,
+    "race": {
+      "caucasian": 1.0
+    }
+  },
+  "skin": "#ecbf9f",
+  "hair": {
+    "color": "#6b5a4c",
+    "thickness": 0.006,
+    "top": 0.004,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#262b3b",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#2a2a2e",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "tee",
+      "color": "#151515",
+      "thickness": 0.009,
+      "sleeve": 0.35,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/noam.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Plain black crewneck tee, dark jeans, dark sneakers; average-to-slim. The light-grey cap and stubble come from the 2D head."
+}

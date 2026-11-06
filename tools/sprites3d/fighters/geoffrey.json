@@ -1,0 +1,81 @@
+{
+  "id": "geoffrey",
+  "name": "Geoffrey Hinton",
+  "height_px": 212,
+  "speeds": {
+    "walk": 170,
+    "run": 400
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.908,
+    "muscle": 0.3,
+    "weight": 0.35,
+    "proportions": 0.65,
+    "height": 0.75,
+    "race": {
+      "caucasian": 1.0
+    }
+  },
+  "skin": "#efc8b0",
+  "hair": {
+    "color": "#e2e2e2",
+    "thickness": 0.008,
+    "top": 0.01,
+    "forward": -0.01,
+    "coverage": 0.7
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#6e7076",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#5b3b26",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#2f86c9",
+      "thickness": 0.01,
+      "sleeve": 0.99,
+      "collar": "shirt",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "top",
+      "name": "sweater",
+      "color": "#1f2230",
+      "thickness": 0.016,
+      "sleeve": 0.93,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/geoffrey.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Dark-navy crewneck sweater over a bright blue collared shirt (collar and cuffs showing), grey trousers, brown shoes; tall, slender, upright."
+}

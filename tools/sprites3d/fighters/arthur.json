@@ -1,0 +1,97 @@
+{
+  "id": "arthur",
+  "name": "Arthur Mensch",
+  "height_px": 212,
+  "speeds": {
+    "walk": 250,
+    "run": 560
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.569,
+    "muscle": 0.42,
+    "weight": 0.3,
+    "proportions": 0.8,
+    "height": 0.75,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "upperlegs-height-incr": 0.3,
+      "lowerlegs-height-incr": 0.3
+    }
+  },
+  "skin": "#efc6a8",
+  "hair": {
+    "color": "#2b1d16",
+    "thickness": 0.012,
+    "top": 0.03,
+    "forward": -0.006,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#1c2541",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#151515",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#eceef2",
+      "thickness": 0.01,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2,
+      "v_depth": 0.06
+    },
+    {
+      "kind": "tie",
+      "name": "tie",
+      "color": "#22406e",
+      "thickness": 0.016,
+      "width": 0.03
+    },
+    {
+      "kind": "outer",
+      "name": "suit_jacket",
+      "color": "#1c2541",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/arthur.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Dark-navy suit, white shirt, dark-blue tie; tall and lean, long limbs."
+}

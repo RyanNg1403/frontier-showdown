@@ -1,0 +1,87 @@
+{
+  "id": "ilya",
+  "name": "Ilya Sutskever",
+  "height_px": 200,
+  "speeds": {
+    "walk": 185,
+    "run": 440
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.608,
+    "muscle": 0.35,
+    "weight": 0.35,
+    "proportions": 0.55,
+    "height": 0.5,
+    "race": {
+      "caucasian": 1.0
+    },
+    "targets": {
+      "measure-shoulder-dist-decr": 0.5
+    }
+  },
+  "skin": "#eec4a6",
+  "hair": {
+    "color": "#3a2c22",
+    "thickness": 0.003,
+    "top": 0.0,
+    "coverage": 0.85
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#2a2c33",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#1d1b1a",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#e9e9ea",
+      "thickness": 0.01,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "outer",
+      "name": "suit_jacket",
+      "color": "#4a4d55",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/ilya.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Charcoal suit jacket over a white open-collar shirt, dark trousers; slim with narrow shoulders."
+}

@@ -1,0 +1,85 @@
+{
+  "id": "chris",
+  "name": "Chris Olah",
+  "height_px": 200,
+  "speeds": {
+    "walk": 195,
+    "run": 450
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.569,
+    "muscle": 0.35,
+    "weight": 0.33,
+    "proportions": 0.6,
+    "height": 0.5,
+    "race": {
+      "caucasian": 1.0
+    }
+  },
+  "skin": "#efc7aa",
+  "hair": {
+    "color": "#5a4232",
+    "thickness": 0.008,
+    "top": 0.016,
+    "forward": 0.006,
+    "coverage": 0.5
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#1f2b4a",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#5d3d27",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "shirt",
+      "color": "#dfe6ee",
+      "thickness": 0.01,
+      "sleeve": 0.97,
+      "collar": "open",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "outer",
+      "name": "suit_jacket",
+      "color": "#1f2b4a",
+      "thickness": 0.02,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.11,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.07,
+      "smooth": 0.7,
+      "trim": 1
+    }
+  ],
+  "head": {
+    "image": "heads/chris.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Workaday navy suit over a plain light shirt, no tie, brown shoes; slim."
+}

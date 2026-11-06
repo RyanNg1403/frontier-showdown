@@ -1,0 +1,71 @@
+{
+  "id": "feifei",
+  "name": "Fei-Fei Li",
+  "height_px": 185,
+  "speeds": {
+    "walk": 190,
+    "run": 440
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 0.0,
+    "age": 0.692,
+    "muscle": 0.3,
+    "weight": 0.36,
+    "proportions": 0.55,
+    "height": 0.3,
+    "cupsize": 0.4,
+    "race": {
+      "asian": 1.0
+    }
+  },
+  "skin": "#e9c4a2",
+  "hair": {
+    "color": "#1e1612",
+    "thickness": 0.012,
+    "top": 0.01,
+    "coverage": 0.4
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#34405e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#ecebe6",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02,
+      "contrast": 0.6
+    },
+    {
+      "kind": "top",
+      "name": "hoodie",
+      "color": "#6b2737",
+      "thickness": 0.024,
+      "sleeve": 0.99,
+      "collar": "crew",
+      "hem": -0.07,
+      "smooth": 0.9,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/feifei.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Baggy maroon hoodie over a white tee, jeans, white sneakers; petite and slim. Shoulder-length hair comes from the 2D head."
+}

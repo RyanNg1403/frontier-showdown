@@ -1,0 +1,65 @@
+{
+  "id": "demis",
+  "name": "Demis Hassabis",
+  "height_px": 192,
+  "speeds": {
+    "walk": 195,
+    "run": 450
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.692,
+    "muscle": 0.4,
+    "weight": 0.4,
+    "proportions": 0.55,
+    "height": 0.3,
+    "race": {
+      "caucasian": 0.5,
+      "asian": 0.5
+    }
+  },
+  "skin": "#d6a57f",
+  "hair": null,
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "trousers",
+      "color": "#1a1a1e",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#141416",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "crewneck",
+      "color": "#17171a",
+      "thickness": 0.012,
+      "sleeve": 0.97,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    }
+  ],
+  "head": {
+    "image": "heads/demis.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "All black: black crewneck, black trousers; short, slight, upright. Shaved head, beard and cobalt glasses come from the 2D head."
+}

@@ -1,0 +1,89 @@
+{
+  "id": "jensen",
+  "name": "Jensen Huang",
+  "height_px": 198,
+  "speeds": {
+    "walk": 165,
+    "run": 400
+  },
+  "view_yaw": 20,
+  "body": {
+    "gender": 1.0,
+    "age": 0.792,
+    "muscle": 0.55,
+    "weight": 0.55,
+    "proportions": 0.5,
+    "height": 0.5,
+    "race": {
+      "asian": 1.0
+    },
+    "targets": {
+      "measure-shoulder-dist-incr": 0.3
+    }
+  },
+  "skin": "#d9a982",
+  "hair": {
+    "color": "#121212",
+    "thickness": 0.01,
+    "top": 0.035,
+    "forward": -0.012,
+    "coverage": 0.45
+  },
+  "outfit": [
+    {
+      "kind": "bottom",
+      "name": "jeans",
+      "color": "#141418",
+      "thickness": 0.008,
+      "length": 0.985,
+      "waist": 0.06,
+      "smooth": 0.4,
+      "trim": 1
+    },
+    {
+      "kind": "shoes",
+      "name": "shoes",
+      "color": "#121214",
+      "thickness": 0.008,
+      "sole": 0.01,
+      "collar": 0.02
+    },
+    {
+      "kind": "top",
+      "name": "tee",
+      "color": "#18181b",
+      "thickness": 0.01,
+      "sleeve": 0.35,
+      "collar": "crew",
+      "hem": 0.0,
+      "smooth": 0.6,
+      "trim": 2
+    },
+    {
+      "kind": "outer",
+      "name": "leather_jacket",
+      "color": "#0d0d0f",
+      "thickness": 0.022,
+      "sleeve": 0.96,
+      "collar": "open",
+      "v_depth": 0.2,
+      "v_width": 0.13,
+      "open_front": 0.03,
+      "open_from": 0.0,
+      "hem": -0.02,
+      "smooth": 0.7,
+      "trim": 1,
+      "contrast": 1.7
+    }
+  ],
+  "head": {
+    "image": "heads/jensen.png",
+    "source_height": 1024,
+    "crown": 0,
+    "chin": 0,
+    "neck_cut": 0,
+    "heads_tall": 7.5,
+    "todo": "generate the likeness head from the section 3 reference photos, then run post/prep_head.py and fill in crown/chin/neck_cut"
+  },
+  "likeness": "Glossy black leather biker jacket over a black tee, black jeans and shoes; solid, square-shouldered."
+}
