@@ -19,7 +19,7 @@ Preview every sound at `/assets/audio/preview.html`. The page needs a server tha
 | `play(id, opts)` | Returns `{ stop(fade), ended, duration }`, or `null` while the sound is still loading. `opts`: `volume` (linear), `gainDb`, `pitch` (semitones), `rate`, `pan` (-1..1) or `x` (px, 1280 wide), `delay` (s), `variant`, `variation` (0 turns off the randomness), `loop`, `bus`. |
 | `music(id, { fade, restart, volume })` | Exponential crossfade between tracks. `menu` streams `assets/frontier-soundtrack.mp3`; the others are sample-exact loops. |
 | `announce(idOrText, { delay, gap, interrupt })` | Announcer queue: lines never overlap, and the music ducks under them. Unknown text falls back to `speechSynthesis`. |
-| `announceWinner(lab, { side })` | Takes a lab name, id or `{ lab }`, for example `"Google DeepMind"` or `"openai"`. Players can be given as `player1` and `player2`. A lab without a recorded line plays the winning `side`'s "Player one/two wins" line when `side` (0 or 1) is given. |
+| `announceWinner(lab, { side })` | Takes a lab name, id or `{ lab }`, for example `"Google DeepMind"` or `"openai"`. Players can be given as `player1` and `player2`. Every roster lab has its own line. A lab without one plays the winning `side`'s "Player one/two wins" line when `side` (0 or 1) is given. |
 | `setVolume(bus, 0..1)`, `setMuted(bus, bool)`, `getVolume`, `isMuted`, `volumes()` | Buses are `master`, `music`, `sfx` and `voice`. Values persist to `localStorage` (`frontier.audio.*`), and the gain applied is the value squared. |
 | `setSlowMotion(on, { rate, ramp, sting })` | Pitches active and new SFX down, low-passes SFX and music, slows the music, and plays the slow-mo stings. |
 | `setPaused(on)` | Muffles the music under a pause menu. |
@@ -33,10 +33,11 @@ Sound ids and per-sound defaults (bus, variants, pitch and volume spread, voice 
 | --- | --- | --- |
 | `hit` | `weight`/`strength`/`move.{weight,id,damage}`, `counter`, `throw`, `blocked`, `x` | `hit.light`, `hit.heavy` (medium hits are pitched up), `hit.counter` or `throw.slam` |
 | `block` | `guardBreak`, `x` | `hit.block` |
-| `ko` | `double`, `slowmo` (s), `x` | `ko.impact`, `body.fall`, slow-motion, then "K.O." or "Double K.O." |
+| `ko` | `side`, `double`, `roundOver`, `slowmo` (s), `x` | Round-ending KO: `ko.impact`, `body.fall`, slow motion, then "K.O." or "Double K.O." (once per round). A 2v2 point fighter falling mid-round (followed by `lastStanding` for that side, or `roundOver: false`): `hit.heavy` and `body.fall` only. |
 | `roundStart` | `round`, `final`, `maxRounds`, `fightDelay`, `announceFight` | "Round 1/2/3" or "Final round", then "Fight!", and switches the music to `fight` |
 | `roundEnd` | `reason` (`time` or `draw`), `perfect`, `matchOver`, `matchWinner`/`winner`, `winnerLab` | "Time!", "Draw!", "Perfect!", then "<lab> wins!" and the `victory` music |
-| `tag`, `special`, `super` | `x` | `tag.in`, `stinger.special`, `stinger.super` |
+| `tag` | `side`, `forced`, `x` | `tag.in`, plus `stinger.tag` when the partner of a fallen point fighter is forced in |
+| `special`, `super` | `x` | `stinger.special`, `stinger.super` |
 
 Optional events, handled if the engine emits them: `fight` (announces "Fight!" now, replacing the timer), `finishThem`, `matchEnd`, `attack`/`whiff` (whoosh by weight), `throw`/`grab`, `throwBreak`, `jump`, `land`, `dash`, `knockdown`, `step` (`run` flag or `anim`), `animEvent` (`{ type, anim, x }` forwarded from atlas frame events), `slowmo` (`{ active, rate }`; when present, the engine drives slow motion and KO no longer does), `pause` and `resume`.
 

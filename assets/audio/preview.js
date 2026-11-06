@@ -62,7 +62,7 @@ const GROUPS = [
   ["Whooshes", "one per attack weight", ["whoosh.light", "whoosh.medium", "whoosh.heavy"]],
   ["Movement", "footsteps, dash, jump, land", ["step.walk", "step.run", "move.dash", "move.jump", "move.land", "body.fall"]],
   ["Throws", "", ["throw.grab", "throw.slam", "throw.break"]],
-  ["Stingers · KO · Tag", "", ["stinger.special", "stinger.super", "ko.impact", "fx.slowmo-in", "fx.slowmo-out", "tag.in"]],
+  ["Stingers · KO · Tag", "", ["stinger.special", "stinger.super", "ko.impact", "fx.slowmo-in", "fx.slowmo-out", "tag.in", "stinger.tag"]],
   ["UI", "menu navigation and lock-in", ["ui.move", "ui.confirm", "ui.back", "ui.lock"]],
   ["Announcer", "Piper TTS · public-domain voices", Object.keys(VOICE).filter((id) => !id.startsWith("ann.wins."))],
   ["Winners", "“<lab> wins”", Object.keys(VOICE).filter((id) => id.startsWith("ann.wins."))],

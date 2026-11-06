@@ -263,6 +263,16 @@ const recipes = {
     return finish(reverb(dry, sr, { wet: 0.22, tail: 0.5, seed: 59 }), sr, { level: 0.85 });
   },
 
+  "stinger.tag"(sr, r) {
+    const lead = 0.11;
+    const rise = env(bp(pink(sr, lead, r), sr, (t) => 900 + 5000 * (t / lead) ** 2, 1.4), sr, (t) => (t / lead) ** 2);
+    const hit = drive(chordStab(sr, [52, 59, 64, 71], 0.6, 0.16, 4200, r), 1.6);
+    const chime = partials(sr, midiHz(88), [1, 1.5, 2], 0.22, 0.6, r);
+    const punch = thump(sr, 180, 80, 0.04, 0.15, r);
+    const dry = mix(sr, [{ buf: rise, gain: 0.45 }, { buf: hit, gain: 0.7, at: lead }, { buf: chime, gain: 0.22, at: lead }, { buf: punch, gain: 0.6, at: lead }]);
+    return finish(reverb(dry, sr, { wet: 0.25, tail: 0.6, seed: 73 }), sr, { level: 0.8 });
+  },
+
   "ui.move"(sr, r) {
     return finish(mix(sr, [{ buf: blip(sr, "tri", 1320, 1240, 0.05, 0.016), gain: 1 }, { buf: click(sr, r, 6000), gain: 0.15 }]), sr, { level: 0.6 });
   },
