@@ -159,7 +159,7 @@ const cache = new Map();
 
 /**
  * Parse a motion string such as "QCF+P", "[4]6+HP", "F,B,F+HP" or "236236+K".
- * Returns { raw, seq, charge, button, buttonMask, all }.
+ * Returns { raw, seq, charge, button, buttonMask, all, rotation }. "360" is a full rotation.
  */
 export function parseMotion(raw) {
   if (cache.has(raw)) return cache.get(raw);
@@ -176,8 +176,10 @@ export function parseMotion(raw) {
     body = body.slice(chargeMatch[0].length);
   }
   const tokens = body.split(",").filter(Boolean);
+  const rotation = tokens.includes("360");
   for (const token of tokens) {
-    if (NAMED[token]) seq.push(...NAMED[token]);
+    if (token === "360") seq.push(...NAMED.HCB, 6);
+    else if (NAMED[token]) seq.push(...NAMED[token]);
     else if (/^[1-9]+$/.test(token)) seq.push(...token.split("").map(Number));
     else throw new Error(`Unknown motion token "${token}" in "${raw}"`);
   }
@@ -191,7 +193,7 @@ export function parseMotion(raw) {
     }
     all = parts.length > 1;
   }
-  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all });
+  const parsed = Object.freeze({ raw, seq: Object.freeze(seq), charge, button: buttonPart, buttonMask, all, rotation });
   cache.set(raw, parsed);
   return parsed;
 }
@@ -204,6 +206,29 @@ export function motionPriority(motion) {
 const STEP_GAP = 12;
 const FINAL_GAP = 12;
 const DIAGONAL = new Set([1, 3, 7, 9]);
+const ROTATION_WINDOW = 36;
+
+/**
+ * "360" (roster doc 2.1): its `seq` is HCB,F, and it also matches a full rotation, meaning all
+ * four cardinals touched within the window with the last one at most FINAL_GAP frames back.
+ * `chrono` is facing-relative directions, oldest first.
+ */
+export function fullRotation(chrono, window = ROTATION_WINDOW) {
+  const last = chrono.length - 1;
+  let up = false;
+  let down = false;
+  let back = false;
+  let fwd = false;
+  for (let i = Math.max(0, chrono.length - window); i <= last; i += 1) {
+    const d = chrono[i];
+    up ||= d >= 7;
+    down ||= d <= 3;
+    back ||= d % 3 === 1;
+    fwd ||= d % 3 === 0;
+    if (up && down && back && fwd) return last - i <= FINAL_GAP;
+  }
+  return false;
+}
 
 /**
  * Check whether `motion` was performed, ending with an unconsumed button press
@@ -237,6 +262,7 @@ function sequenceBefore(buffer, motion, facing, pressAge) {
     earliest = Math.max(0, last - ok.sinceEnd - 1);
   }
   if (seq.length === 0) return true;
+  if (motion.rotation && fullRotation(chrono)) return true;
   for (let start = earliest; start <= last; start += 1) {
     if (chrono[start] === seq[0] && matchFrom(chrono, seq, 1, start, last, false)) return true;
   }

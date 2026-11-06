@@ -48,7 +48,8 @@ function attackPose(f) {
   const m = f.move;
   const e = extension(m, f.moveFrame);
   const id = m.id;
-  const crouch = id.startsWith("c_");
+  const lp = m.mechanicData?.lowProfile;
+  const crouch = id.startsWith("c_") || Boolean(lp && f.moveFrame >= lp.from && f.moveFrame <= lp.to);
   const base = crouch ? { ...STANCE, drop: 38, fThigh: 1.25, fShin: -1.35, bThigh: 0.4, bShin: -1.5, lean: 0.25 } : { ...STANCE };
   const target = { ...base };
   const hb = m.hitbox || (m.projectile ? { x: 60, y: -140, w: 40, h: 20 } : { x: 40, y: -140, w: 40, h: 20 });

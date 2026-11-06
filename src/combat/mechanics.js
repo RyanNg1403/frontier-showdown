@@ -17,6 +17,7 @@
  *   onStart(fighter, move, env)           the frame the move starts
  *   onFrame(fighter, move, env)           every frame of the move (after built-in velocity)
  *   onHit(ctx)                            when this move hits or is blocked
+ *   hurtboxes(fighter, move)              local hurtboxes to use this frame, or null for the default
  * ctx = { match, attacker, defender, props, blocked, damage }.
  * `env.match` is the live Match: spawnProjectile, applyContact, emit, vfx, spawnEntity.
  * Entities (`match.spawnEntity({...})`) get update(match) -> false to remove, and optional
